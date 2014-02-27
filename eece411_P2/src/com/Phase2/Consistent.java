@@ -13,8 +13,9 @@ public class Consistent<T> {
 	
 	// test
 	
- private final int numberOfReplicas;
- private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
+	private final int numberOfReplicas;
+	private final int numberOfReplicas2;
+	 private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
 
  public Consistent(HashFunction hashFunction, int numberOfReplicas,
      Collection<T> nodes) {
