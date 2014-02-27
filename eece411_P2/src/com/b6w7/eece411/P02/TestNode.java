@@ -19,8 +19,6 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
-import com.matei.eece411.util.ByteOrder;
-
 public class TestNode {
 
 	// TCP socket connection code obtained and modified from
@@ -48,29 +46,6 @@ public class TestNode {
 				+ " 909090");
 	}
 	
-	// performs 4 consecutive .read() on the BufferedReader and returns a
-	// 32-bit int representing their bitwise concatenation.
-	// Each .read() returns an int, but there is only 8 bits of information
-	// in the lowest 8 bits.  The first read of 8 bits becomes the highest-order byte.
-	private static int readOneIntFromBufferedReader(BufferedReader in) throws IOException {
-		int result1 = (in.read()    ) & 0x000000FF;
-		int result2 = (in.read()<< 8) & 0x0000FF00;
-		int result3 = (in.read()<<16) & 0x00FF0000;
-		int result4 = (in.read()<<24) & 0xFF000000;
-		return result4|result3|result2|result1;
-
-	
-//		int result = 0;
-//		result |= (in.read() & 0x000000FF);
-//		result <<= 8;
-//		result |= (in.read() & 0x000000FF);
-//		result <<= 8;
-//		result |= (in.read() & 0x000000FF);
-//		result <<= 8;
-//		result |= (in.read() & 0x000000FF);
-//		return result;
-}
-
 	public static void main(String[] args) {
 		// If the command line arguments are missing, then nothing to do
 		if ( args.length != 3 ) {
@@ -91,10 +66,9 @@ public class TestNode {
 			return;
 		}
 
-		//studentID = 909090;
-		
 		Socket clientSocket = null;
 		ByteBuffer b = null;
+		
 		
 		try {
 			// URL resolution and InetAddress resolution code obtained and modified from 
@@ -123,35 +97,27 @@ public class TestNode {
 			BufferedReader inFromServer = 
 					new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
-			// Send one integer (4 bytes) to the server in Little Endian notation
-			System.out.println("Sending ID: " + studentID);
-			ByteOrder.int2leb( studentID, outToServer);
-
-			// reading one int into ByteBuffer code obtained and modified from 
-			// http://stackoverflow.com/questions/1936857/convert-integer-into-byte-array-java
-			// "Convert integer into byte array (Java)"
-			
 			// Create buffer and specify LE ordering before we insert into buffer
 			// Read one integer from the LE-ordered server and place into the buffer
-			b = ByteBuffer.allocate(4);
-			b.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-			b.putInt(readOneIntFromBufferedReader(inFromServer));
+			//b = ByteBuffer.allocate(4);
+			//b.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+			//b.putInt(readOneIntFromBufferedReader(inFromServer));
 
 			// reset cursor to start and
 			// specify BE ordering
 			// and read out the message length as one BE int
-			b.rewind();
-			b.order(java.nio.ByteOrder.BIG_ENDIAN);
-			msgLength = b.getInt();
-			System.out.println("Message length: " + msgLength);
+			//b.rewind();
+			//b.order(java.nio.ByteOrder.BIG_ENDIAN);
+			//msgLength = b.getInt();
+			//System.out.println("Message length: " + msgLength);
 
 			// now that we have the size of the reply from the server, 
 			// we can allocate an appropriately-sized buffer for the reply
 			// for index clarity, we re-insert a dummy int for the message size
 			// then we read the remaining data from the server into this buffer
 			b = ByteBuffer.allocate(msgLength);
-			b.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-			b.putInt(0xDEADBEEF);
+			//b.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+			//b.putInt(0xDEADBEEF);
 			for (int ii = 4; ii < msgLength; ii += 4)
 				b.putInt(readOneIntFromBufferedReader(inFromServer));
 			
