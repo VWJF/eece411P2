@@ -7,21 +7,12 @@ import java.util.TreeMap;
 public class Consistent<T> {
 
 	
-	// hey 
-	// there
-	// delilah
-	
-	// test
-	
 	private final int numberOfReplicas;
 	private final int numberOfReplicas2;
 	
-	
-	String testString;
-	String testString2;
-	String testString3;
-	
-	 private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
+	String testString55;
+
+	private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
 
  public Consistent(HashFunction hashFunction, int numberOfReplicas,
      Collection<T> nodes) {
@@ -33,6 +24,10 @@ public class Consistent<T> {
    }
  }
 
+ 
+ public void nothing() {
+ }
+ 
  public void add(T node) {
    for (int i = 0; i < numberOfReplicas; i++) {
      circle.put(hashFunction.hash(node.toString() + i), node);
