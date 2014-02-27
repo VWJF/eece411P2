@@ -15,6 +15,10 @@ public class Consistent<T> {
 	
 	private final int numberOfReplicas;
 	private final int numberOfReplicas2;
+	
+	
+	String testString;
+	
 	 private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
 
  public Consistent(HashFunction hashFunction, int numberOfReplicas,
