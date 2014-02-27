@@ -7,7 +7,8 @@ import java.util.TreeMap;
 public class Consistent<T> {
 
 	 
-
+// New lines
+	
 	private final int numberOfReplicas;
 	private final int numberOfReplicas2;
 	
@@ -29,7 +30,12 @@ public class Consistent<T> {
  public void nothing() {
  }
  
+ public void moreNothing() {
+ }
+ 
+ // some comments\
  public void add(T node) {
+	 String t = new String();
    for (int i = 0; i < numberOfReplicas; i++) {
      circle.put(hashFunction.hash(node.toString() + i), node);
    }
