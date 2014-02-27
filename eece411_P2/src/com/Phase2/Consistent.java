@@ -8,6 +8,10 @@ public class Consistent<T> {
 
 	
 	// sabotage!
+	
+	// new lines
+	
+	
  private final HashFunction hashFunction;
  private final int numberOfReplicas;
  private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
