@@ -7,11 +7,7 @@ import java.util.TreeMap;
 public class Consistent<T> {
 
 	
-	// sabotage!
-	
-	// new lines
-	
-	
+	// sabotage!	
  private final HashFunction hashFunction;
  private final int numberOfReplicas;
  private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
