@@ -1,6 +1,12 @@
 *.class
+.DS_Store
 
 # Package Files #
 *.jar
 *.war
 *.ear
+
+# For eclipse
+.classpath
+.settings/
+package-info.java
