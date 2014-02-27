@@ -18,6 +18,7 @@ public class Consistent<T> {
 	
 	
 	String testString;
+	String testString2;
 	
 	 private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
 
