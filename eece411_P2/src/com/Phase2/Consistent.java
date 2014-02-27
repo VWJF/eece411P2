@@ -7,7 +7,8 @@ import java.util.TreeMap;
 public class Consistent<T> {
 
 	 
-
+// New lines
+	
 	private final int numberOfReplicas;
 	private final int numberOfReplicas2;
 	
