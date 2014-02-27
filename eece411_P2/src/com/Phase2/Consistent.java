@@ -19,6 +19,7 @@ public class Consistent<T> {
 	
 	String testString;
 	String testString2;
+	String testString3;
 	
 	 private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
 
@@ -38,9 +39,9 @@ public class Consistent<T> {
    }
  }
 
- public void remove(T node) {
+ public void remove(T nodefff) {
    for (int i = 0; i < numberOfReplicas; i++) {
-     circle.remove(hashFunction.hash(node.toString() + i));
+     circle.remove(hashFunction.hash(nodefff.toString() + i));
    }
  }
 
