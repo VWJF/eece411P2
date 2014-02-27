@@ -7,25 +7,7 @@ import java.util.TreeMap;
 public class Consistent<T> {
 
 	 
-	 //Few lines
-	 
-	 
-	 //Few lines
-	 
-	 
-	 //Few lines
-	 
-	 
-	 //Few lines
-	 //Few lines
-	 //Few lines
-	 //Few lines
-	 //Few lines
-	 
-	 
-	 
-	 
-	 
+
 	private final int numberOfReplicas;
 	private final int numberOfReplicas2;
 	
@@ -71,40 +53,5 @@ public class Consistent<T> {
    }
    return circle.get(hash);
  }
- //More lines
- 
- 
- 
 
- //no sabotaging your own project
-
- //stop with the sabotaging
-
- 
- 
- //Adding lines
- 
- 
- 
- 
- 
- //More lines
- 
- 
- 
- 
- 
- //More lines
- 
- 
- 
- 
- 
- //More lines
- 
- 
- 
- 
- 
- //More lines
 }
