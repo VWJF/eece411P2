@@ -10,6 +10,9 @@ public class Consistent<T> {
 	// hey 
 	// there
 	// delilah
+	
+	// test
+	
  private final int numberOfReplicas;
  private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
 
