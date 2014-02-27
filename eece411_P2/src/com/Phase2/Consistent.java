@@ -43,11 +43,12 @@ public class Consistent<T> {
    }
  }
 
- public T get(Object key) {
+ public T get(String key) {
    if (circle.isEmpty()) {
      return null;
    }
    int hash = hashFunction.hash(key);
+   hash = key.hashCode();
    if (!circle.containsKey(hash)) {
      SortedMap<Integer, T> tailMap = circle.tailMap(hash);
      hash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
