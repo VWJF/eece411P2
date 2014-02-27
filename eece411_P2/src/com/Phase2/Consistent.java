@@ -6,7 +6,10 @@ import java.util.TreeMap;
 
 public class Consistent<T> {
 
- private final HashFunction hashFunction;
+	
+	// hey 
+	// there
+	// delilah
  private final int numberOfReplicas;
  private final SortedMap<Integer, T> circle = new TreeMap<Integer, T>();
 
