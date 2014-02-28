@@ -29,32 +29,31 @@ public class TestData {
 	}
 
 	/**
-	 * Constructor that pads key or value with null bytes if under the specified lengths in {@link NodeCommands}
+	 * Constructor for a test vector used in {@link TestNode}
 	 * @param cmd command
 	 * @param key ByteBuffer with limit of 32
-	 * @param value ByteBuffer with limit of 1024 if PUT command, or may be null otherwise
-	 * @param replyCode expected reply (error) code
-	 * @param replyValue expected reply value
+	 * @param value ByteBuffer of sent value with limit of 1024 if PUT command, otherwise ignored
+	 * @param replyCode expected reply code
+	 * @param replyValue ByteBuffer of expected reply with limit of 1024 if GET command, otherwise ignored
 	 */
 	public TestData( byte cmd, ByteBuffer key, ByteBuffer value, byte replyCode, ByteBuffer replyValue ) {
 
 		// check arguments for correctness
-		if (null == key) {
-			throw new IllegalArgumentException("key cannot be null");
+		if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
+			throw new IllegalArgumentException("key must be 32 bytes for all operations");
 		}
-		if (key.equals(NodeCommands.CMD_PUT) && null == value) {
-			throw new IllegalArgumentException("value cannot be null for PUT operation");
-		}
-		if (key.limit() != NodeCommands.LEN_KEY_BYTES 
-				|| (null != value && value.limit() != NodeCommands.LEN_VALUE_BYTES)) {
-			throw new IllegalArgumentException("key must be between [1-32] bytes and value must be between [1-1024] bytes");
+		
+		if (key.equals(NodeCommands.CMD_PUT)){
+			if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
+				throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
+		} else if (key.equals(NodeCommands.CMD_GET)) {
+			if (null == replyValue || replyValue.limit() != NodeCommands.LEN_VALUE_BYTES) 
+				throw new IllegalArgumentException("replyValue must be 1024 bytes for GET operation");
 		}
 
 		// Save parameters, and 
 		// Place {Cmd, Key, Value} into ByteBuffer 
 		// to be ready to be sent down a pipe.  
-		// If Key or Value is shorter than 32B and 1024B, respectively,
-		// pad with null bytes.
 		this.cmd = cmd;
 		this.key = key;
 		this.value = value;

@@ -46,41 +46,36 @@ public class TestNode {
 				+ " 5627");
 	}
 
-	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
-
-		md = MessageDigest.getInstance("SHA-1");
-
-		byte cmd = -1;
-		ByteBuffer hashedKey = null;
-		ByteBuffer value = null;
-		byte reply = -1;
-
-		String keyString = null;
-		String valueString = null;
-
-		// we can reuse 'value' for both the sending and receiving of a GET operation,
-		// so no need a buffer for the reply 1024 bytes
+	
+	private static void populateOneTest(byte cmd, String keyString, String valueString, byte reply) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// we can reuse 'value' for both the sending of a PUT as well as receiving of a GET operation,
+		// so no need two arguments
 
 		// If we want to repeated append to hash before digesting, call update() 
 		//			md.update("Scott".getBytes(StandardCharsets.UTF_8.displayName()));
 		//			key.put(md.digest()); 
 
-		// Excess bytes will be truncated when being placed into key which is 
-		// limited to 32 bytes.  This is OK for our hashing.
-		// However, we cannot truncate the value.  If the value exceeds our buffer then we 
-		// capture the exception and skip that test.
+		if (null == md) 
+			md = MessageDigest.getInstance("SHA-1");
 
-		// test 1: put 'Scott' => '63215065' 
+		ByteBuffer hashedKey = null;
+		ByteBuffer value = null;
+
+		// Massage parameters into a TestData object that is appended to 'tests'
+		// which will then be iterated through in the test harness
+		
+		// Note that we create hash of key which will be padded with zeroes at end.
+		// Also, if hashing algorithm changes (SHA-1 creates a 20 bytes hash) which 
+		// becomes larger than our hash limit (32b) then the logic exists here to
+		// handle that case (it will be truncated)
 		try {
-			keyString = "Scott";
-			valueString = "63215065";
-
 			hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
 			value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
 
+			// create hash
+			// if we want to increase entropy in the hash, this would be the line to do it
 			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
 			
-			cmd = NodeCommands.CMD_PUT;
 			if (digest.length > hashedKey.limit()) {
 				hashedKey.put( digest, 0, hashedKey.limit() );
 			} else {
@@ -88,59 +83,30 @@ public class TestNode {
 			}
 			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			reply = NodeCommands.RPY_SUCCESS;
-			tests.add(new TestData(cmd, hashedKey, value, reply, null));
-
-		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
-		}
-
-		// test 2: put 'ssh-linux.ece.ubc.ca' => '137.82.52.29' 
-		try {
-			keyString = "ssh-linux.ece.ubc.ca";
-			valueString = "137.82.52.29";
-
-			hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
-			value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
-
-			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
 			
-			cmd = NodeCommands.CMD_PUT;
-			if (digest.length > hashedKey.limit()) {
-				hashedKey.put( digest, 0, hashedKey.limit() );
+			if (NodeCommands.CMD_PUT == cmd) {
+				// If we are performing a PUT, then we need to send value
+				tests.add(new TestData(cmd, hashedKey, value, reply, null));
+			} else if (NodeCommands.CMD_GET == cmd){
+				// If we are performing a GET, then we do not have to send 'value', 
+				// but we must see the value replied to us
+				tests.add(new TestData(cmd, hashedKey, null, reply, value));
 			} else {
-				hashedKey.put( digest );
+				// If we are performing a REMOVE, then we do not have to send 'value',
+				// and neither do we have to expect it as a returned value
+				tests.add(new TestData(cmd, hashedKey, null, reply, null));
 			}
-			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
-			reply = NodeCommands.RPY_SUCCESS;
-			tests.add(new TestData(cmd, hashedKey, value, reply, null));
 
 		} catch (BufferOverflowException e) {
 			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
-
-		// test 3: put 'Ishan' => '60038106' 
-		try {
-			keyString = "Ishan";
-			valueString = "60038106";
-
-			hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
-			value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
-
-			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
-			
-			cmd = NodeCommands.CMD_PUT;
-			if (digest.length > hashedKey.limit()) {
-				hashedKey.put( digest, 0, hashedKey.limit() );
-			} else {
-				hashedKey.put( digest );
-			}
-			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
-			reply = NodeCommands.RPY_SUCCESS;
-			tests.add(new TestData(cmd, hashedKey, value, reply, null));
-
-		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
-		}
+	}
+	
+	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// test 1: put 'Scott' => '63215065', and so on ... 
+		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 	}
 
 
