@@ -72,7 +72,6 @@ public class Launcher {
 							}
 							System.out.println("Received Key: " + s.toString());
 							System.out.println("--- State changed from KEY -> VALUE");
-							out.write(outByteBuffer, 0, 1);  /// hard-coded success
 							state = states.VALUE;
 							wasStateUpdate = true;
 						}
@@ -84,6 +83,10 @@ public class Launcher {
 									Arrays.copyOfRange(byteBuffer, 1+32, (1+32+1024))
 									, StandardCharsets.UTF_8.displayName()));
 							System.out.println("--- State changed from VALUE -> CMD");
+							
+							// reply to client that operation was successful
+							out.write(outByteBuffer, 0, 1);
+							
 							// a complete command came from client.  Time to expunge our local buffer
 							// the following line creates another buffer of the same size BUFSIZE, but shifts
 							// data by (1+1024+32) and pads the remaining bytes with null bytes

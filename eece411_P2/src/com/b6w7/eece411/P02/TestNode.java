@@ -210,7 +210,7 @@ public class TestNode {
 
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
 					inFromServer.read(recvBuffer, 0, 1);
-					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100).substring(1);
+					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
 					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
 
 					// Check the received reply against the expected reply and determine success of test
@@ -236,11 +236,16 @@ public class TestNode {
 						}
 					}
 
-					if (isPass && (inFromServer.read() > -1)) {
-						// So far so good, but let's make sure there is no more data on the socket.
-						// If we read even one byte, then this is a failed test.
-						isPass = false;
-						failMessage = "excess bytes in pipe";
+					try {
+						if (isPass && (inFromServer.read() > 0)) {
+							// So far so good, but let's make sure there is no more data on the socket.
+							// If we read even one byte, then this is a failed test.
+							isPass = false;
+							failMessage = "excess bytes in pipe";
+						}
+					} catch (SocketTimeoutException e) {
+						// read() is a blocking operation, and we did not find any more bytes in the pipe
+						// so we are satisfied that the test passed.  do nothing here.
 					}
 
 					// Display result of test
