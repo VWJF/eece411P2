@@ -3,6 +3,7 @@ package com.b6w7.eece411.P02;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -43,10 +44,12 @@ public class Launcher {
 
 			// Receive until client closes connection, indicated by -1 return
 			int totalRecvMsgSize = 0;
-			while ((recvMsgSize = in.read(byteBuffer)) != -1) {
-				System.out.println("received:" + new String(byteBuffer, 0, recvMsgSize, StandardCharsets.UTF_8.displayName()));
+			while ((recvMsgSize = in.read(byteBuffer, totalRecvMsgSize, BUFSIZE - totalRecvMsgSize)) != -1) {
+				
 				totalRecvMsgSize += recvMsgSize;
 				
+				System.out.println("[recvMsgSize, totalRecvMsgSize] = ["+recvMsgSize+","+totalRecvMsgSize+"]");
+
 				// update state machine so we can correctly handle the inbound buffer
 				do {
 					wasStateUpdate = false;
@@ -54,7 +57,8 @@ public class Launcher {
 					switch (state) {
 					case CMD:
 						if (totalRecvMsgSize > 0) {
-							System.out.println("State changed from CMD -> KEY");
+							System.out.println("Received Cmd: " + Integer.toString((byteBuffer[0] & 0xff) + 0x100, 16).substring(1));
+							System.out.println("--- State changed from CMD -> KEY");
 							state = states.KEY;
 							wasStateUpdate = true;
 						}
@@ -62,7 +66,12 @@ public class Launcher {
 						
 					case KEY:
 						if (totalRecvMsgSize > 32) {
-							System.out.println("State changed from KEY -> VALUE");
+							StringBuilder s = new StringBuilder();
+							for (int i=1; i<(1+32); i++) {
+								s.append(Integer.toString((byteBuffer[i] & 0xff) + 0x100, 16).substring(1));
+							}
+							System.out.println("Received Key: " + s.toString());
+							System.out.println("--- State changed from KEY -> VALUE");
 							out.write(outByteBuffer, 0, 1);  /// hard-coded success
 							state = states.VALUE;
 							wasStateUpdate = true;
@@ -71,8 +80,13 @@ public class Launcher {
 						
 					case VALUE:
 						if (totalRecvMsgSize > (1024+32)) {
-							System.out.println("State changed from VALUE -> CMD");
+							System.out.println("Received Value:" + new String(
+									Arrays.copyOfRange(byteBuffer, 1+32, (1+32+1024))
+									, StandardCharsets.UTF_8.displayName()));
+							System.out.println("--- State changed from VALUE -> CMD");
 							// a complete command came from client.  Time to expunge our local buffer
+							// the following line creates another buffer of the same size BUFSIZE, but shifts
+							// data by (1+1024+32) and pads the remaining bytes with null bytes
 							byte[] temp = Arrays.copyOfRange(byteBuffer, (1+1024+32), (1+2024+32+BUFSIZE));
 							byteBuffer = temp;
 							totalRecvMsgSize -= (1+1024+32);
@@ -84,8 +98,6 @@ public class Launcher {
 						break;
 					}
 				} while (wasStateUpdate);
-
-				System.out.println("[recvMsgSize, totalRecvMsgSize] = ["+recvMsgSize+","+totalRecvMsgSize+"]");
 			}
 
 //			// Receive until client closes connection, indicated by -1 return

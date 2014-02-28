@@ -31,8 +31,8 @@ public class TestData {
 	/**
 	 * Constructor that pads key or value with null bytes if under the specified lengths in {@link NodeCommands}
 	 * @param cmd command
-	 * @param key ByteBuffer with position set to length of key, between [1-32]
-	 * @param value ByteBuffer with position set to length of value, between [1-1024]
+	 * @param key ByteBuffer with limit of 32
+	 * @param value ByteBuffer with limit of 1024 if PUT command, or may be null otherwise
 	 * @param replyCode expected reply (error) code
 	 * @param replyValue expected reply value
 	 */
@@ -45,9 +45,8 @@ public class TestData {
 		if (key.equals(NodeCommands.CMD_PUT) && null == value) {
 			throw new IllegalArgumentException("value cannot be null for PUT operation");
 		}
-		if (key.position() > NodeCommands.LEN_KEY_BYTES 
-				|| key.position() == 0 
-				|| (null != value && value.position() > NodeCommands.LEN_KEY_BYTES)) {
+		if (key.limit() != NodeCommands.LEN_KEY_BYTES 
+				|| (null != value && value.limit() != NodeCommands.LEN_VALUE_BYTES)) {
 			throw new IllegalArgumentException("key must be between [1-32] bytes and value must be between [1-1024] bytes");
 		}
 
@@ -58,16 +57,14 @@ public class TestData {
 		// pad with null bytes.
 		this.cmd = cmd;
 		this.key = key;
-		for (int i = 0; i < NodeCommands.LEN_KEY_BYTES - key.position(); i++ )
-			key.put((byte)0);	
 		this.value = value;
-		for (int i = 0; i < NodeCommands.LEN_VALUE_BYTES - value.position(); i++ )
-			value.put((byte)0);	
 		this.replyCode = replyCode;
 		this.replyValue = replyValue;
 		
 		buffer.put(cmd);
+		key.rewind();
 		buffer.put(key);
+		value.rewind();
 		buffer.put(value);
 
 		this.index = _index;
