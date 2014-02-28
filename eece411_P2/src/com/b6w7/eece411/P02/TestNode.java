@@ -31,9 +31,6 @@ public class TestNode {
 	// list of test cases, each entry represeting one test case
 	private static List<TestData> tests = new LinkedList<TestData>();
 
-	// Allocate enough buffer for length of one 'value' in a transmit
-	private static ByteBuffer buffer = ByteBuffer.allocate(1024);
-
 	private static void printUsage() {
 		System.out.println("USAGE:\n"
 				+ "  java -cp"
@@ -78,53 +75,71 @@ public class TestNode {
 			keyString = "Scott";
 			valueString = "63215065";
 
-			hashedKey = ByteBuffer.allocate(32);
-			value = ByteBuffer.allocate(1024);
+			hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
+			value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
 
+			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
+			
 			cmd = NodeCommands.CMD_PUT;
-			hashedKey.put(md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName())), 0, hashedKey.limit());
+			if (digest.length > hashedKey.limit()) {
+				hashedKey.put( digest, 0, hashedKey.limit() );
+			} else {
+				hashedKey.put( digest );
+			}
 			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			reply = NodeCommands.RPY_SUCCESS;
 			tests.add(new TestData(cmd, hashedKey, value, reply, null));
 
 		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds 1024 bytes");
+			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 
-		// test 2: put 'ssh-linux.ece.ubc.ca' => '63215065' 
+		// test 2: put 'ssh-linux.ece.ubc.ca' => '137.82.52.29' 
 		try {
 			keyString = "ssh-linux.ece.ubc.ca";
 			valueString = "137.82.52.29";
 
-			hashedKey = ByteBuffer.allocate(32);
-			value = ByteBuffer.allocate(1024);
+			hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
+			value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
 
+			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
+			
 			cmd = NodeCommands.CMD_PUT;
-			hashedKey.put(md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName())), 0, hashedKey.limit());
+			if (digest.length > hashedKey.limit()) {
+				hashedKey.put( digest, 0, hashedKey.limit() );
+			} else {
+				hashedKey.put( digest );
+			}
 			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			reply = NodeCommands.RPY_SUCCESS;
 			tests.add(new TestData(cmd, hashedKey, value, reply, null));
 
 		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds 1024 bytes");
+			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 
-		// test 3: put 'Ishan' => 'Sahay' 
+		// test 3: put 'Ishan' => '60038106' 
 		try {
-			keyString = "Scott";
-			valueString = "63215065";
+			keyString = "Ishan";
+			valueString = "60038106";
 
-			hashedKey = ByteBuffer.allocate(32);
-			value = ByteBuffer.allocate(1024);
+			hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
+			value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
 
+			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
+			
 			cmd = NodeCommands.CMD_PUT;
-			hashedKey.put(md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName())), 0, hashedKey.limit());
+			if (digest.length > hashedKey.limit()) {
+				hashedKey.put( digest, 0, hashedKey.limit() );
+			} else {
+				hashedKey.put( digest );
+			}
 			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			reply = NodeCommands.RPY_SUCCESS;
 			tests.add(new TestData(cmd, hashedKey, value, reply, null));
 
 		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds 1024 bytes");
+			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 	}
 
@@ -161,6 +176,7 @@ public class TestNode {
 							+ serverPort);
 
 			// create a TCP socket to the server
+			// Set a timeout on read operation as 3 seconds
 			clientSocket = new Socket(serverURL, serverPort);
 			clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
 			System.out.println("Connected to server ...");
@@ -173,7 +189,7 @@ public class TestNode {
 			InputStream inFromServer = clientSocket.getInputStream();
 
 			// Loop through all tests
-			byte[] recvBuffer = new byte[1024];
+			byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
 			String replyString = null;
 			String expectedReplyString = null;
 			boolean isPass;
@@ -188,13 +204,14 @@ public class TestNode {
 
 				// initiate test with node by sending the test command
 				outToServer.write(test.buffer.array());
+				//StandardCharsets.UTF_8.displayName()
 
 				try {
 
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
 					inFromServer.read(recvBuffer, 0, 1);
 					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100).substring(1);
-					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100).substring(1);
+					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
 
 					// Check the received reply against the expected reply and determine success of test
 					if (recvBuffer[0] != test.replyCode) {
@@ -209,11 +226,11 @@ public class TestNode {
 						int bytesRead = 0;
 						int totalBytesRead = 0;
 						while (bytesRead > -1) {
-							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, 1024 - totalBytesRead);
+							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
 							totalBytesRead += bytesRead;
 						}
 
-						if (totalBytesRead != 1024) {
+						if (totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 							isPass = false;
 							failMessage = "expected value "+test.value;
 						}
@@ -241,9 +258,13 @@ public class TestNode {
 					System.out.println("### TEST "+test.index+" FAILED - network error");
 
 				} finally {
-					while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > -1) {
-						// reagrdless of whether the test passed or failed,
-						// we want to slurp the pipe so that the subsequent test will be unaffected
+					try {
+						while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > -1) {
+							// reagrdless of whether the test passed or failed,
+							// we want to slurp the pipe so that the subsequent test will be unaffected
+						}
+					} catch (SocketTimeoutException e) {
+						// ok.. squeltch
 					}
 				}
 			}
