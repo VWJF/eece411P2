@@ -24,7 +24,6 @@ public class Launcher {
 		ServerSocket servSock;
 		try {
 			servSock = new ServerSocket(servPort);
-			servSock.close();
 
 			System.out.println("Listening for connections...");
 
