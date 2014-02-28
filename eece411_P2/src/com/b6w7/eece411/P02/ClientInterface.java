@@ -14,9 +14,9 @@ public class ClientInterface {
 	private final Socket clientSock;
 	
 	final ByteBuffer buffer = ByteBuffer.allocate(1+32+1024);
-	final byte cmd;
-	final ByteBuffer key;
-	final ByteBuffer value;
+	 byte cmd;
+	 ByteBuffer key;
+	 ByteBuffer value;
 	
 	byte replyCode;
 	ByteBuffer replyValue;
@@ -27,12 +27,25 @@ public class ClientInterface {
 	
 	private boolean execution_completed = false;
 
-	public ClientInterface(Socket client, byte cmd, ByteBuffer key, ByteBuffer value) {
+	public ClientInterface(Socket client) {
 		
 		// check arguments for correctness
 		if (client == null) {
 			throw new IllegalArgumentException("client socket cannot be null");
 		}
+		
+		this.clientSock = client;
+		this.cmd = (byte) 0;
+		this.key = null;
+		this.value = null;
+		this.replyValue = null;
+		this.replyCode = ERROR;
+		
+	}
+	
+	public void setRequest( byte cmd, ByteBuffer key, ByteBuffer value){
+
+		// check arguments for correctness
 		if (null == key) {
 			throw new IllegalArgumentException("key cannot be null");
 		}
@@ -49,11 +62,6 @@ public class ClientInterface {
 		this.cmd = cmd;
 		this.key = key;
 		this.value = value;
-		this.clientSock = client;
-		
-		this.replyValue = null;
-		this.replyCode = ERROR;
-		
 	}
 
 	/*
