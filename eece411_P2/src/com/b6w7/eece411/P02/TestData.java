@@ -1,12 +1,19 @@
 package com.b6w7.eece411.P02;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Immutable class which contains the data for one iteration of test with {@link Node}
+ * @author Scott Hazlett
+ * @author Ishan Sahay
  */
 public class TestData {
-	final ByteBuffer buffer = ByteBuffer.allocate(1+32+1024);
+	final ByteBuffer buffer = ByteBuffer.allocate(
+			NodeCommands.LEN_CMD_BYTES
+			+NodeCommands.LEN_KEY_BYTES
+			+NodeCommands.LEN_VALUE_BYTES);
 	final byte cmd;
 	final ByteBuffer key;
 	final ByteBuffer value;
@@ -21,27 +28,43 @@ public class TestData {
 		throw new UnsupportedOperationException("private constructor");
 	}
 
+	/**
+	 * Constructor for a test vector used in {@link TestNode}
+	 * @param cmd command
+	 * @param key ByteBuffer with limit of 32
+	 * @param value ByteBuffer of sent value with limit of 1024 if PUT command, otherwise ignored
+	 * @param replyCode expected reply code
+	 * @param replyValue ByteBuffer of expected reply with limit of 1024 if GET command, otherwise ignored
+	 */
 	public TestData( byte cmd, ByteBuffer key, ByteBuffer value, byte replyCode, ByteBuffer replyValue ) {
 
 		// check arguments for correctness
-		if (null == key) {
-			throw new IllegalArgumentException("key cannot be null");
+		if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
+			throw new IllegalArgumentException("key must be 32 bytes for all operations");
 		}
-		if (key.equals(NodeCommands.CMD_PUT) && null == value) {
-			throw new IllegalArgumentException("value cannot be null for PUT operation");
-		}
-		if (key.limit() > 32 || (null != value && value.limit() > 1024)) {
-			throw new IllegalArgumentException("key cannot exceed 32 bytes and value cannot exceed 1024 bytes");
+		
+		if (key.equals(NodeCommands.CMD_PUT)){
+			if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
+				throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
+		} else if (key.equals(NodeCommands.CMD_GET)) {
+			if (null == replyValue || replyValue.limit() != NodeCommands.LEN_VALUE_BYTES) 
+				throw new IllegalArgumentException("replyValue must be 1024 bytes for GET operation");
 		}
 
-		buffer.put(cmd);
-		buffer.put(key);
-		buffer.put(value);
+		// Save parameters, and 
+		// Place {Cmd, Key, Value} into ByteBuffer 
+		// to be ready to be sent down a pipe.  
 		this.cmd = cmd;
 		this.key = key;
 		this.value = value;
 		this.replyCode = replyCode;
 		this.replyValue = replyValue;
+		
+		buffer.put(cmd);
+		key.rewind();
+		buffer.put(key);
+		value.rewind();
+		buffer.put(value);
 
 		this.index = _index;
 		_index ++;
@@ -51,7 +74,7 @@ public class TestData {
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder();
-	
+
 		s.append("[test index=>"+index+"] [command=>");
 		switch(cmd) {
 		case NodeCommands.CMD_PUT:
@@ -66,11 +89,25 @@ public class TestData {
 		default:
 			s.append("UNKNOWN");
 		}
-		s.append("] [key=>"+key+"] [value=>"+value+"] [expected reply=>" + replyCode + "]");
+		s.append("] [key=>");
 		
+		byte[] byteData = key.array();
+		for (int i=0; i<byteData.length; i++) {
+			s.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+		}
+		
+		s.append("] [value=>");
+		try {
+			s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
+		} catch (UnsupportedEncodingException e) {
+			s.append(new String(value.array()));
+		}
+		
+		s.append("] [expected reply=>" + replyCode + "]");
+
 		if (NodeCommands.CMD_GET == cmd)
 			s.append(" [expected reply value=>"+replyValue+"]");
-		
+
 		return s.toString();
 	}
 }

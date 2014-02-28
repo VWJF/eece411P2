@@ -31,9 +31,6 @@ public class TestNode {
 	// list of test cases, each entry represeting one test case
 	private static List<TestData> tests = new LinkedList<TestData>();
 
-	// Allocate enough buffer for length of one 'value' in a transmit
-	private static ByteBuffer buffer = ByteBuffer.allocate(1024);
-
 	private static void printUsage() {
 		System.out.println("USAGE:\n"
 				+ "  java -cp"
@@ -49,83 +46,67 @@ public class TestNode {
 				+ " 5627");
 	}
 
-	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
-
-		md = MessageDigest.getInstance("SHA-1");
-
-		byte cmd = -1;
-		ByteBuffer hashedKey = null;
-		ByteBuffer value = null;
-		byte reply = -1;
-
-		String keyString = null;
-		String valueString = null;
-
-		// we can reuse 'value' for both the sending and receiving of a GET operation,
-		// so no need a buffer for the reply 1024 bytes
+	
+	private static void populateOneTest(byte cmd, String keyString, String valueString, byte reply) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// we can reuse 'value' for both the sending of a PUT as well as receiving of a GET operation,
+		// so no need two arguments
 
 		// If we want to repeated append to hash before digesting, call update() 
 		//			md.update("Scott".getBytes(StandardCharsets.UTF_8.displayName()));
 		//			key.put(md.digest()); 
 
-		// Excess bytes will be truncated when being placed into key which is 
-		// limited to 32 bytes.  This is OK for our hashing.
-		// However, we cannot truncate the value.  If the value exceeds our buffer then we 
-		// capture the exception and skip that test.
+		if (null == md) 
+			md = MessageDigest.getInstance("SHA-1");
 
-		// test 1: put 'Scott' => '63215065' 
+		ByteBuffer hashedKey = null;
+		ByteBuffer value = null;
+
+		// Massage parameters into a TestData object that is appended to 'tests'
+		// which will then be iterated through in the test harness
+		
+		// Note that we create hash of key which will be padded with zeroes at end.
+		// Also, if hashing algorithm changes (SHA-1 creates a 20 bytes hash) which 
+		// becomes larger than our hash limit (32b) then the logic exists here to
+		// handle that case (it will be truncated)
 		try {
-			keyString = "Scott";
-			valueString = "63215065";
+			hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
+			value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
 
-			hashedKey = ByteBuffer.allocate(32);
-			value = ByteBuffer.allocate(1024);
-
-			cmd = NodeCommands.CMD_PUT;
-			hashedKey.put(md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName())), 0, hashedKey.limit());
+			// create hash
+			// if we want to increase entropy in the hash, this would be the line to do it
+			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
+			
+			if (digest.length > hashedKey.limit()) {
+				hashedKey.put( digest, 0, hashedKey.limit() );
+			} else {
+				hashedKey.put( digest );
+			}
 			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			reply = NodeCommands.RPY_SUCCESS;
-			tests.add(new TestData(cmd, hashedKey, value, reply, null));
+			
+			if (NodeCommands.CMD_PUT == cmd) {
+				// If we are performing a PUT, then we need to send value
+				tests.add(new TestData(cmd, hashedKey, value, reply, null));
+			} else if (NodeCommands.CMD_GET == cmd){
+				// If we are performing a GET, then we do not have to send 'value', 
+				// but we must see the value replied to us
+				tests.add(new TestData(cmd, hashedKey, null, reply, value));
+			} else {
+				// If we are performing a REMOVE, then we do not have to send 'value',
+				// and neither do we have to expect it as a returned value
+				tests.add(new TestData(cmd, hashedKey, null, reply, null));
+			}
 
 		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds 1024 bytes");
+			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
-
-		// test 2: put 'ssh-linux.ece.ubc.ca' => '63215065' 
-		try {
-			keyString = "ssh-linux.ece.ubc.ca";
-			valueString = "137.82.52.29";
-
-			hashedKey = ByteBuffer.allocate(32);
-			value = ByteBuffer.allocate(1024);
-
-			cmd = NodeCommands.CMD_PUT;
-			hashedKey.put(md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName())), 0, hashedKey.limit());
-			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
-			reply = NodeCommands.RPY_SUCCESS;
-			tests.add(new TestData(cmd, hashedKey, value, reply, null));
-
-		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds 1024 bytes");
-		}
-
-		// test 3: put 'Ishan' => 'Sahay' 
-		try {
-			keyString = "Scott";
-			valueString = "63215065";
-
-			hashedKey = ByteBuffer.allocate(32);
-			value = ByteBuffer.allocate(1024);
-
-			cmd = NodeCommands.CMD_PUT;
-			hashedKey.put(md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName())), 0, hashedKey.limit());
-			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
-			reply = NodeCommands.RPY_SUCCESS;
-			tests.add(new TestData(cmd, hashedKey, value, reply, null));
-
-		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds 1024 bytes");
-		}
+	}
+	
+	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// test 1: put 'Scott' => '63215065', and so on ... 
+		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 	}
 
 
@@ -161,6 +142,7 @@ public class TestNode {
 							+ serverPort);
 
 			// create a TCP socket to the server
+			// Set a timeout on read operation as 3 seconds
 			clientSocket = new Socket(serverURL, serverPort);
 			clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
 			System.out.println("Connected to server ...");
@@ -173,7 +155,7 @@ public class TestNode {
 			InputStream inFromServer = clientSocket.getInputStream();
 
 			// Loop through all tests
-			byte[] recvBuffer = new byte[1024];
+			byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
 			String replyString = null;
 			String expectedReplyString = null;
 			boolean isPass;
@@ -188,13 +170,14 @@ public class TestNode {
 
 				// initiate test with node by sending the test command
 				outToServer.write(test.buffer.array());
+				//StandardCharsets.UTF_8.displayName()
 
 				try {
 
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
 					inFromServer.read(recvBuffer, 0, 1);
-					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100).substring(1);
-					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100).substring(1);
+					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
+					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
 
 					// Check the received reply against the expected reply and determine success of test
 					if (recvBuffer[0] != test.replyCode) {
@@ -209,21 +192,26 @@ public class TestNode {
 						int bytesRead = 0;
 						int totalBytesRead = 0;
 						while (bytesRead > -1) {
-							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, 1024 - totalBytesRead);
+							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
 							totalBytesRead += bytesRead;
 						}
 
-						if (totalBytesRead != 1024) {
+						if (totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 							isPass = false;
 							failMessage = "expected value "+test.value;
 						}
 					}
 
-					if (isPass && (inFromServer.read() > -1)) {
-						// So far so good, but let's make sure there is no more data on the socket.
-						// If we read even one byte, then this is a failed test.
-						isPass = false;
-						failMessage = "excess bytes in pipe";
+					try {
+						if (isPass && (inFromServer.read() > 0)) {
+							// So far so good, but let's make sure there is no more data on the socket.
+							// If we read even one byte, then this is a failed test.
+							isPass = false;
+							failMessage = "excess bytes in pipe";
+						}
+					} catch (SocketTimeoutException e) {
+						// read() is a blocking operation, and we did not find any more bytes in the pipe
+						// so we are satisfied that the test passed.  do nothing here.
 					}
 
 					// Display result of test
@@ -241,9 +229,13 @@ public class TestNode {
 					System.out.println("### TEST "+test.index+" FAILED - network error");
 
 				} finally {
-					while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > -1) {
-						// reagrdless of whether the test passed or failed,
-						// we want to slurp the pipe so that the subsequent test will be unaffected
+					try {
+						while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > -1) {
+							// reagrdless of whether the test passed or failed,
+							// we want to slurp the pipe so that the subsequent test will be unaffected
+						}
+					} catch (SocketTimeoutException e) {
+						// ok.. squeltch
 					}
 				}
 			}
