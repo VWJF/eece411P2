@@ -1,13 +1,3 @@
-/*
- * A client to connect to the EECE 411 Assignment #1 Server
- * and obtain the "new" student ID.  
- * The server operats on Little-Endian, whilst Java natively
- * runs on Big-Endian.
- * 
- * @author Scott Hazlett
- * @date 23 Jan 2014
- */
-
 package com.b6w7.eece411.P02;
 
 import java.io.BufferedReader;
@@ -19,14 +9,18 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
+/**
+ * A test class for testing {@link Node}
+ * 
+ * @author Scott Hazlett
+ * @author Ishan Sahay
+ * @date 23 Jan 2014
+ */
 public class TestNode {
-
+	
 	// TCP socket connection code obtained and modified from
 	// http://systembash.com/content/a-simple-java-tcp-server-and-tcp-client/
 	// "A Simple Java TCP Server and TCP Client"
-
-	private static final int SECRET_CODE_LENGTH_OFF = 8;
-	private static int secretCodeLength = 0;
 	private static int msgLength = 0;
 
 	private static void printUsage() {
@@ -55,11 +49,9 @@ public class TestNode {
 
 		String serverURL = args[0];
 		int serverPort = -1;
-		int studentID = -1;
 		
 		try {
 			serverPort = Integer.parseInt(args[1]);
-			studentID = Integer.parseInt(args[2]);
 		} catch (NumberFormatException e1) {
 			System.out.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
 			printUsage();
@@ -68,7 +60,6 @@ public class TestNode {
 
 		Socket clientSocket = null;
 		ByteBuffer b = null;
-		
 		
 		try {
 			// URL resolution and InetAddress resolution code obtained and modified from 
@@ -82,9 +73,7 @@ public class TestNode {
 					"Connecting to: " 
 							+ address.toString().replaceAll("/", " == ") 
 							+ " on port " 
-							+ serverPort
-							+ " with studentID "
-							+ studentID);
+							+ serverPort);
 
 			// create a TCP socket to the server
 			clientSocket = new Socket(serverURL, serverPort);
@@ -97,9 +86,17 @@ public class TestNode {
 			BufferedReader inFromServer = 
 					new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
+			// enough buffer for one transmit 
+			// +1B command 
+			// +32B key 
+			// [+ 1024B value] 
+			// +1
+			b = ByteBuffer.allocate(1058);
+			b.putInt(NodeCommands.CMD_PUT);
+			
 			// Create buffer and specify LE ordering before we insert into buffer
 			// Read one integer from the LE-ordered server and place into the buffer
-			//b = ByteBuffer.allocate(4);
+			b = ByteBuffer.allocate(4);
 			//b.order(java.nio.ByteOrder.LITTLE_ENDIAN);
 			//b.putInt(readOneIntFromBufferedReader(inFromServer));
 
@@ -118,14 +115,14 @@ public class TestNode {
 			b = ByteBuffer.allocate(msgLength);
 			//b.order(java.nio.ByteOrder.LITTLE_ENDIAN);
 			//b.putInt(0xDEADBEEF);
-			for (int ii = 4; ii < msgLength; ii += 4)
-				b.putInt(readOneIntFromBufferedReader(inFromServer));
-			
+//			for (int ii = 4; ii < msgLength; ii += 4)
+//				b.putInt(readOneIntFromBufferedReader(inFromServer));
+//			
 			// switch the buffer back to BE and 
 			// read the secret code length from the buffer
 			b.order(java.nio.ByteOrder.BIG_ENDIAN);
-			secretCodeLength = b.getInt(SECRET_CODE_LENGTH_OFF);
-			System.out.println("Code length: " + secretCodeLength);
+//			secretCodeLength = b.getInt(SECRET_CODE_LENGTH_OFF);
+//			System.out.println("Code length: " + secretCodeLength);
 			
 			// The location of the code is
 			// msgLength - secretCodeLength - EOM_flag
@@ -134,8 +131,8 @@ public class TestNode {
 			// *** If BE was desired, then we would use BIG_ENDIAN here ***
 			b.order(java.nio.ByteOrder.LITTLE_ENDIAN);
 			System.out.print("Got secret: " );
-			for (int ii = msgLength - secretCodeLength - 4; ii < msgLength - 4; ii += 4)
-				System.out.format("%08X ", b.getInt(ii));
+//			for (int ii = msgLength - secretCodeLength - 4; ii < msgLength - 4; ii += 4)
+//				System.out.format("%08X ", b.getInt(ii));
 			System.out.println();
 			
 			if (clientSocket != null)
