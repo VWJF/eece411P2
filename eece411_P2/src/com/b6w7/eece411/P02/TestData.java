@@ -1,6 +1,8 @@
 package com.b6w7.eece411.P02;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Immutable class which contains the data for one iteration of test with {@link Node}
@@ -54,19 +56,19 @@ public class TestData {
 		// to be ready to be sent down a pipe.  
 		// If Key or Value is shorter than 32B and 1024B, respectively,
 		// pad with null bytes.
-		buffer.put(cmd);
-		buffer.put(key);
-		for (int i = 0; i < NodeCommands.LEN_KEY_BYTES - key.position(); i++ )
-			buffer.put((byte)0);	
-		buffer.put(value);
-		for (int i = 0; i < NodeCommands.LEN_CMD_BYTES - value.position(); i++ )
-			buffer.put((byte)0);	
-
 		this.cmd = cmd;
 		this.key = key;
+		for (int i = 0; i < NodeCommands.LEN_KEY_BYTES - key.position(); i++ )
+			key.put((byte)0);	
 		this.value = value;
+		for (int i = 0; i < NodeCommands.LEN_VALUE_BYTES - value.position(); i++ )
+			value.put((byte)0);	
 		this.replyCode = replyCode;
 		this.replyValue = replyValue;
+		
+		buffer.put(cmd);
+		buffer.put(key);
+		buffer.put(value);
 
 		this.index = _index;
 		_index ++;
@@ -91,7 +93,21 @@ public class TestData {
 		default:
 			s.append("UNKNOWN");
 		}
-		s.append("] [key=>"+key.asCharBuffer().toString()+"] [value=>"+value.asCharBuffer().toString()+"] [expected reply=>" + replyCode + "]");
+		s.append("] [key=>");
+		
+		byte[] byteData = key.array();
+		for (int i=0; i<byteData.length; i++) {
+			s.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+		}
+		
+		s.append("] [value=>");
+		try {
+			s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
+		} catch (UnsupportedEncodingException e) {
+			s.append(new String(value.array()));
+		}
+		
+		s.append("] [expected reply=>" + replyCode + "]");
 
 		if (NodeCommands.CMD_GET == cmd)
 			s.append(" [expected reply value=>"+replyValue+"]");
