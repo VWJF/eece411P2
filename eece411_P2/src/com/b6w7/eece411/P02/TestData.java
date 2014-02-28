@@ -2,7 +2,6 @@ package com.b6w7.eece411.P02;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Immutable class which contains the data for one iteration of test with {@link Node}
@@ -98,7 +97,8 @@ public class TestData {
 		
 		s.append("] [value=>");
 		try {
-			s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
+			// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
+			s.append(new String(value.array(), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			s.append(new String(value.array()));
 		}

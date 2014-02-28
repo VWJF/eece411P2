@@ -3,10 +3,8 @@ package com.b6w7.eece411.P02;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class Launcher {
@@ -81,7 +79,8 @@ public class Launcher {
 						if (totalRecvMsgSize > (1024+32)) {
 							System.out.println("Received Value:" + new String(
 									Arrays.copyOfRange(byteBuffer, 1+32, (1+32+1024))
-									, StandardCharsets.UTF_8.displayName()));
+									, "UTF-8"));
+									//, StandardCharsets.UTF_8.displayName()));
 							System.out.println("--- State changed from VALUE -> CMD");
 							
 							// reply to client that operation was successful

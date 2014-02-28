@@ -10,7 +10,6 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
@@ -74,14 +73,16 @@ public class TestNode {
 
 			// create hash
 			// if we want to increase entropy in the hash, this would be the line to do it
-			byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
+			// byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
+			byte[] digest = md.digest(keyString.getBytes("UTF-8"));
 			
 			if (digest.length > hashedKey.limit()) {
 				hashedKey.put( digest, 0, hashedKey.limit() );
 			} else {
 				hashedKey.put( digest );
 			}
-			value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
+			// value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
+			value.put(valueString.getBytes("UTF-8"));
 			reply = NodeCommands.RPY_SUCCESS;
 			
 			if (NodeCommands.CMD_PUT == cmd) {
