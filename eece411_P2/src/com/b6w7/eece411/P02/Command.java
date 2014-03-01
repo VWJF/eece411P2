@@ -1,5 +1,6 @@
 package com.b6w7.eece411.P02;
 
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -13,10 +14,10 @@ public class Command {
 	
 	private final Socket clientSock;
 	
-	final ByteBuffer buffer = ByteBuffer.allocate(1+32+1024);
-	 byte cmd;
-	 ByteBuffer key;
-	 ByteBuffer value;
+	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
+	final byte cmd;
+	final ByteBuffer key;
+	final ByteBuffer value;
 	
 	byte replyCode;
 	ByteBuffer replyValue;
@@ -29,29 +30,76 @@ public class Command {
 	
 	private boolean execution_completed = false;
 
-	public Command(Socket client) {
-		
+	public Command(Socket client, byte cmd, ByteBuffer key, ByteBuffer value) {
+		// check arguments for correctness
+				if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
+					throw new IllegalArgumentException("key must be 32 bytes for all operations");
+				}
+
+				if (NodeCommands.CMD_PUT == cmd) {
+					if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
+						throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
+
+					buffer = ByteBuffer.allocate(
+							NodeCommands.LEN_CMD_BYTES
+							+NodeCommands.LEN_KEY_BYTES
+							+NodeCommands.LEN_VALUE_BYTES);
+
+				} else if (NodeCommands.CMD_GET == cmd) {
+					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
+						throw new IllegalArgumentException("key must be 32 bytes for GET operation");
+
+					buffer = ByteBuffer.allocate(
+							NodeCommands.LEN_CMD_BYTES
+							+NodeCommands.LEN_KEY_BYTES);
+					value = null;
+
+				} else if (NodeCommands.CMD_REMOVE == cmd) {
+					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
+						throw new IllegalArgumentException("key must be 32 bytes for Remove operation");
+
+					buffer = ByteBuffer.allocate(
+							NodeCommands.LEN_CMD_BYTES
+							+NodeCommands.LEN_KEY_BYTES);
+					value = null;
+				} else {
+					throw new IllegalArgumentException("Unknown command");
+				}
+
+
+
+				// Save parameters, and 
+				// Place {Cmd, Key, Value} into ByteBuffer 
+				// to be ready to be sent down a pipe.  
+				this.cmd = cmd;
+				this.key = key;
+				this.value = value;
+			
+				buffer.put(cmd);
+				key.rewind();
+				buffer.put(key);
+
+				if (null != value) {
+					value.rewind();
+					buffer.put(value);
+				}
+
 		// check arguments for correctness
 		if (client == null) {
 			throw new IllegalArgumentException("client socket cannot be null");
 		}
 		
 		this.clientSock = client;
-		this.cmd = (byte) 0;
-		this.key = null;
-		this.value = null;
-		this.replyValue = null;
-		this.replyCode = ERROR;
 		
 	}
 	
-	public void setRequest( byte cmd, ByteBuffer key, ByteBuffer value){
+	private void setRequest( byte cmd, ByteBuffer key, ByteBuffer value){
 
 		// check arguments for correctness
 		if (null == key) {
 			throw new IllegalArgumentException("key cannot be null");
 		}
-		if (key.equals(NodeCommands.CMD_PUT) && null == value) {
+		if (cmd == NodeCommands.CMD_PUT && null == value) {
 			throw new IllegalArgumentException("value cannot be null for PUT operation");
 		}
 		if (key.limit() > 32 || (null != value && value.limit() > 1024)) {
@@ -61,9 +109,7 @@ public class Command {
 		buffer.put(cmd);
 		buffer.put(key);
 		buffer.put(value);
-		this.cmd = cmd;
-		this.key = key;
-		this.value = value;
+		
 	}
 
 	/*
@@ -76,14 +122,15 @@ public class Command {
 		//this.replyValue;
 		
 		int reply = this.cmd & 0xff;	//Conversion from byte to int.
-
-		if( Request.get(reply) == null ){ /*if(cmd is not one of Enum of possible Request Commands)*/
+		Request[] req= Request.values();
+		
+		if(  reply > req.length ){ /*if(cmd is not one of Enum of possible Request Commands)*/
 			this.replyCode = (byte) Reply.CMD_UNRECOGNIZED.getCode();
 			return;
 		}
 		
-		switch(this.cmd){
-		case NodeCommands.CMD_PUT:
+		switch(req[reply]){
+		case CMD_PUT:
 			if( put() ){
 				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
 			}
@@ -92,18 +139,18 @@ public class Command {
 			}
 			break;
 
-		case NodeCommands.CMD_GET:
+		case CMD_GET:
 			ByteBuffer value_of_key =  get();
 			if( value_of_key != null ){  
 				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-				this.replyValue.put(value_of_key.array(), 0, 1024); 
+				//this.replyValue.put(value_of_key.array(), 0, 1024); 
 			}
 			else{
 				this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
 			}
 			break;
 
-		case NodeCommands.CMD_REMOVE:
+		case CMD_REMOVE:
 			if( remove() != null ){  
 				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
 			}
@@ -113,7 +160,7 @@ public class Command {
 			break;
 		
 		default:
-			this.replyCode = (byte) Reply.CMD_UNRECOGNIZED.getCode(); 
+			break;	
 		}
 		
 	}
@@ -131,6 +178,7 @@ public class Command {
 		if(replyValue != null){
 			response = ByteBuffer.allocate( 1 + replyValue.capacity());
 			response.put(replyCode);
+			replyValue.rewind();
 			response.put(replyValue);
 		}
 		
@@ -152,12 +200,20 @@ public class Command {
 	 */
 	private boolean put(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
-		if(data.size() < MAX_MEMORY){
-			data.put(new String(key.array()), new String(this.value.array()) );
-			Command.numElements++;
-			return true;
+		StringBuilder s = new StringBuilder();
+		for (int i=0; i<(NodeCommands.LEN_VALUE_BYTES); i++) {
+			s.append(Integer.toString((this.value.array()[i] & 0xff) + 0x100, 16).substring(1));
 		}
-		return false;
+		
+		System.out.println("put value : "+s.toString());
+		System.out.println("put value bytes: "+s.toString().getBytes());
+
+		//if(data.size() < MAX_MEMORY){
+			data.put(new String(key.array()), new String(this.value.array()) );
+		//	Command.numElements++;
+			return true;
+		//}
+		//return false;
 	}
 	
 	/*
@@ -168,7 +224,17 @@ public class Command {
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
 
 		String val = data.get(new String(key.array()));	
+		System.out.println("get value: "+val);
+		try {
+			System.out.println("get value bytes: "+val.getBytes("UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		
 		return (val != null) ? this.replyValue = ByteBuffer.wrap(val.getBytes()) : null;
+		
 	}
 	
 	/*
@@ -178,8 +244,8 @@ public class Command {
 	private String remove(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
 		String removed = data.remove(new String(key.array()));
-		if(removed == null)
-			Command.numElements--;
+		//if(removed == null)
+		//	Command.numElements--;
 		
 		return removed;
 	}

@@ -38,6 +38,10 @@ public class Launcher0 {
 	//private static ArrayList<Socket> connected_clients;
 	private static ConcurrentLinkedQueue<Command> connected_clients;
 	
+	/**
+	 * @param args
+	 * @throws IOException
+	 */
 	public static void main(String[] args) throws IOException {
 		
 		connected_clients = new ConcurrentLinkedQueue<Command>();
@@ -50,7 +54,6 @@ public class Launcher0 {
 		int totalBytesReceived = 0;   // Size of received message
 
 		byte[] byteBufferIn = new byte[REQSIZE];  // Receive buffer
-		char[] charBufferIn = new char[REQSIZE];  // Receive buffer for BufferedReader inFromClient requires a char[]
 		byte[] byteBufferOut = new byte[RESSIZE]; // Response buffer
 		
 		try{
@@ -63,10 +66,9 @@ public class Launcher0 {
 		
 		System.out.println("Listening for connections...");
 
+		boolean end_of_loop = false;
 		for (;;) { // Run forever, accepting and servicing connections
 		
-		// Thread 1 accepting connections			
-
 			clientSock = serverSock.accept();     // Get client connection, Blocking call
 			
 			System.out.println("Handling client at " +
@@ -80,38 +82,39 @@ public class Launcher0 {
 
 			// InputStream inFromClient = clientSock.getInputStream();
 			
-			while ( !clientSock.isClosed() ) {
-				charBufferIn = new char[REQSIZE]; 
-				byteBufferIn = new byte[REQSIZE];
-				byteBufferOut = new byte[RESSIZE];
-				recvMsgSize = totalBytesReceived = 0;
-
-			Command ci = new Command(clientSock);
-			
 			// Add client socket to the queue of connected clients.
-			if( !connected_clients.offer(ci) ){
-				System.out.println("Max connected clients.\n");
-				clientSock.close();
-				continue;
-			}
+			//if( !connected_clients.offer(ci) ){
+			//	System.out.println("Max connected clients.\n");
+			//	clientSock.close();
+			//	continue READLOOP;
+			//}
 			
+			ClientLoop:while ( !end_of_loop && (recvMsgSize = inFromClient.read(byteBufferIn, 0, CMDSIZE)) > -1 ) {		
+				totalBytesReceived += recvMsgSize;
+				System.out.println("TotalByteCMD: "+totalBytesReceived);
+				end_of_loop = false;
+				
 			try {
 				// Receive fields "Command" and "Keys" number of bytes or 
 				// until client closes connection, indicated by -1 return 
-					recvMsgSize = inFromClient.read(byteBufferIn, 0, CMDSIZE+KEYSIZE-totalBytesReceived);
-					totalBytesReceived += recvMsgSize;
-					if ( !checkBytes(totalBytesReceived) ){
-						throw new SocketException("Incorrect bytes received CMD+KEY: " + totalBytesReceived);
-						
+				recvMsgSize = inFromClient.read(byteBufferIn, CMDSIZE, KEYSIZE);
+				totalBytesReceived += recvMsgSize;
+				if( recvMsgSize == -1 ){
+					end_of_loop = true;
+					System.out.println("Incorrect bytes received KEYSIZE: " + totalBytesReceived);
+					continue ClientLoop;
+					//throw new DataFormatException("Incorrect bytes received VALUE: " + totalBytesReceived);
 				}	
 			} catch (IOException e1) {
 				// Error in reading from input stream.
 				e1.printStackTrace();
-				byteBufferIn = null;
+				byteBufferIn = new byte[REQSIZE];
+				byteBufferOut = new byte[RESSIZE];
+				recvMsgSize = totalBytesReceived = 0;
 				throw new DataFormatException("Error in reading from input stream. Bytes read: " + totalBytesReceived);
 			}			
 
-			System.out.println("Sucessfully read CMD+KEY...");
+			System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived);
 
 			//Parse and Extract relevant data
 			byte cmd;
@@ -120,32 +123,35 @@ public class Launcher0 {
 			
 			ByteBuffer dataRead = ByteBuffer.wrap(byteBufferIn);
 			cmd = dataRead.get();
-			key = new byte[KEYSIZE];		dataRead.get(key, CMDSIZE, key.length-1);
-
+			key = new byte[KEYSIZE];		
+			dataRead.get(key, CMDSIZE, key.length-1);
 
 			// Read field "Value" only if the command received is "put".
 			if( cmd == (byte) Request.CMD_PUT.getCode() ){
 				try {
 					// Receive field "Value" number of bytes or 
 					// until client closes connection, indicated by -1 return 
-						recvMsgSize = inFromClient.read(byteBufferIn, CMDSIZE+KEYSIZE, VALUESIZE);
-						totalBytesReceived += recvMsgSize;
-						if ( !checkBytes(totalBytesReceived) ){
-							System.out.println("Incorrect bytes received VALUE: " + totalBytesReceived);
-							//throw new DataFormatException("Incorrect bytes received VALUE: " + totalBytesReceived);
-						}	
-							
+					recvMsgSize = inFromClient.read(byteBufferIn, CMDSIZE+KEYSIZE, VALUESIZE);
+					totalBytesReceived += recvMsgSize;
+					if( recvMsgSize == -1 ){
+						end_of_loop = true;
+						System.out.println("Incorrect bytes received VALUE: " + totalBytesReceived);
+						continue ClientLoop;
+						//throw new DataFormatException("Incorrect bytes received VALUE: " + totalBytesReceived);
+					}				
 				} catch (IOException e1) {
 					// Error in reading from input stream.
 					e1.printStackTrace();
-					byteBufferIn = null;
+					byteBufferIn = new byte[REQSIZE];
+					byteBufferOut = new byte[RESSIZE];
+					recvMsgSize = totalBytesReceived = 0;
 					throw new DataFormatException("Error in reading from input stream. Bytes read: " + totalBytesReceived);
 				}	
 			}
 			dataRead = ByteBuffer.wrap(	byteBufferIn );
 			value = Arrays.copyOfRange(dataRead.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 
-			System.out.println("Sucessfully read CMD+KEY+VALUE...");
+			System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived);
 			StringBuilder s = new StringBuilder();
 			for (int i=1; i<(1+32); i++) {
 				s.append(Integer.toString((dataRead.array()[i] & 0xff) + 0x100, 16).substring(1));
@@ -164,17 +170,13 @@ public class Launcher0 {
 			}
 			System.out.println("Request Received: "+s.toString());
 			
-			// set the request received to associated client.
-			ci.setRequest(cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value) );
-			
-			//Execute received command.
-			
-			// TODO: Currently ClientInterface.getReply() will execute the command before generating a reply.
-			// getReply() is called from the Thread sending replies.
+			Command clientToReply = new Command(clientSock, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value) );
 
+			// set the request received to associated client.
+			//clientToReply.setRequest(cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value) );
 						
 			//Obtain a connected client and reply to the client with its response.
-			Command clientToReply =	connected_clients.poll();
+			//Command clientToReply =	connected_clients.poll();
 
 			// Send reply to client
 			if(clientToReply != null){
@@ -182,21 +184,27 @@ public class Launcher0 {
 					System.out.println("Writing Response.");
 
 					byteBufferOut= clientToReply.getReply().array();
+					String p = new String(byteBufferOut);
 					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
 					System.out.println("Total elements in map: "+ Command.numElements);
+					System.out.println("Bytes Written: "+ p);
+					System.out.println("Num Bytes: "+ p.length());
 
 				} catch (IOException e1) {
 					// TODO:
 					// Error in writing to output stream.
 					e1.printStackTrace();
 				}
-				System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
-				clientToReply.getSocket().close(); // Close the socket.  We are done with this client!
+				//System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
+				//clientToReply.getSocket().close(); // Close the socket.  We are done with this client!
 			}
 			
-			
-			//clientSock.close();  // Close the socket.  We are done with this client!
+			byteBufferIn = new byte[REQSIZE];
+			byteBufferOut = new byte[RESSIZE];
+			recvMsgSize = totalBytesReceived = 0;
 			}
+			
+			clientSock.close();
 		}
 		
 	} catch (DataFormatException e) {
@@ -215,6 +223,7 @@ public class Launcher0 {
 			} catch (IOException e) {}
 		} 
 	}
+	
 	}
 	/*
 	 * given the number of bytes read,
