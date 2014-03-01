@@ -88,14 +88,19 @@ public class TestNode {
 			if (NodeCommands.CMD_PUT == cmd) {
 				// If we are performing a PUT, then we need to send value
 				tests.add(new TestData(cmd, hashedKey, value, reply, null));
+				
 			} else if (NodeCommands.CMD_GET == cmd){
 				// If we are performing a GET, then we do not have to send 'value', 
 				// but we must see the value replied to us
 				tests.add(new TestData(cmd, hashedKey, null, reply, value));
-			} else {
+				
+			} else if (NodeCommands.CMD_REMOVE == cmd){
 				// If we are performing a REMOVE, then we do not have to send 'value',
 				// and neither do we have to expect it as a returned value
 				tests.add(new TestData(cmd, hashedKey, null, reply, null));
+				
+			} else {
+				throw new IllegalArgumentException("Unknown command");
 			}
 
 		} catch (BufferOverflowException e) {
@@ -108,6 +113,14 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		
+		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		
+		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 	}
 
 
@@ -174,9 +187,26 @@ public class TestNode {
 				//StandardCharsets.UTF_8.displayName()
 
 				try {
-
+					// Code converting byte to hex representation obtained from
+					// http://stackoverflow.com/questions/6120657/how-to-generate-a-unique-hash-code-for-string-input-in-android
+					
+					
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
-					inFromServer.read(recvBuffer, 0, 1);
+					int numBytesRead;
+					
+					while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
+					
+					if ( numBytesRead > 1 ) {
+						// did not receive the one byte reply that was expected.
+						failMessage = "excess bytes reply";
+						isPass = false;
+						
+					} else if ( numBytesRead == -1 ) {
+						// did not receive the one byte reply that was expected.
+						failMessage = "broken pipe";
+						isPass = false;
+						
+					}
 					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
 					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
 
