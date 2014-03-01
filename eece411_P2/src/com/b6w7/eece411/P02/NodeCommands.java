@@ -29,19 +29,20 @@ public class NodeCommands {
 	// were among eligible commands.
 	// Separated into 2 Enums with Request Commands and Reply Commands
 	static public enum Request{
-		CMD_PUT(1), 
-		CMD_GET(2), 
-		CMD_REMOVE(3);
+		CMD_UNRECOG((byte)0), 
+		CMD_PUT((byte)1), 
+		CMD_GET((byte)2), 
+		CMD_REMOVE((byte)3);		
 		
-		private int value;
+		private byte value;
 
-		private Request(int value) {
+		private Request(byte value) {
 			this.value = value;
 		}
-		public int getCode() {
+		public byte getCode() {
 			return value;
 		}
-		// Source:
+	/*	// Source:
 		// http://howtodoinjava.com/2012/12/07/guide-for-understanding-enum-in-java/
 		// Lookup table
 		private static final Map<Integer, Request> lookup = new HashMap<Integer, Request>();
@@ -55,26 +56,26 @@ public class NodeCommands {
 		// This method can be used for reverse lookup purpose
 		public static Request get(int code) {
 			return (Request) lookup.get(code);
-		}
+		}*/
 	};
 		
 	static public enum Reply{
-		RPY_SUCCESS(0),
-		RPY_INEXISTENT(1),
-		RPY_OUT_OF_SPACE(2),
-		RPY_OVERLOAD(3),
-		RPY_INTERNAL_FAILURE(4),
-		CMD_UNRECOGNIZED(5);
+		RPY_SUCCESS((byte)0),
+		RPY_INEXISTENT((byte)1),
+		RPY_OUT_OF_SPACE((byte)2),
+		RPY_OVERLOAD((byte)3),
+		RPY_INTERNAL_FAILURE((byte)4),
+		CMD_UNRECOGNIZED((byte)5);
 
-		private int value;
+		private byte value;
 
-		private Reply(int value) {
+		private Reply(byte value) {
 			this.value = value;
 		}
-		public int getCode() {
+		public byte getCode() {
 			return value;
 		}
-		// Source:
+	/*	// Source:
 		// http://howtodoinjava.com/2012/12/07/guide-for-understanding-enum-in-java/
 		// Lookup table
 		private static final Map<Integer, Reply> lookup = new HashMap<Integer, Reply>();
@@ -88,6 +89,8 @@ public class NodeCommands {
 		// This method can be used for reverse lookup purpose
 		public static Reply get(int code) {
 			return (Reply) lookup.get(code);
-		}
+		
+		} 
+		 */
 	};   
 }
