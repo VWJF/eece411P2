@@ -182,14 +182,14 @@ public class TestNode {
 
 				System.out.println("--- Running Test: "+test);
 
-				// initiate test with node by sending the test command
-				outToServer.write(test.buffer.array());
-				//StandardCharsets.UTF_8.displayName()
 
 				try {
+					// initiate test with node by sending the test command
+					outToServer.write(test.buffer.array());
+					//StandardCharsets.UTF_8.displayName()
+
 					// Code converting byte to hex representation obtained from
 					// http://stackoverflow.com/questions/6120657/how-to-generate-a-unique-hash-code-for-string-input-in-android
-					
 					
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
 					int numBytesRead;
