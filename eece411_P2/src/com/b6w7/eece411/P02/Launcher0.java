@@ -143,11 +143,9 @@ public class Launcher0 {
 				}	
 			}
 			dataRead = ByteBuffer.wrap(	byteBufferIn );
-			//value = new byte[VALUESIZE];	
 			value = Arrays.copyOfRange(dataRead.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-			//dataRead.array(); .get(value, CMDSIZE+KEYSIZE, value.length);
 
-			System.out.println("Sucessfully read CMD+KEY+Value...");
+			System.out.println("Sucessfully read CMD+KEY+VALUE...");
 			StringBuilder s = new StringBuilder();
 			for (int i=1; i<(1+32); i++) {
 				s.append(Integer.toString((dataRead.array()[i] & 0xff) + 0x100, 16).substring(1));
@@ -164,7 +162,7 @@ public class Launcher0 {
 			} catch (UnsupportedEncodingException e) {
 				s.append(new String(valueArrayTemp));
 			}
-			System.out.println("Requets: "+s.toString());
+			System.out.println("Request Received: "+s.toString());
 			
 			// set the request received to associated client.
 			ci.setRequest(cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value) );
@@ -185,6 +183,7 @@ public class Launcher0 {
 
 					byteBufferOut= clientToReply.getReply().array();
 					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
+					System.out.println("Total elements in map: "+ Command.numElements);
 
 				} catch (IOException e1) {
 					// TODO:

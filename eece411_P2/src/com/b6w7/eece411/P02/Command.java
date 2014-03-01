@@ -21,8 +21,10 @@ public class Command {
 	byte replyCode;
 	ByteBuffer replyValue;
 	
+	protected static int numElements;
+	
 	private static final byte ERROR = -1;
-	private static final byte MAX_MEMORY = 64;
+	private static final byte MAX_MEMORY = 3;
 	private static final Map<String, String> data = new HashMap<String, String>();
 	
 	private boolean execution_completed = false;
@@ -135,11 +137,15 @@ public class Command {
 		return response;
 	}
 	
-	// Setter
+	// Getter
 	public Socket getSocket(){
 		return this.clientSock;
 	}
 	
+	// Getter
+	public int getNumElements(){
+		return Command.numElements;
+	}
 	/*
 	 * adds the (key,value) pair into the data structure.
 	 * returns true on successful insertion in the data structure, false otherwise.
@@ -148,6 +154,7 @@ public class Command {
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
 		if(data.size() < MAX_MEMORY){
 			data.put(new String(key.array()), new String(this.value.array()) );
+			Command.numElements++;
 			return true;
 		}
 		return false;
@@ -170,6 +177,10 @@ public class Command {
 	 */
 	private String remove(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
-		return data.remove(new String(key.array()));
+		String removed = data.remove(new String(key.array()));
+		if(removed == null)
+			Command.numElements--;
+		
+		return removed;
 	}
 }
