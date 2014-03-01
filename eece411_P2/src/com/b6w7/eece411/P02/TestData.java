@@ -9,10 +9,7 @@ import java.nio.ByteBuffer;
  * @author Ishan Sahay
  */
 public class TestData {
-	final ByteBuffer buffer = ByteBuffer.allocate(
-			NodeCommands.LEN_CMD_BYTES
-			+NodeCommands.LEN_KEY_BYTES
-			+NodeCommands.LEN_VALUE_BYTES);
+	final ByteBuffer buffer;
 	final byte cmd;
 	final ByteBuffer key;
 	final ByteBuffer value;
@@ -41,14 +38,34 @@ public class TestData {
 		if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
 		}
-		
-		if (key.equals(NodeCommands.CMD_PUT)){
+
+		if (NodeCommands.CMD_PUT == cmd) {
 			if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
 				throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
-		} else if (key.equals(NodeCommands.CMD_GET)) {
+
+			buffer = ByteBuffer.allocate(
+					NodeCommands.LEN_CMD_BYTES
+					+NodeCommands.LEN_KEY_BYTES
+					+NodeCommands.LEN_VALUE_BYTES);
+
+		} else if (NodeCommands.CMD_GET == cmd) {
 			if (null == replyValue || replyValue.limit() != NodeCommands.LEN_VALUE_BYTES) 
 				throw new IllegalArgumentException("replyValue must be 1024 bytes for GET operation");
+
+			buffer = ByteBuffer.allocate(
+					NodeCommands.LEN_CMD_BYTES
+					+NodeCommands.LEN_KEY_BYTES);
+
+		} else if (NodeCommands.CMD_REMOVE == cmd) {
+			buffer = ByteBuffer.allocate(
+					NodeCommands.LEN_CMD_BYTES
+					+NodeCommands.LEN_KEY_BYTES);
+
+		} else {
+			throw new IllegalArgumentException("Unknown command");
 		}
+
+
 
 		// Save parameters, and 
 		// Place {Cmd, Key, Value} into ByteBuffer 
@@ -58,12 +75,15 @@ public class TestData {
 		this.value = value;
 		this.replyCode = replyCode;
 		this.replyValue = replyValue;
-		
+
 		buffer.put(cmd);
 		key.rewind();
 		buffer.put(key);
-		value.rewind();
-		buffer.put(value);
+
+		if (null != value) {
+			value.rewind();
+			buffer.put(value);
+		}
 
 		this.index = _index;
 		_index ++;
@@ -89,20 +109,22 @@ public class TestData {
 			s.append("UNKNOWN");
 		}
 		s.append("] [key=>");
-		
+
 		byte[] byteData = key.array();
 		for (int i=0; i<byteData.length; i++) {
 			s.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
 		}
-		
-		s.append("] [value=>");
-		try {
-			// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
-			s.append(new String(value.array(), "UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			s.append(new String(value.array()));
+
+		if (null != value) {
+			s.append("] [value=>");
+			try {
+				// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
+				s.append(new String(value.array(), "UTF-8"));
+			} catch (UnsupportedEncodingException e) {
+				s.append(new String(value.array()));
+			}
 		}
-		
+
 		s.append("] [expected reply=>" + replyCode + "]");
 
 		if (NodeCommands.CMD_GET == cmd)
