@@ -1,5 +1,6 @@
 package com.b6w7.eece411.P02;
 
+import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,7 +24,7 @@ import java.util.List;
  */
 public class TestNode {
 
-	private static final int TCP_READ_TIMEOUT_MS = 3000;
+	private static final int TCP_READ_TIMEOUT_MS = 1000;
 
 	private static MessageDigest md;
 
@@ -166,7 +167,8 @@ public class TestNode {
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
 			DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-			InputStream inFromServer = clientSocket.getInputStream();
+			//InputStream inFromServer = clientSocket.getInputStream();
+			BufferedInputStream inFromServer = new BufferedInputStream(clientSocket.getInputStream() );
 
 			// Loop through all tests
 			byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
@@ -179,11 +181,13 @@ public class TestNode {
 
 			for (TestData test : tests) {
 				isPass = true;
-
+				
+				System.out.println();
 				System.out.println("--- Running Test: "+test);
 
 
 				try {
+					System.out.print("\t-Writing Test.");
 					// initiate test with node by sending the test command
 					outToServer.write(test.buffer.array());
 					//StandardCharsets.UTF_8.displayName()
@@ -194,6 +198,7 @@ public class TestNode {
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
 					int numBytesRead;
 					
+					System.out.print("-Reading Answer.");
 					while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
 					
 					if ( numBytesRead > 1 ) {
@@ -216,23 +221,31 @@ public class TestNode {
 						failMessage = "expected reply "+expectedReplyString;
 					}
 
+					System.out.print("-Reading Value of GET.");
 					// If test was a GET command, then additionally read pipe for reply and verify result
 					if (isPass && NodeCommands.CMD_GET == test.cmd) {
 
 						// we expect 1024 bytes of 'value' from this GET command
 						int bytesRead = 0;
 						int totalBytesRead = 0;
-						while (bytesRead > -1) {
+						while (bytesRead != -1 && inFromServer.available() > 0) {
 							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
 							totalBytesRead += bytesRead;
 						}
 
 						if (totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 							isPass = false;
-							failMessage = "expected value "+test.value;
+							failMessage = "expected value "+test.value +
+												" Number of bytes received: "+totalBytesRead;
+						}
+						else{
+							String s = new String(recvBuffer);
+							String t = NodeCommands.byteArrayAsString(recvBuffer);
+							replyString += " value=>("+s+", "+t+")";
 						}
 					}
 
+					System.out.print("-Reading Excess byte in pipe. \n");
 					try {
 						if (isPass && (inFromServer.read() > 0)) {
 							// So far so good, but let's make sure there is no more data on the socket.
@@ -244,7 +257,13 @@ public class TestNode {
 						// read() is a blocking operation, and we did not find any more bytes in the pipe
 						// so we are satisfied that the test passed.  do nothing here.
 					}
-
+					System.out.println("\tAbout socket: "+clientSocket.toString());
+					System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
+										", isClosed: "+clientSocket.isClosed()+
+										", isInputShutdown: "+clientSocket.isInputShutdown()+
+										", isOutputShutdown "+clientSocket.isOutputShutdown()			
+										);
+					
 					// Display result of test
 					if (isPass) {
 						System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);

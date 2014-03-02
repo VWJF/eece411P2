@@ -6,12 +6,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -23,9 +23,9 @@ import com.b6w7.eece411.P02.NodeCommands.Request;
 public class Launcher0 {
 
 	// number of bytes in protocol field
-	private static final int CMDSIZE = 1;		
-	private static final int KEYSIZE = 32;
-	private static final int VALUESIZE = 1024;
+	private static final int CMDSIZE = NodeCommands.LEN_CMD_BYTES;		
+	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
+	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
 	
 	// Size of protocol buffers
 	private static final int REQSIZE = CMDSIZE+KEYSIZE+VALUESIZE;  // request buffer
@@ -47,8 +47,10 @@ public class Launcher0 {
 		connected_clients = new ConcurrentLinkedQueue<Command>();
 		
 		int servPort = Integer.parseInt(args[0]);
-
-		Socket clientSock = null;
+		
+		int attempt = 0; //
+		
+		Socket clientSocket = null;
 		
 		int recvMsgSize = 0;   // Size of received message
 		int totalBytesReceived = 0;   // Size of received message
@@ -69,29 +71,30 @@ public class Launcher0 {
 		boolean end_of_loop = false;
 		for (;;) { // Run forever, accepting and servicing connections
 		
-			clientSock = serverSock.accept();     // Get client connection, Blocking call
+			System.out.println();
+			System.out.println("Accepting clients...");
+			clientSocket = serverSock.accept();     // Get client connection, Blocking call
 			
 			System.out.println("Handling client at " +
-					clientSock.getInetAddress().getHostAddress());
+					clientSocket.getInetAddress().getHostAddress());
 
-			//InputStream in = clientSock.getInputStream();
-			//OutputStream out = clientSock.getOutputStream();
 			DataOutputStream outToClient = 
-					new DataOutputStream(clientSock.getOutputStream());
-			BufferedInputStream inFromClient = new BufferedInputStream(clientSock.getInputStream() );
-
-			// InputStream inFromClient = clientSock.getInputStream();
+					new DataOutputStream(clientSocket.getOutputStream());
+			BufferedInputStream inFromClient = 
+					new BufferedInputStream(clientSocket.getInputStream() );
 			
 			// Add client socket to the queue of connected clients.
 			//if( !connected_clients.offer(ci) ){
 			//	System.out.println("Max connected clients.\n");
-			//	clientSock.close();
+			//	clientSocket.close();
 			//	continue READLOOP;
 			//}
 			
 			ClientLoop:while ( !end_of_loop && (recvMsgSize = inFromClient.read(byteBufferIn, 0, CMDSIZE)) > -1 ) {		
+				System.out.println("\n--- Attempt: "+(attempt++));
+				
 				totalBytesReceived += recvMsgSize;
-				System.out.println("TotalByteCMD: "+totalBytesReceived);
+				System.out.println("Sucessfully read CMD... "+totalBytesReceived+"bytes");
 				end_of_loop = false;
 				
 			try {
@@ -114,7 +117,7 @@ public class Launcher0 {
 				throw new DataFormatException("Error in reading from input stream. Bytes read: " + totalBytesReceived);
 			}			
 
-			System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived);
+			System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+"bytes");
 
 			//Parse and Extract relevant data
 			byte cmd;
@@ -151,29 +154,14 @@ public class Launcher0 {
 			dataRead = ByteBuffer.wrap(	byteBufferIn );
 			value = Arrays.copyOfRange(dataRead.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 
-			System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived);
-			StringBuilder s = new StringBuilder();
-			for (int i=1; i<(1+32); i++) {
-				s.append(Integer.toString((dataRead.array()[i] & 0xff) + 0x100, 16).substring(1));
-			}
-			s.append(" ");
-			/*for (int i=33; i<dataRead.limit(); i++) {
-				s.append(Integer.toString((dataRead.array()[i] & 0xff) + 0x100, 16).substring(1));
-			}
-			*/
-			byte valueArrayTemp[] = Arrays.copyOfRange(dataRead.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-			try {
-				// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
-				s.append(new String(valueArrayTemp, "UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				s.append(new String(valueArrayTemp));
-			}
-			System.out.println("Request Received: "+s.toString());
-			
-			Command clientToReply = new Command(clientSock, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value) );
+			System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived+"bytes");
 
-			// set the request received to associated client.
-			//clientToReply.setRequest(cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value) );
+			String s = NodeCommands.requestByteArrayToString(dataRead.array());
+			System.out.println("Request Received(cmd,key,value): "+s.toString());
+			System.out.println("Request Received(cmd,key,value): ("+cmd+", "+key+", "+value.toString()+") ");
+
+			Command clientToReply = new Command(clientSocket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value) );
+
 						
 			//Obtain a connected client and reply to the client with its response.
 			//Command clientToReply =	connected_clients.poll();
@@ -185,10 +173,11 @@ public class Launcher0 {
 
 					byteBufferOut= clientToReply.getReply().array();
 					String p = new String(byteBufferOut);
+					String q = NodeCommands.byteArrayAsString(byteBufferOut);
 					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
-					System.out.println("Total elements in map: "+ Command.numElements);
-					System.out.println("Bytes Written: "+ p);
-					System.out.println("Num Bytes: "+ p.length());
+					System.out.println("Total elements in map: "+ Command.getNumElements());
+					System.out.println("All Bytes Written(string,array): ("+ p+", "+q.substring(0, 2)+" "+q.substring(2)+")");
+					System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + p.length()+ ", " +outToClient.size()+")");
 
 				} catch (IOException e1) {
 					// TODO:
@@ -197,6 +186,18 @@ public class Launcher0 {
 				}
 				//System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
 				//clientToReply.getSocket().close(); // Close the socket.  We are done with this client!
+				System.out.println("Completed Processing.");
+				
+				System.out.println("\tAbout socket: "+clientSocket.toString());
+				System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
+									", isClosed: "+clientSocket.isClosed()+
+									", isInputShutdown: "+clientSocket.isInputShutdown()+
+									", isOutputShutdown "+clientSocket.isOutputShutdown()+
+									", getSendBufferSize "+clientSocket.getSendBufferSize()+
+									", getReceiveBufferSize "+clientSocket.getReceiveBufferSize()
+									);
+				System.out.println("\tend of loop: "+end_of_loop);
+
 			}
 			
 			byteBufferIn = new byte[REQSIZE];
@@ -204,7 +205,8 @@ public class Launcher0 {
 			recvMsgSize = totalBytesReceived = 0;
 			}
 			
-			clientSock.close();
+			System.out.println("Closing socket.");
+			clientSocket.close();
 		}
 		
 	} catch (DataFormatException e) {
@@ -216,10 +218,12 @@ public class Launcher0 {
 		System.out.println("Network error occurred."+e.getLocalizedMessage());
 		
 	} finally {
-		if (null != clientSock) {
+		if (null != clientSocket) {
 			try {
+				System.out.println("finally reached.");
+				System.out.println("Closing Client.");
 				// Close the socket. We are done with this client!
-				clientSock.close();
+				clientSocket.close();
 			} catch (IOException e) {}
 		} 
 	}
@@ -267,4 +271,8 @@ public class Launcher0 {
 
 		return error_code;
 	}
+	
+	
+
+	
 }

@@ -3,6 +3,7 @@ package com.b6w7.eece411.P02;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -93,6 +94,7 @@ public class Command {
 		
 	}
 	
+	/* Unused */
 	private void setRequest( byte cmd, ByteBuffer key, ByteBuffer value){
 
 		// check arguments for correctness
@@ -190,9 +192,8 @@ public class Command {
 		return this.clientSock;
 	}
 	
-	// Getter
-	public int getNumElements(){
-		return Command.numElements;
+	public static int getNumElements(){
+		return data.size();//Command.numElements;
 	}
 	/*
 	 * adds the (key,value) pair into the data structure.
@@ -201,12 +202,22 @@ public class Command {
 	private boolean put(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
 		StringBuilder s = new StringBuilder();
+		/*
 		for (int i=0; i<(NodeCommands.LEN_VALUE_BYTES); i++) {
+		 
 			s.append(Integer.toString((this.value.array()[i] & 0xff) + 0x100, 16).substring(1));
 		}
+		*/
 		
-		System.out.println("put value : "+s.toString());
-		System.out.println("put value bytes: "+s.toString().getBytes());
+		try {
+			s.append(new String(this.value.array(), "UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			s.append(new String(this.value.array()));
+		}
+		String k = new String(key.array());
+		System.out.println("put (key,value): ("+k+", "+s.toString()+")");
+		System.out.println("put key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
+		System.out.println("put value bytes: "+NodeCommands.byteArrayAsString((s.toString().getBytes())) );
 
 		//if(data.size() < MAX_MEMORY){
 			data.put(new String(key.array()), new String(this.value.array()) );
@@ -222,11 +233,13 @@ public class Command {
 	 */
 	private ByteBuffer get(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
-
-		String val = data.get(new String(key.array()));	
-		System.out.println("get value: "+val);
+		
+		String k = new String( key.array() );
+		String val = data.get( k );	
+		System.out.println("get (key, value): ("+k+", "+val+")");
 		try {
-			System.out.println("get value bytes: "+val.getBytes("UTF-8"));
+			System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
+			System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(val.getBytes("UTF-8")) );
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -248,5 +261,15 @@ public class Command {
 		//	Command.numElements--;
 		
 		return removed;
+	}
+	
+	public byte getCmd(){
+		return this.cmd;
+	}
+	public ByteBuffer getKey(){
+		return this.key;
+	}
+	public ByteBuffer getValue(){
+		return this.value;
 	}
 }

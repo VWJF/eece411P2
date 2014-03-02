@@ -1,5 +1,7 @@
 package com.b6w7.eece411.P02;
 
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,7 +27,7 @@ public class NodeCommands {
 	public static final int LEN_KEY_BYTES = 32;
 	public static final int LEN_VALUE_BYTES = 1024;
 
-	// Need to make a check in ClientInterface whether the "received" command/error code 
+	// Needed to make a check in ClientInterface whether the "received" command/error code 
 	// were among eligible commands.
 	// Separated into 2 Enums with Request Commands and Reply Commands
 	static public enum Request{
@@ -93,4 +95,56 @@ public class NodeCommands {
 		} 
 		 */
 	};   
+
+	/*
+	 * Given a byte array with the "Request fields" received
+	 * returns a the representation of the Request as human readable string 
+	 */
+	public static String requestByteArrayToString(byte[] recvBytes){
+		
+		StringBuilder s = new StringBuilder();
+		//CMD
+		s.append(Integer.toString((recvBytes[0] & 0xff) + 0x100, 16).substring(1));
+		s.append(" ");
+
+		//KEY
+		for (int i=LEN_CMD_BYTES; i<(LEN_CMD_BYTES+LEN_KEY_BYTES); i++) {
+			s.append(Integer.toString((recvBytes[i] & 0xff) + 0x100, 16).substring(1));
+		}
+		s.append(" ");
+
+		//Value
+		/*for (int i=33; i<dataRead.limit(); i++) {
+			s.append(Integer.toString((dataRead.array()[i] & 0xff) + 0x100, 16).substring(1));
+		}
+		*/
+		
+		byte valueArrayTemp[] = Arrays.copyOfRange(recvBytes, LEN_CMD_BYTES+LEN_KEY_BYTES, LEN_CMD_BYTES+LEN_KEY_BYTES+LEN_VALUE_BYTES);
+		try {
+			// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
+			s.append(new String(valueArrayTemp, "UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			s.append(new String(valueArrayTemp));
+		}
+		return s.toString();
+	}
+	
+	/*
+	 * params: byte array
+	 * returns: a String representation of the byte array in hexadecimal notation
+	 */
+	public static String byteArrayAsString(byte[] array){
+		
+		if( array ==  null ){
+			return "";
+		}
+		
+		StringBuilder s = new StringBuilder();
+
+		for (int i=0; i<(array.length); i++) {
+			s.append(Integer.toString((array[i] & 0xff) + 0x100, 16).substring(1));
+		}
+		
+		return s.toString();
+	}
 }
