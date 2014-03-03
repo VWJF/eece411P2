@@ -235,16 +235,17 @@ public class Command {
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
 		
 		String k = new String( key.array() );
-		String val = data.get( k );	
-		System.out.println("get (key, value): ("+k+", "+val+")");
-		try {
-			System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
-			System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(val.getBytes("UTF-8")) );
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
+		String val = data.get( k );
+			System.out.println("get (key, value): ("+k+", "+val+")");
+			try {
+				System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
+				if(val != null){
+					System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(val.getBytes("UTF-8")) );
+				}
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		
 		return (val != null) ? this.replyValue = ByteBuffer.wrap(val.getBytes()) : null;
 		

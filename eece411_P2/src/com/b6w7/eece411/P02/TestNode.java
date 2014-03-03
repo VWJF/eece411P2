@@ -84,7 +84,7 @@ public class TestNode {
 			}
 			// value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			value.put(valueString.getBytes("UTF-8"));
-			reply = NodeCommands.RPY_SUCCESS;
+			//reply = NodeCommands.RPY_SUCCESS;
 			
 			if (NodeCommands.CMD_PUT == cmd) {
 				// If we are performing a PUT, then we need to send value
@@ -122,6 +122,11 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_REMOVE, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_REMOVE, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+	
+		populateOneTest(NodeCommands.CMD_GET, "Scott2", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, "Ishan2", "Sahay", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+	
 	}
 
 
@@ -233,15 +238,10 @@ public class TestNode {
 							totalBytesRead += bytesRead;
 						}
 
-						if (totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
+						if (recvBuffer[0] == NodeCommands.RPY_SUCCESS && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 							isPass = false;
 							failMessage = "expected value "+test.value +
 												" Number of bytes received: "+totalBytesRead;
-						}
-						else{
-							String s = new String(recvBuffer);
-							String t = NodeCommands.byteArrayAsString(recvBuffer);
-							replyString += " value=>("+s+", "+t+")";
 						}
 					}
 
@@ -257,6 +257,7 @@ public class TestNode {
 						// read() is a blocking operation, and we did not find any more bytes in the pipe
 						// so we are satisfied that the test passed.  do nothing here.
 					}
+					
 					System.out.println("\tAbout socket: "+clientSocket.toString());
 					System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
 										", isClosed: "+clientSocket.isClosed()+
