@@ -89,7 +89,8 @@ public class Launcher0 {
 			//	clientSocket.close();
 			//	continue READLOOP;
 			//}
-			
+			end_of_loop = false;
+
 			ClientLoop:while ( !end_of_loop && (recvMsgSize = inFromClient.read(byteBufferIn, 0, CMDSIZE)) > -1 ) {		
 				System.out.println("\n--- Attempt: "+(attempt++));
 				
@@ -114,7 +115,7 @@ public class Launcher0 {
 				byteBufferIn = new byte[REQSIZE];
 				byteBufferOut = new byte[RESSIZE];
 				recvMsgSize = totalBytesReceived = 0;
-				throw new DataFormatException("Error in reading from input stream. Bytes read: " + totalBytesReceived);
+				throw new DataFormatException("Error in reading for KEY from input stream. Bytes read: " + totalBytesReceived);
 			}			
 
 			System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+"bytes");
@@ -148,13 +149,15 @@ public class Launcher0 {
 					byteBufferIn = new byte[REQSIZE];
 					byteBufferOut = new byte[RESSIZE];
 					recvMsgSize = totalBytesReceived = 0;
-					throw new DataFormatException("Error in reading from input stream. Bytes read: " + totalBytesReceived);
+					throw new DataFormatException("Error in reading for VALUE from input stream. Bytes read: " + totalBytesReceived);
 				}	
 			}
+			
+			System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived+"bytes");
+
 			dataRead = ByteBuffer.wrap(	byteBufferIn );
 			value = Arrays.copyOfRange(dataRead.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 
-			System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived+"bytes");
 
 			String s = NodeCommands.requestByteArrayToString(dataRead.array());
 			System.out.println("Request Received(cmd,key,value): "+s.toString());
@@ -205,6 +208,15 @@ public class Launcher0 {
 			recvMsgSize = totalBytesReceived = 0;
 			}
 			
+			System.out.println("\tAbout socket: "+clientSocket.toString());
+			System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
+								", isClosed: "+clientSocket.isClosed()+
+								", isInputShutdown: "+clientSocket.isInputShutdown()+
+								", isOutputShutdown "+clientSocket.isOutputShutdown()+
+								", getSendBufferSize "+clientSocket.getSendBufferSize()+
+								", getReceiveBufferSize "+clientSocket.getReceiveBufferSize()
+								);
+			System.out.println("\tend of loop: "+end_of_loop);
 			System.out.println("Closing socket.");
 			clientSocket.close();
 		}

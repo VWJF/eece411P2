@@ -64,8 +64,13 @@ public class Command {
 							+NodeCommands.LEN_KEY_BYTES);
 					value = null;
 				} else {
-					throw new IllegalArgumentException("Unknown command");
+					buffer = ByteBuffer.allocate(
+						NodeCommands.LEN_CMD_BYTES
+						+NodeCommands.LEN_KEY_BYTES
+						+NodeCommands.LEN_VALUE_BYTES);
+						//throw new IllegalArgumentException("Unknown command");
 				}
+
 
 
 
@@ -128,6 +133,7 @@ public class Command {
 		
 		if(  reply > req.length ){ /*if(cmd is not one of Enum of possible Request Commands)*/
 			this.replyCode = (byte) Reply.CMD_UNRECOGNIZED.getCode();
+			this.replyValue = null;
 			return;
 		}
 		
@@ -201,10 +207,10 @@ public class Command {
 	 */
 	private boolean put(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
+		
 		StringBuilder s = new StringBuilder();
 		/*
-		for (int i=0; i<(NodeCommands.LEN_VALUE_BYTES); i++) {
-		 
+		for (int i=0; i<(NodeCommands.LEN_VALUE_BYTES); i++) { 
 			s.append(Integer.toString((this.value.array()[i] & 0xff) + 0x100, 16).substring(1));
 		}
 		*/
@@ -214,17 +220,19 @@ public class Command {
 		} catch (UnsupportedEncodingException e) {
 			s.append(new String(this.value.array()));
 		}
+		
 		String k = new String(key.array());
 		System.out.println("put (key,value): ("+k+", "+s.toString()+")");
 		System.out.println("put key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
 		System.out.println("put value bytes: "+NodeCommands.byteArrayAsString((s.toString().getBytes())) );
 
-		//if(data.size() < MAX_MEMORY){
-			data.put(new String(key.array()), new String(this.value.array()) );
+		if(data.size() == MAX_MEMORY && data.containsKey(key) == false ){
+			System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k+", "+s.toString()+")");
+			return false;
+		}
+		data.put(new String(key.array()), new String(this.value.array()) );
 		//	Command.numElements++;
-			return true;
-		//}
-		//return false;
+		return true;
 	}
 	
 	/*

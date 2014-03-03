@@ -39,6 +39,7 @@ public class TestData {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
 		}
 
+		
 		if (NodeCommands.CMD_PUT == cmd) {
 			if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
 				throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
@@ -62,7 +63,11 @@ public class TestData {
 					+NodeCommands.LEN_KEY_BYTES);
 
 		} else {
-			throw new IllegalArgumentException("Unknown command");
+			buffer = ByteBuffer.allocate(
+				NodeCommands.LEN_CMD_BYTES
+				+NodeCommands.LEN_KEY_BYTES
+				+NodeCommands.LEN_VALUE_BYTES);
+				//throw new IllegalArgumentException("Unknown command");
 		}
 
 

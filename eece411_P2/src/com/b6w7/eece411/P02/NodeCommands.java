@@ -16,6 +16,8 @@ public class NodeCommands {
 	public static final byte CMD_GET = 0x2;
 	public static final byte CMD_REMOVE = 0x3;
 	
+	public static final byte CMD_UNRECOGNIZED = 0xF;
+	
 	public static final byte RPY_SUCCESS = 0x0;
 	public static final byte RPY_INEXISTENT = 0x1;
 	public static final byte RPY_OUT_OF_SPACE = 0x2;

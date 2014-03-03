@@ -28,7 +28,9 @@ public class TestNode {
 
 	private static MessageDigest md;
 
-	// list of test cases, each entry represeting one test case
+	private static int testPassed = 0;
+	private static int testFailed = 0;
+	// list of test cases, each entry representing one test case
 	private static List<TestData> tests = new LinkedList<TestData>();
 
 	private static void printUsage() {
@@ -101,7 +103,9 @@ public class TestNode {
 				tests.add(new TestData(cmd, hashedKey, null, reply, null));
 				
 			} else {
-				throw new IllegalArgumentException("Unknown command");
+				// Unrecognized Commands, the server should handle this case gracefully
+				tests.add(new TestData(cmd, hashedKey, value, reply, null));
+				//throw new IllegalArgumentException("Unknown command");
 			}
 
 		} catch (BufferOverflowException e) {
@@ -111,10 +115,16 @@ public class TestNode {
 	
 	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
+		
+		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+/*
 		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		
+
+		populateOneTest(NodeCommands.CMD_PUT, "John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+
 		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
@@ -123,10 +133,14 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_REMOVE, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_REMOVE, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 	
-		populateOneTest(NodeCommands.CMD_GET, "Scott2", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_GET, "Ishan2", "Sahay", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
-	
+		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
+		
+		populateOneTest(NodeCommands.CMD_GET, "localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+	*/
+		
+		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+
 	}
 
 
@@ -208,7 +222,7 @@ public class TestNode {
 					
 					if ( numBytesRead > 1 ) {
 						// did not receive the one byte reply that was expected.
-						failMessage = "excess bytes reply";
+						failMessage = "excess bytes reply.";
 						isPass = false;
 						
 					} else if ( numBytesRead == -1 ) {
@@ -268,21 +282,25 @@ public class TestNode {
 					// Display result of test
 					if (isPass) {
 						System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
+						testPassed++;
 					} else {
 						System.out.println("### TEST "+test.index+" FAILED - " + failMessage);
+						testFailed++;
 					}
 
 
 				} catch (SocketTimeoutException e) {
 					System.out.println("### TEST "+test.index+" FAILED - timeout on network operation");
+					testFailed++;
 
 				} catch (IOException e) {
 					System.out.println("### TEST "+test.index+" FAILED - network error");
+					testFailed++;
 
 				} finally {
 					try {
 						while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > -1) {
-							// reagrdless of whether the test passed or failed,
+							// regardless of whether the test passed or failed,
 							// we want to slurp the pipe so that the subsequent test will be unaffected
 						}
 					} catch (SocketTimeoutException e) {
@@ -292,6 +310,8 @@ public class TestNode {
 			}
 
 			System.out.println("-------------- Finished Running Tests --------------");
+			System.out.println("-------------- Passed/Fail = "+ testPassed+"/"+testFailed +" ------------------");
+
 
 			if (clientSocket != null)
 				clientSocket.close();
