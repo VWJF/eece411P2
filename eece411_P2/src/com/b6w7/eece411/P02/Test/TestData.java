@@ -1,7 +1,10 @@
-package com.b6w7.eece411.P02;
+package com.b6w7.eece411.P02.Test;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+
+import com.b6w7.eece411.P02.Node;
+import com.b6w7.eece411.P02.NodeCommands;
 
 /**
  * Immutable class which contains the data for one iteration of test with {@link Node}

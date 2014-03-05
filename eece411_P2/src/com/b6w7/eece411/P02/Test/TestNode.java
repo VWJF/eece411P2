@@ -1,4 +1,4 @@
-package com.b6w7.eece411.P02;
+package com.b6w7.eece411.P02.Test;
 
 import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
@@ -15,6 +15,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
+
+import com.b6w7.eece411.P02.Node;
+import com.b6w7.eece411.P02.NodeCommands;
 /**
  * A test class for testing {@link Node}
  * 
@@ -116,8 +119,8 @@ public class TestNode {
 	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 		
-		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+//		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+//		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 /*
 		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
@@ -177,7 +180,8 @@ public class TestNode {
 
 			// create a TCP socket to the server
 			// Set a timeout on read operation as 3 seconds
-			clientSocket = new Socket(serverURL, serverPort);
+//			clientSocket = new Socket(serverURL, serverPort);
+			clientSocket = new Socket("localhost", serverPort);
 			clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
 			System.out.println("Connected to server ...");
 
@@ -241,12 +245,12 @@ public class TestNode {
 					}
 
 					System.out.print("-Reading Value of GET.");
+					int bytesRead = 0;
+					int totalBytesRead = 0;
 					// If test was a GET command, then additionally read pipe for reply and verify result
 					if (isPass && NodeCommands.CMD_GET == test.cmd) {
 
 						// we expect 1024 bytes of 'value' from this GET command
-						int bytesRead = 0;
-						int totalBytesRead = 0;
 						while (bytesRead != -1 && inFromServer.available() > 0) {
 							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
 							totalBytesRead += bytesRead;
@@ -265,7 +269,7 @@ public class TestNode {
 							// So far so good, but let's make sure there is no more data on the socket.
 							// If we read even one byte, then this is a failed test.
 							isPass = false;
-							failMessage = "excess bytes in pipe";
+							failMessage = "excess bytes in pipe [totalBytesRead == "+totalBytesRead+ "]";
 						}
 					} catch (SocketTimeoutException e) {
 						// read() is a blocking operation, and we did not find any more bytes in the pipe
