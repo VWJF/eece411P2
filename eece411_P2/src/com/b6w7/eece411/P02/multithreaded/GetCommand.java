@@ -8,28 +8,28 @@ import java.util.Map;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Reply;
 
-public class PutCommand implements Command {
+public class GetCommand implements Command {
 	private final Socket clientSock;
 	
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
-	final ByteBuffer value;
+
 	final Map<String, String> map;
 	final ReplyCommand reply;
 	
 	byte replyCode;
 	ByteBuffer replyValue;
 
-	// protocol for Request: put command <cmd,key,value>
-	// protocol for Response: <cmd>
-	public PutCommand(Socket client, byte cmd, ByteBuffer key, ByteBuffer value, Map<String, String> map, ReplyCommand reply) {
+	// protocol for Request: get command <cmd,key>
+	// protocol for Response: <cmd,value>
+	public GetCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map, ReplyCommand reply) {
 		// check arguments for correctness
 				if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
 					throw new IllegalArgumentException("key must be 32 bytes for all operations");
 				}
 
-				//if (NodeCommands.CMD_PUT == cmd) {
+				/*if (NodeCommands.CMD_PUT == cmd) {
 					if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
 						throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
 
@@ -37,17 +37,18 @@ public class PutCommand implements Command {
 							NodeCommands.LEN_CMD_BYTES
 							+NodeCommands.LEN_KEY_BYTES
 							+NodeCommands.LEN_VALUE_BYTES);
-/*
-				} else if (NodeCommands.CMD_GET == cmd) {
+
+				} else */
+				//	if (NodeCommands.CMD_GET == cmd) {
 					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
 						throw new IllegalArgumentException("key must be 32 bytes for GET operation");
 
 					buffer = ByteBuffer.allocate(
 							NodeCommands.LEN_CMD_BYTES
 							+NodeCommands.LEN_KEY_BYTES);
-					value = null;
+					//value = null;
 
-				} else if (NodeCommands.CMD_REMOVE == cmd) {
+				/*}else if (NodeCommands.CMD_REMOVE == cmd) {
 					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
 						throw new IllegalArgumentException("key must be 32 bytes for Remove operation");
 
@@ -73,17 +74,17 @@ public class PutCommand implements Command {
 				// to be ready to be sent down a pipe.  
 				this.cmd = cmd;
 				this.key = key;
-				this.value = value;
+				//this.value = value;
 			
 				buffer.put(cmd);
 				key.rewind();
 				buffer.put(key);
 
-				if (null != value) {
+				/*if (null != value) {
 					value.rewind();
 					buffer.put(value);
 				}
-
+				 */
 		// check arguments for correctness
 		if (client == null) {
 			throw new IllegalArgumentException("client socket cannot be null");
@@ -94,50 +95,34 @@ public class PutCommand implements Command {
 	}
 
 	@Override
-	public void execute() {	
-		
-		if( put() ){
+	public void execute() {
+		ByteBuffer value_of_key =  get();
+		if( value_of_key != null ){  
 			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+			this.replyValue.put(value_of_key.array(), 0, 1024); 
 		}
 		else{
-			this.replyCode = (byte) Reply.RPY_OUT_OF_SPACE.getCode(); 
+			this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
 		}
 	}
 	
-	private boolean put(){
-		
-		// TODO: Can be improved (with Error checking, Exception checking, etc.)
-		
-		StringBuilder s = new StringBuilder();
-		/*
-		for (int i=0; i<(NodeCommands.LEN_VALUE_BYTES); i++) { 
-			s.append(Integer.toString((this.value.array()[i] & 0xff) + 0x100, 16).substring(1));
-		}
-		*/
-		
-		try {
-			s.append(new String(this.value.array(), "UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			s.append(new String(this.value.array()));
-		}
-		
-		String k = new String(key.array());
-		System.out.println("put (key,value): ("+k+", "+s.toString()+")");
-		System.out.println("put key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
-		System.out.println("put value bytes: "+NodeCommands.byteArrayAsString((s.toString().getBytes())) );
+	private ByteBuffer get(){
+	// TODO: Can be improved (with Error checking, Exception checking, etc.)
 
-		if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
-			System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k+", "+s.toString()+")");
-			//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
-			return false;
+		String k = new String( key.array() );
+		String val = map.get( k );
+		System.out.println("get (key, value): ("+k+", "+val+")");
+		try {
+			System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
+			if(val != null){
+				System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(val.getBytes("UTF-8")) );
+			}
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		
-		map.put(new String(key.array()), new String(this.value.array()) );
-		//	Command.numElements++;
-		
-		return true;
-		//replyCode = NodeCommands.RPY_SUCCESS;
-		//reply.replyCommand(this);
+
+		return (val != null) ? this.replyValue = ByteBuffer.wrap(val.getBytes()) : null;
 	}
 
 }

@@ -8,28 +8,28 @@ import java.util.Map;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Reply;
 
-public class PutCommand implements Command {
+public class RemoveCommand implements Command {
 	private final Socket clientSock;
 	
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
-	final ByteBuffer value;
+	
 	final Map<String, String> map;
 	final ReplyCommand reply;
 	
 	byte replyCode;
 	ByteBuffer replyValue;
 
-	// protocol for Request: put command <cmd,key,value>
+	// protocol for Request: remove command <cmd,key>
 	// protocol for Response: <cmd>
-	public PutCommand(Socket client, byte cmd, ByteBuffer key, ByteBuffer value, Map<String, String> map, ReplyCommand reply) {
+	public RemoveCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map, ReplyCommand reply) {
 		// check arguments for correctness
 				if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
 					throw new IllegalArgumentException("key must be 32 bytes for all operations");
 				}
 
-				//if (NodeCommands.CMD_PUT == cmd) {
+			/*	//if (NodeCommands.CMD_PUT == cmd) {
 					if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
 						throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
 
@@ -47,15 +47,15 @@ public class PutCommand implements Command {
 							+NodeCommands.LEN_KEY_BYTES);
 					value = null;
 
-				} else if (NodeCommands.CMD_REMOVE == cmd) {
-					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
+				} elseif (NodeCommands.CMD_REMOVE == cmd) {
+				*/	if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
 						throw new IllegalArgumentException("key must be 32 bytes for Remove operation");
 
 					buffer = ByteBuffer.allocate(
 							NodeCommands.LEN_CMD_BYTES
 							+NodeCommands.LEN_KEY_BYTES);
-					value = null;
-				} else {
+					//value = null;
+				/*} else {
 					buffer = ByteBuffer.allocate(
 						NodeCommands.LEN_CMD_BYTES
 						+NodeCommands.LEN_KEY_BYTES
@@ -73,16 +73,19 @@ public class PutCommand implements Command {
 				// to be ready to be sent down a pipe.  
 				this.cmd = cmd;
 				this.key = key;
-				this.value = value;
+				//this.value = value;
 			
 				buffer.put(cmd);
 				key.rewind();
 				buffer.put(key);
 
-				if (null != value) {
+				/*
+				 if (null != value) {
+				 
 					value.rewind();
 					buffer.put(value);
 				}
+				*/
 
 		// check arguments for correctness
 		if (client == null) {
@@ -96,48 +99,24 @@ public class PutCommand implements Command {
 	@Override
 	public void execute() {	
 		
-		if( put() ){
+		if( remove() != null ){  
 			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
 		}
 		else{
-			this.replyCode = (byte) Reply.RPY_OUT_OF_SPACE.getCode(); 
+			this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
 		}
 	}
 	
-	private boolean put(){
-		
+	/*
+	 * removes the (key,value) pair from the data structure. 
+	 * returns the value if the key was present in the structure, null otherwise.
+	 */
+	private String remove(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
+		String removed = map.remove(new String(key.array()));
+		//if(removed == null)
+		//	Command.numElements--;
 		
-		StringBuilder s = new StringBuilder();
-		/*
-		for (int i=0; i<(NodeCommands.LEN_VALUE_BYTES); i++) { 
-			s.append(Integer.toString((this.value.array()[i] & 0xff) + 0x100, 16).substring(1));
-		}
-		*/
-		
-		try {
-			s.append(new String(this.value.array(), "UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			s.append(new String(this.value.array()));
-		}
-		
-		String k = new String(key.array());
-		System.out.println("put (key,value): ("+k+", "+s.toString()+")");
-		System.out.println("put key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
-		System.out.println("put value bytes: "+NodeCommands.byteArrayAsString((s.toString().getBytes())) );
-
-		if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
-			System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k+", "+s.toString()+")");
-			//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
-			return false;
-		}
-		
-		map.put(new String(key.array()), new String(this.value.array()) );
-		//	Command.numElements++;
-		
-		return true;
-		//replyCode = NodeCommands.RPY_SUCCESS;
-		//reply.replyCommand(this);
+		return removed;
 	}
-
 }
