@@ -9,8 +9,6 @@ import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Reply;
 
 public class GetCommand extends Command {
-	private final Socket clientSock;
-	
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
@@ -21,7 +19,7 @@ public class GetCommand extends Command {
 
 	// protocol for Request: get command <cmd,key>
 	// protocol for Response: <cmd,value>
-	public GetCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map) {
+	public GetCommand(byte cmd, ByteBuffer key, Map<String, String> map) {
 		// check arguments for correctness
 		if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -48,14 +46,6 @@ public class GetCommand extends Command {
 		buffer.put(cmd);
 		key.rewind();
 		buffer.put(key);
-
-		// check arguments for correctness
-		if (client == null) {
-			throw new IllegalArgumentException("client socket cannot be null");
-		}
-
-		this.clientSock = client;
-
 	}
 
 	@Override
