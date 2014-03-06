@@ -126,22 +126,23 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 
-//		populateOneTest(NodeCommands.CMD_PUT, "John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
-//
-//		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-//
-//		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_REMOVE, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_REMOVE, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-//
-//		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
-//
-//		populateOneTest(NodeCommands.CMD_GET, "localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_PUT, "John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 
-		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+
+		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+
+		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
+
+		populateOneTest(NodeCommands.CMD_GET, "localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+
+//		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+
 	}
 
 
