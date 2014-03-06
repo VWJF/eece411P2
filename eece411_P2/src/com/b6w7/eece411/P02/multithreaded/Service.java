@@ -42,10 +42,8 @@ public class Service extends Thread {
 		// we are listening, so now allocated a ThreadPool to handle new sockets connections
 		executor = Executors.newFixedThreadPool(30);
 
-		System.out.println("Listening for connections...");
 		while (keepRunning) {
 			try {
-
 				// Spawn a new socket when client connects
 				clientSocket = serverSock.accept();
 				System.out.println("Handling client at " +

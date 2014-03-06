@@ -51,7 +51,7 @@ public class TestNode {
 				+ " 5627");
 	}
 
-	
+
 	private static void populateOneTest(byte cmd, String keyString, String valueString, byte reply) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// we can reuse 'value' for both the sending of a PUT as well as receiving of a GET operation,
 		// so no need two arguments
@@ -68,7 +68,7 @@ public class TestNode {
 
 		// Massage parameters into a TestData object that is appended to 'tests'
 		// which will then be iterated through in the test harness
-		
+
 		// Note that we create hash of key which will be padded with zeroes at end.
 		// Also, if hashing algorithm changes (SHA-1 creates a 20 bytes hash) which 
 		// becomes larger than our hash limit (32b) then the logic exists here to
@@ -81,7 +81,7 @@ public class TestNode {
 			// if we want to increase entropy in the hash, this would be the line to do it
 			// byte[] digest = md.digest(keyString.getBytes(StandardCharsets.UTF_8.displayName()));
 			byte[] digest = md.digest(keyString.getBytes("UTF-8"));
-			
+
 			if (digest.length > hashedKey.limit()) {
 				hashedKey.put( digest, 0, hashedKey.limit() );
 			} else {
@@ -90,21 +90,21 @@ public class TestNode {
 			// value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			value.put(valueString.getBytes("UTF-8"));
 			//reply = NodeCommands.RPY_SUCCESS;
-			
+
 			if (NodeCommands.CMD_PUT == cmd) {
 				// If we are performing a PUT, then we need to send value
 				tests.add(new TestData(cmd, hashedKey, value, reply, null));
-				
+
 			} else if (NodeCommands.CMD_GET == cmd){
 				// If we are performing a GET, then we do not have to send 'value', 
 				// but we must see the value replied to us
 				tests.add(new TestData(cmd, hashedKey, null, reply, value));
-				
+
 			} else if (NodeCommands.CMD_REMOVE == cmd){
 				// If we are performing a REMOVE, then we do not have to send 'value',
 				// and neither do we have to expect it as a returned value
 				tests.add(new TestData(cmd, hashedKey, null, reply, null));
-				
+
 			} else {
 				// Unrecognized Commands, the server should handle this case gracefully
 				tests.add(new TestData(cmd, hashedKey, value, reply, null));
@@ -115,13 +115,13 @@ public class TestNode {
 			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 	}
-	
+
 	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
-		
-//		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-/*
+
+		//		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		//		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		/*
 		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
@@ -131,17 +131,17 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		
+
 		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_REMOVE, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_REMOVE, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-	
+
 		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
-		
+
 		populateOneTest(NodeCommands.CMD_GET, "localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
-	*/
-		
+		 */
+
 		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
 
 	}
@@ -180,10 +180,7 @@ public class TestNode {
 
 			// create a TCP socket to the server
 			// Set a timeout on read operation as 3 seconds
-//			clientSocket = new Socket(serverURL, serverPort);
-			clientSocket = new Socket("localhost", serverPort);
-			clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
-			System.out.println("Connected to server ...");
+			//			clientSocket = new Socket(serverURL, serverPort);
 
 			populateTests();
 
@@ -204,7 +201,7 @@ public class TestNode {
 
 			for (TestData test : tests) {
 				isPass = true;
-				
+
 				System.out.println();
 				System.out.println("--- Running Test: "+test);
 
@@ -212,28 +209,31 @@ public class TestNode {
 				try {
 					System.out.print("\t-Writing Test.");
 					// initiate test with node by sending the test command
+					clientSocket = new Socket("localhost", serverPort);
+					clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
+					System.out.println("Connected to server ...");
 					outToServer.write(test.buffer.array());
 					//StandardCharsets.UTF_8.displayName()
 
 					// Code converting byte to hex representation obtained from
 					// http://stackoverflow.com/questions/6120657/how-to-generate-a-unique-hash-code-for-string-input-in-android
-					
+
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
 					int numBytesRead;
-					
+
 					System.out.print("-Reading Answer.");
 					while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
-					
+
 					if ( numBytesRead > 1 ) {
 						// did not receive the one byte reply that was expected.
 						failMessage = "excess bytes reply.";
 						isPass = false;
-						
+
 					} else if ( numBytesRead == -1 ) {
 						// did not receive the one byte reply that was expected.
 						failMessage = "broken pipe";
 						isPass = false;
-						
+
 					}
 					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
 					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
@@ -259,7 +259,7 @@ public class TestNode {
 						if (recvBuffer[0] == NodeCommands.RPY_SUCCESS && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 							isPass = false;
 							failMessage = "expected value "+test.value +
-												" Number of bytes received: "+totalBytesRead;
+									" Number of bytes received: "+totalBytesRead;
 						}
 					}
 
@@ -275,14 +275,14 @@ public class TestNode {
 						// read() is a blocking operation, and we did not find any more bytes in the pipe
 						// so we are satisfied that the test passed.  do nothing here.
 					}
-					
+
 					System.out.println("\tAbout socket: "+clientSocket.toString());
 					System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
-										", isClosed: "+clientSocket.isClosed()+
-										", isInputShutdown: "+clientSocket.isInputShutdown()+
-										", isOutputShutdown "+clientSocket.isOutputShutdown()			
-										);
-					
+							", isClosed: "+clientSocket.isClosed()+
+							", isInputShutdown: "+clientSocket.isInputShutdown()+
+							", isOutputShutdown "+clientSocket.isOutputShutdown()			
+							);
+
 					// Display result of test
 					if (isPass) {
 						System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
@@ -302,13 +302,17 @@ public class TestNode {
 					testFailed++;
 
 				} finally {
-					try {
-						while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > -1) {
-							// regardless of whether the test passed or failed,
-							// we want to slurp the pipe so that the subsequent test will be unaffected
-						}
-					} catch (SocketTimeoutException e) {
-						// ok.. squeltch
+					if (clientSocket != null) { 
+						try {
+							while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > 0) {
+								// regardless of whether the test passed or failed,
+								// we want to slurp the pipe so that the subsequent test will be unaffected
+							}
+						} catch (SocketTimeoutException e) { /* do nothing */ }
+						
+						try {
+							clientSocket.close();
+						} catch (IOException e) { /* do nothing */ }
 					}
 				}
 			}
