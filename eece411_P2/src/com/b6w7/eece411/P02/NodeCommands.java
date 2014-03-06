@@ -110,8 +110,13 @@ public class NodeCommands {
 		s.append(" ");
 
 		//KEY
-		for (int i=LEN_CMD_BYTES; i<(LEN_CMD_BYTES+LEN_KEY_BYTES); i++) {
-			s.append(Integer.toString((recvBytes[i] & 0xff) + 0x100, 16).substring(1));
+		try {
+			for (int i=LEN_CMD_BYTES; i<(LEN_CMD_BYTES+LEN_KEY_BYTES); i++) {
+				s.append(Integer.toString((recvBytes[i] & 0xff) + 0x100, 16).substring(1));
+			}
+		} catch (IndexOutOfBoundsException e) {
+			// do nothing.
+			System.out.println("Not enough bytes for KEY field.");
 		}
 		s.append(" ");
 
