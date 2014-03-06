@@ -38,6 +38,9 @@ public class Service extends Thread {
 			System.out.println("Failed to bind to port " + servPort);
 			return;
 		} 
+		
+		// start handler thread
+		handler.start();
 
 		// we are listening, so now allocated a ThreadPool to handle new sockets connections
 		executor = Executors.newFixedThreadPool(30);

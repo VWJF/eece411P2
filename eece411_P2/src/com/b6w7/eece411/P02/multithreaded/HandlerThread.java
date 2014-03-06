@@ -9,11 +9,12 @@ public class HandlerThread extends Thread implements PostCommand {
 	public boolean keepRunning = true;
 
 	public HandlerThread() {
-
+		System.out.println("HandlerThread() constructor");
 	}
 
 	@Override
 	public void run() {
+		System.out.println("HandlerThread()::run() start");
 
 		Command cmd = null;
 
@@ -24,6 +25,7 @@ public class HandlerThread extends Thread implements PostCommand {
 			if (null == cmd) {
 				synchronized(inQueue) {
 					try {
+						System.out.println("HandlerThread()::run() waiting on inQueue");
 						inQueue.wait();
 					} catch (InterruptedException e) {	/* do nothing. */ }
 				}
@@ -32,13 +34,16 @@ public class HandlerThread extends Thread implements PostCommand {
 				cmd.execute();
 			}
 		}
+		System.out.println("HandlerThread()::run() end");
 	}
 
 	@Override
 	public void post(Command cmd) {
+		System.out.println("HandlerThread()::post() start");
 		synchronized(inQueue) {
 			inQueue.add(cmd);
 			inQueue.notifyAll();
 		}
+		System.out.println("HandlerThread()::post() end");
 	}
 }

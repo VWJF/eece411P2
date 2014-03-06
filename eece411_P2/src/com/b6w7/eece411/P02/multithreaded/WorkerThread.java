@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 
-import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Request;
 
@@ -75,7 +74,7 @@ public class WorkerThread extends Thread {
 					try {
 						Thread.sleep(100);
 					} catch (InterruptedException e) { /* do nothing */ }
-			} while (((new Date().getTime() - timeStart) < 5000));
+			} while (((new Date().getTime() - timeStart) < 5000) && totalBytesReceived < CMDSIZE);
 
 			// if we did not receive the command within the time frame, throw exception.
 			if (totalBytesReceived < CMDSIZE) {
@@ -97,7 +96,7 @@ public class WorkerThread extends Thread {
 					try {
 						Thread.sleep(100);
 					} catch (InterruptedException e) { /* do nothing */ }
-			} while (((new Date().getTime() - timeStart) < 5000));
+			} while (((new Date().getTime() - timeStart) < 5000) && totalBytesReceived < CMDSIZE);
 
 			// if we did not receive the command within the time frame, throw exception.
 			if (totalBytesReceived < CMDSIZE + KEYSIZE) {
@@ -129,7 +128,7 @@ public class WorkerThread extends Thread {
 						try {
 							Thread.sleep(100);
 						} catch (InterruptedException e) { /* do nothing */ }
-				} while (((new Date().getTime() - timeStart) < 5000));
+				} while (((new Date().getTime() - timeStart) < 5000) && totalBytesReceived < CMDSIZE);
 
 				// if we did not receive the command within the time frame, throw exception.
 				if (totalBytesReceived < VALUESIZE + KEYSIZE + CMDSIZE) {
@@ -231,7 +230,7 @@ public class WorkerThread extends Thread {
 
 
 		} catch (IOException e1) {
-			// TODO:
+			// TODO: remove printStackTrace()
 			// Error in reading and writing to output stream.
 			e1.printStackTrace();
 			System.out.println("Socket exception when reading/sending data.");
@@ -256,12 +255,10 @@ public class WorkerThread extends Thread {
 					System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
 					socket.close();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 		}
-
 	}
 }
 
