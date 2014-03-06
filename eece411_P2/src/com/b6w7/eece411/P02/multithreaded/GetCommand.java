@@ -15,15 +15,12 @@ public class GetCommand extends Command {
 	final byte cmd;
 	final ByteBuffer key;
 
-	//final Map<String, String> map;
-	final ReplyCommand reply;
-	
 	byte replyCode;
 	ByteBuffer replyValue;
 
 	// protocol for Request: get command <cmd,key>
 	// protocol for Response: <cmd,value>
-	public GetCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map, ReplyCommand reply) {
+	public GetCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map) {
 		// check arguments for correctness
 				if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
 					throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -66,7 +63,6 @@ public class GetCommand extends Command {
 				 */
 
 				// TODO error check these values
-				this.reply = reply;
 				this.map = map;
 
 				// Save parameters, and 

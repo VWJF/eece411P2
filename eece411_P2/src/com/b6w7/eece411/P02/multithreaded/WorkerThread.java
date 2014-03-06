@@ -13,7 +13,7 @@ import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Request;
 
-public class WorkerThread extends Thread implements ReplyCommand {
+public class WorkerThread extends Thread {
 
 	private final Socket socket;
 	private final PostCommand db;
@@ -86,7 +86,7 @@ public class WorkerThread extends Thread implements ReplyCommand {
 			// with a total timeout of 5000ms
 			do {
 				recvMsgSize = inFromClient.read(byteBufferIn
-						, CMDSIZE + totalBytesReceived
+						, totalBytesReceived
 						, KEYSIZE + CMDSIZE - totalBytesReceived);
 				totalBytesReceived += recvMsgSize;
 				if (totalBytesReceived < KEYSIZE + CMDSIZE)
@@ -104,12 +104,12 @@ public class WorkerThread extends Thread implements ReplyCommand {
 			System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+" bytes");
 
 			//Parse and Extract relevant data -- cmd and key 
-			byte cmd;
+			byte cmdByte;
 			byte[] key;
 			byte[] value;
 
 			ByteBuffer dataRead = ByteBuffer.wrap(byteBufferIn);
-			cmd = dataRead.get();
+			cmdByte = dataRead.get();
 			key = new byte[KEYSIZE];		
 			dataRead.get(key, CMDSIZE, key.length-1);
 
@@ -117,10 +117,10 @@ public class WorkerThread extends Thread implements ReplyCommand {
 			// We try to get VALUESIZE number of bytes from pipe to decode the command
 			// retrying at 100ms intervals
 			// with a total timeout of 5000ms
-			if( cmd == (byte) Request.CMD_PUT.getCode() ){
+			if( cmdByte == (byte) Request.CMD_PUT.getCode() ){
 				do {
 					recvMsgSize = inFromClient.read(byteBufferIn
-							, KEYSIZE + CMDSIZE + totalBytesReceived
+							, totalBytesReceived
 							, VALUESIZE + KEYSIZE + CMDSIZE - totalBytesReceived);
 					totalBytesReceived += recvMsgSize;
 					if (totalBytesReceived < VALUESIZE + KEYSIZE + CMDSIZE)
@@ -146,20 +146,27 @@ public class WorkerThread extends Thread implements ReplyCommand {
 
 			String s = NodeCommands.requestByteArrayToString(dataRead.array());
 			System.out.println("Request Received(cmd,key,value): "+s.toString());
-			System.out.println("Request Received(cmd,key,value): ("+cmd+", "+key+", "+value.toString()+") ");
+			System.out.println("Request Received(cmd,key,value): ("+cmdByte+", "+key+", "+value.toString()+") ");
 
-			switch (cmd) {
+			Command cmd2;
+			switch (cmdByte) {
 			case NodeCommands.CMD_PUT:
-				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map, this));
+				cmd2 = new PutCommand(socket, cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				db.post(cmd2);
 				break;				
 			case NodeCommands.CMD_GET:
-				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map, this));
+				cmd2 = new PutCommand(socket, cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				db.post(cmd2);
 				break;				
 			case NodeCommands.CMD_REMOVE:
-				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map, this));
-				break;				
+				cmd2 = new PutCommand(socket, cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				db.post(cmd2);
+				break;
+			default:
+				cmd2 = new PutCommand(socket, cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				break;
 			}
-
+			
 			//Obtain a connected client and reply to the client with its response.
 			//Command clientToReply =	connected_clients.poll();
 
@@ -168,13 +175,17 @@ public class WorkerThread extends Thread implements ReplyCommand {
 			// We poll for result, then send it along wire
 			// retrying at 100ms intervals
 			// with a total timeout of 5000ms
+			boolean resultReady = false;
 			do {
-				if (totalBytesReceived < CMDSIZE)
-					try {
-						Thread.sleep(100);
-					} catch (InterruptedException e) { /* do nothing */ }
-			} while (((new Date().getTime() - timeStart) < 5000));
+				synchronized (cmd2.execution_completed) {
+					resultReady = cmd2.execution_completed;
+				}
+			} while (resultReady == false && ((new Date().getTime() - timeStart) < 5000));
 
+			// if we did not receive the command within the time frame, throw exception.
+			if (totalBytesReceived < CMDSIZE + KEYSIZE) {
+				throw new IOException("Timeout on channel.  TotalBytesRead = " + totalBytesReceived);
+			}
 
 			// Send reply to client
 			//			if(clientToReply != null){
@@ -242,10 +253,5 @@ public class WorkerThread extends Thread implements ReplyCommand {
 			// TODO Check for exception
 			e.printStackTrace();
 		}
-	}
-
-	@Override
-	public void replyCommand(Command cmd) {
-		// TODO Auto-generated method stub
 	}
 }

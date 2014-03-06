@@ -16,15 +16,13 @@ public class PutCommand extends Command {
 	final ByteBuffer key;
 	
 	final ByteBuffer value;
-	//final Map<String, String> map;
-	final ReplyCommand reply;
 	
 	byte replyCode;
 	ByteBuffer replyValue;
 
 	// protocol for Request: put command <cmd,key,value>
 	// protocol for Response: <cmd>
-	public PutCommand(Socket client, byte cmd, ByteBuffer key, ByteBuffer value, Map<String, String> map, ReplyCommand reply) {
+	public PutCommand(Socket client, byte cmd, ByteBuffer key, ByteBuffer value, Map<String, String> map) {
 		// check arguments for correctness
 				if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
 					throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -66,7 +64,6 @@ public class PutCommand extends Command {
  				*/
 
 				// TODO error check these values
-				this.reply = reply;
 				this.map = map;
 
 				// Save parameters, and 
