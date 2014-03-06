@@ -16,7 +16,7 @@ public class RemoveCommand extends Command {
 
 	// protocol for Request: remove command <cmd,key>
 	// protocol for Response: <cmd>
-	public RemoveCommand(byte cmd, byte[] key, Map<byte[], byte[]> map) {
+	public RemoveCommand(byte cmd, byte[] key, Map<ByteArrayWrapper, byte[]> map) {
 		// check arguments for correctness
 		if (null == key || key.length != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -75,7 +75,7 @@ public class RemoveCommand extends Command {
 	 * returns the value if the key was present in the structure, null otherwise.
 	 */
 	private byte[] remove(){
-		return map.remove(key);
+		return map.remove(new ByteArrayWrapper(key));
 		
 //		StringBuilder k = new StringBuilder();
 //		try {
