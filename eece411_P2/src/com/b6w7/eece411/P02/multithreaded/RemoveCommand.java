@@ -1,6 +1,5 @@
 package com.b6w7.eece411.P02.multithreaded;
 
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -8,14 +7,14 @@ import java.util.Map;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Reply;
 
-public class RemoveCommand implements Command {
+public class RemoveCommand extends Command {
 	private final Socket clientSock;
 	
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
 	
-	final Map<String, String> map;
+	//final Map<String, String> map;
 	final ReplyCommand reply;
 	
 	byte replyCode;
@@ -37,7 +36,7 @@ public class RemoveCommand implements Command {
 							NodeCommands.LEN_CMD_BYTES
 							+NodeCommands.LEN_KEY_BYTES
 							+NodeCommands.LEN_VALUE_BYTES);
-/*
+			/*
 				} else if (NodeCommands.CMD_GET == cmd) {
 					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
 						throw new IllegalArgumentException("key must be 32 bytes for GET operation");
@@ -62,7 +61,7 @@ public class RemoveCommand implements Command {
 						+NodeCommands.LEN_VALUE_BYTES);
 						//throw new IllegalArgumentException("Unknown command");
 				}
-*/
+				 */
 
 				// TODO error check these values
 				this.reply = reply;
@@ -98,12 +97,13 @@ public class RemoveCommand implements Command {
 
 	@Override
 	public void execute() {	
-		
-		if( remove() != null ){  
-			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-		}
-		else{
-			this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
+		synchronized(execution_completed){
+			if( remove() != null ){  
+				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+			}
+			else{
+				this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
+			}
 		}
 	}
 	

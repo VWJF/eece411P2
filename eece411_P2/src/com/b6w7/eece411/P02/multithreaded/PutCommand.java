@@ -8,14 +8,15 @@ import java.util.Map;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Reply;
 
-public class PutCommand implements Command {
+public class PutCommand extends Command {
 	private final Socket clientSock;
 	
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
+	
 	final ByteBuffer value;
-	final Map<String, String> map;
+	//final Map<String, String> map;
 	final ReplyCommand reply;
 	
 	byte replyCode;
@@ -37,7 +38,7 @@ public class PutCommand implements Command {
 							NodeCommands.LEN_CMD_BYTES
 							+NodeCommands.LEN_KEY_BYTES
 							+NodeCommands.LEN_VALUE_BYTES);
-/*
+				/*
 				} else if (NodeCommands.CMD_GET == cmd) {
 					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
 						throw new IllegalArgumentException("key must be 32 bytes for GET operation");
@@ -62,7 +63,7 @@ public class PutCommand implements Command {
 						+NodeCommands.LEN_VALUE_BYTES);
 						//throw new IllegalArgumentException("Unknown command");
 				}
-*/
+ 				*/
 
 				// TODO error check these values
 				this.reply = reply;
@@ -95,12 +96,13 @@ public class PutCommand implements Command {
 
 	@Override
 	public void execute() {	
-		
-		if( put() ){
-			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-		}
-		else{
-			this.replyCode = (byte) Reply.RPY_OUT_OF_SPACE.getCode(); 
+		synchronized(execution_completed){
+			if( put() ){
+				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+			}
+			else{
+				this.replyCode = (byte) Reply.RPY_OUT_OF_SPACE.getCode(); 
+			}
 		}
 	}
 	

@@ -8,14 +8,14 @@ import java.util.Map;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Reply;
 
-public class GetCommand implements Command {
+public class GetCommand extends Command {
 	private final Socket clientSock;
 	
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
 
-	final Map<String, String> map;
+	//final Map<String, String> map;
 	final ReplyCommand reply;
 	
 	byte replyCode;
@@ -63,7 +63,7 @@ public class GetCommand implements Command {
 						+NodeCommands.LEN_VALUE_BYTES);
 						//throw new IllegalArgumentException("Unknown command");
 				}
-*/
+				 */
 
 				// TODO error check these values
 				this.reply = reply;
@@ -96,13 +96,15 @@ public class GetCommand implements Command {
 
 	@Override
 	public void execute() {
-		ByteBuffer value_of_key =  get();
-		if( value_of_key != null ){  
-			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-			this.replyValue.put(value_of_key.array(), 0, 1024); 
-		}
-		else{
-			this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
+		synchronized(execution_completed){
+			ByteBuffer value_of_key =  get();
+			if( value_of_key != null ){  
+				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+				this.replyValue.put(value_of_key.array(), 0, 1024); 
+			}
+			else{
+				this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
+			}
 		}
 	}
 	
@@ -121,7 +123,7 @@ public class GetCommand implements Command {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
+		
 		return (val != null) ? this.replyValue = ByteBuffer.wrap(val.getBytes()) : null;
 	}
 
