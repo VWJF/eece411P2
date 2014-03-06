@@ -98,4 +98,12 @@ public class RemoveCommand extends Command {
 
 		return removed;
 	}
+	
+	@Override
+	public String toString(){
+
+		//String k = new String( key.array() );
+		String s = NodeCommands.requestByteArrayToString(buffer.array());
+		return Thread.currentThread().getName() + " "+ s.toString();
+	}
 }
