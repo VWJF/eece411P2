@@ -184,8 +184,8 @@ public class WorkerThread extends Thread {
 			} while (resultReady == false && ((new Date().getTime() - timeStart) < 5000));
 
 			// if we did not receive the command within the time frame, throw exception.
-			if (totalBytesReceived < CMDSIZE + KEYSIZE) {
-				throw new IOException("Timeout on channel.  TotalBytesRead = " + totalBytesReceived);
+			if (!resultReady) {
+				throw new IOException("Timeout on reply from database.  TotalBytesRead = " + totalBytesReceived);
 			}
 
 			// Send reply to client

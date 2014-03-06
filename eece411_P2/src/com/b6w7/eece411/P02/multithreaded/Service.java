@@ -29,23 +29,34 @@ public class Service extends Thread {
 	public void run() {
 		Socket clientSocket;
 		Runnable worker;
-		executor = Executors.newFixedThreadPool(31);
 
+		System.out.println("Server binding to port " + servPort);
+		try {
+			serverSock = new ServerSocket(servPort);
+			System.out.println("Listening for connections...");
+		} catch (IOException e1) {
+			System.out.println("Failed to bind to port " + servPort);
+			return;
+		} 
+
+		// we are listening, so now allocated a ThreadPool to handle new sockets connections
+		executor = Executors.newFixedThreadPool(30);
+
+		System.out.println("Listening for connections...");
 		while (keepRunning) {
 			try {
-				serverSock = new ServerSocket(servPort);  // Start listening for connections
 
-				clientSocket = serverSock.accept();       // Get client connection, Blocking call
-
+				// Spawn a new socket when client connects
+				clientSocket = serverSock.accept();
 				System.out.println("Handling client at " +
 						clientSocket.getInetAddress().getHostAddress());
 
+				// Spawn a worker thread for the client socket and schedule to start
 				worker = new WorkerThread(clientSocket, handler, data);
-
 				executor.execute(worker);
 
 			} catch (IOException e) {
-				System.out.println("Unknown IO Exception");
+				System.out.println("Unknown IO Exception, closing the client socket");
 			}
 		}
 
@@ -68,8 +79,25 @@ public class Service extends Thread {
 	}
 
 	public static void main(String[] args) {
+		if (args.length != 1) {
+			printUsage();
+			return;
+		}
+		
 		int servPort = Integer.parseInt(args[0]);
 		Service service = new Service(servPort);
 		service.start();
 	}
+	
+	private static void printUsage() {
+		System.out.println("USAGE:\n"
+				+ " java -cp"
+				+ " <file.jar>"
+				+ " <server port>");
+		System.out.println("EXAMPLE:\n"
+				+ " java -cp"
+				+ " P02.jar"
+				+ " 55699");
+	}
+
 }
