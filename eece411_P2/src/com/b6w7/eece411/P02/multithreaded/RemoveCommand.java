@@ -8,8 +8,6 @@ import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Reply;
 
 public class RemoveCommand extends Command {
-	private final Socket clientSock;
-
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
@@ -19,7 +17,7 @@ public class RemoveCommand extends Command {
 
 	// protocol for Request: remove command <cmd,key>
 	// protocol for Response: <cmd>
-	public RemoveCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map) {
+	public RemoveCommand(byte cmd, ByteBuffer key, Map<String, String> map) {
 		// check arguments for correctness
 		if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -56,14 +54,6 @@ public class RemoveCommand extends Command {
 					buffer.put(value);
 				}
 		 */
-
-		// check arguments for correctness
-		if (client == null) {
-			throw new IllegalArgumentException("client socket cannot be null");
-		}
-
-		this.clientSock = client;
-
 	}
 
 	@Override

@@ -43,20 +43,28 @@ public class Service extends Thread {
 				worker = new WorkerThread(clientSocket, handler, data);
 
 				executor.execute(worker);
-				
+
 			} catch (IOException e) {
 				System.out.println("Unknown IO Exception");
 			}
 		}
-		
-		handler.keepRunning = false;
-		
-		executor.shutdown();
 
+		System.out.println("Waiting worker threads to stop");
+		executor.shutdown();
 		while (!executor.isTerminated()) {
 		}
 
-		System.out.println("Finished all threads");
+		System.out.println("Waiting for handler thread to stop");
+		if (null != handler) {
+			handler.keepRunning = false;
+			do {
+				try {
+					handler.join();
+				} catch (InterruptedException e) { /* do nothing */ }
+			} while (handler.isAlive());
+		}
+		
+		System.out.println("All threads completed");
 	}
 
 	public static void main(String[] args) {
