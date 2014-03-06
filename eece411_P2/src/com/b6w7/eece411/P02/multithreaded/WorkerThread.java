@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 
-import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.NodeCommands;
 import com.b6w7.eece411.P02.NodeCommands.Request;
 
@@ -256,7 +255,6 @@ public class WorkerThread extends Thread {
 					System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
 					socket.close();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
