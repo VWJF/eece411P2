@@ -111,7 +111,14 @@ public class GetCommand extends Command {
 			e.printStackTrace();
 		}
 		
-		return (val != null) ? ByteBuffer.wrap(val.getBytes()) : null;
+		if (val == null) {
+			System.out.println("  &&&  val is null");
+			return null;
+		} else {
+			System.out.println("  &&&  val.length()=="+val.length());
+			System.out.println("  &&&  val.getBytes().length=="+val.getBytes().length);
+			return ByteBuffer.wrap(val.getBytes());
+		}
 	}
 	
 	@Override
