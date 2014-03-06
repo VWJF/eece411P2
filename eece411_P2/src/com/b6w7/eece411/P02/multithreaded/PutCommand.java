@@ -113,7 +113,15 @@ public class PutCommand extends Command {
 			//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
 			return false;
 		}
-
+		System.out.println("key.length: "+k.length() +
+							" this.key.array.length: "+this.key.array().length);
+		System.out.println("value.length: "+s.length() +
+						" this.value.array.length: "+this.value.array().length);
+		
+		if (k.length() != 32 || s.length() != 1024){
+			System.out.println("****");
+		}
+		
 		map.put(k.toString(),s.toString() );
 		//	Command.numElements++;
 

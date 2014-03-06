@@ -53,6 +53,8 @@ public class GetCommand extends Command {
 		if( value_of_key != null ){  
 			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
 			this.replyValue = ByteBuffer.allocate( NodeCommands.LEN_VALUE_BYTES );
+			System.out.println("val_of_key.array.length: "+value_of_key.array().length +
+								" val_of_key.capacity: "+value_of_key.capacity() );
 			this.replyValue.put(value_of_key.array(), 0, NodeCommands.LEN_VALUE_BYTES); 
 		}
 		else{
@@ -102,7 +104,7 @@ public class GetCommand extends Command {
 			if(val != null){
 				System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(val.getBytes("UTF-8")) );
 				System.out.println("val.length: "+val.length() +
-						"val.getbytes.length: "+val.getBytes().length);
+									" val.getbytes.length: "+val.getBytes().length);
 				}
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
