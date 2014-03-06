@@ -1,6 +1,5 @@
 package com.b6w7.eece411.P02.multithreaded;
 
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -58,13 +57,14 @@ public class RemoveCommand extends Command {
 
 	@Override
 	public void execute() {	
+		if( remove() != null ){  
+			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+		}
+		else{
+			this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
+		}
 		synchronized(execution_completed){
-			if( remove() != null ){  
-				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-			}
-			else{
-				this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
-			}
+			execution_completed = true;
 		}
 	}
 
@@ -73,7 +73,7 @@ public class RemoveCommand extends Command {
 	 */
 	@Override
 	public ByteBuffer getReply(){
-		
+
 		ByteBuffer response = ByteBuffer.allocate( 1 );
 		response.put(replyCode);
 		if(replyValue != null){
@@ -82,10 +82,10 @@ public class RemoveCommand extends Command {
 			replyValue.rewind();
 			response.put(replyValue);
 		}
-		
+
 		return response;
 	}
-	
+
 	/*
 	 * removes the (key,value) pair from the data structure. 
 	 * returns the value if the key was present in the structure, null otherwise.

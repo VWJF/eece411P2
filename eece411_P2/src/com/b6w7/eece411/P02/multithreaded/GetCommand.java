@@ -1,7 +1,6 @@
 package com.b6w7.eece411.P02.multithreaded;
 
 import java.io.UnsupportedEncodingException;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -50,16 +49,16 @@ public class GetCommand extends Command {
 
 	@Override
 	public void execute() {
-			ByteBuffer value_of_key =  get();
-			if( value_of_key != null ){  
-				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-				this.replyValue.put(value_of_key.array(), 0, 1024); 
-			}
-			else{
-				this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
-			}
+		ByteBuffer value_of_key =  get();
+		if( value_of_key != null ){  
+			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+			this.replyValue.put(value_of_key.array(), 0, 1024); 
+		}
+		else{
+			this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
+		}
 		synchronized(execution_completed){
-				execution_completed = true;
+			execution_completed = true;
 		}
 	}
 	

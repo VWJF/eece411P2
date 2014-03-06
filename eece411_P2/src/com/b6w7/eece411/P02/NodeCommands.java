@@ -124,7 +124,7 @@ public class NodeCommands {
 		byte valueArrayTemp[] = null;
 
 		try {
-			Arrays.copyOfRange(recvBytes, LEN_CMD_BYTES+LEN_KEY_BYTES, LEN_CMD_BYTES+LEN_KEY_BYTES+LEN_VALUE_BYTES);
+			valueArrayTemp = Arrays.copyOfRange(recvBytes, LEN_CMD_BYTES+LEN_KEY_BYTES, LEN_CMD_BYTES+LEN_KEY_BYTES+LEN_VALUE_BYTES);
 
 			// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
 			s.append(new String(valueArrayTemp, "UTF-8"));
