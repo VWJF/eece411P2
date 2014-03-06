@@ -119,8 +119,8 @@ public class TestNode {
 	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
-//				populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//				populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_REMOVE, "Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
 		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
@@ -141,7 +141,7 @@ public class TestNode {
 
 		populateOneTest(NodeCommands.CMD_GET, "localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
 
-//		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
 
 	}
 
@@ -207,7 +207,7 @@ public class TestNode {
 				try {
 					System.out.print("\t-Writing Test.");
 					// initiate test with node by sending the test command
-					clientSocket = new Socket("localhost", serverPort);
+					clientSocket = new Socket(address, serverPort);
 					clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
 					System.out.println("Connected to server ...");
 
@@ -302,6 +302,7 @@ public class TestNode {
 				} catch (IOException e) {
 					System.out.println("### TEST "+test.index+" FAILED - network error");
 					testFailed++;
+					e.printStackTrace();
 
 				} finally {
 					if (clientSocket != null && null != inFromServer) { 
