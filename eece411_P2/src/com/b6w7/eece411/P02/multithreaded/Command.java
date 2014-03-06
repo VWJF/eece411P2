@@ -6,7 +6,7 @@ public abstract class Command {
 	
 	protected static final int MAX_MEMORY = 40000;
 	
-	protected Map<byte[], byte[]> map;// = new HashMap<String, String>();
+	protected Map<ByteArrayWrapper, byte[]> map;// = new HashMap<String, String>();
 
 	protected Boolean execution_completed = false;
 
