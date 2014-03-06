@@ -16,7 +16,7 @@ public class PutCommand extends Command {
 
 	// protocol for Request: put command <cmd,key,value>
 	// protocol for Response: <cmd>
-	public PutCommand(byte cmd, byte[] key, byte[] value, Map<byte[], byte[]> map) {
+	public PutCommand(byte cmd, byte[] key, byte[] value, Map<ByteArrayWrapper, byte[]> map) {
 		// check arguments for correctness
 		if (null == key || key.length != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -109,13 +109,14 @@ private boolean put(){
 						System.out.println("value.length: "+value.length);
 					}
 
-					map.put(key, value);
+					
+					map.put(new ByteArrayWrapper(key), value);
 					
 					System.out.println("TESTING POST PUT COMMAND");
-					byte[] test = map.get(key);
-					
-					System.out.println("test bytes: "+NodeCommands.byteArrayAsString(test) );
-					System.out.println("test.length: "+test.length);
+//					byte[] test = map.get(key);
+//					
+//					System.out.println("test bytes: "+NodeCommands.byteArrayAsString(test) );
+//					System.out.println("test.length: "+test.length);
 					return true;
 				}
 		//		System.out.println("key.length: "+k.length() +
