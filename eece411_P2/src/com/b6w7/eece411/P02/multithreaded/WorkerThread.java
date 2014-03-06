@@ -110,8 +110,7 @@ public class WorkerThread extends Thread {
 
 			ByteBuffer dataRead = ByteBuffer.wrap(byteBufferIn);
 			cmdByte = dataRead.get();
-			key = new byte[KEYSIZE];		
-			dataRead.get(key, CMDSIZE, key.length-1);
+			key = Arrays.copyOfRange(dataRead.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 
 			// next, only if the command is a put, we also want to decode the value 
 			// We try to get VALUESIZE number of bytes from pipe to decode the command
