@@ -15,11 +15,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
 
-
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.NodeCommands;
+import com.b6w7.eece411.P02.multithreaded.Service;
 /**
- * A test class for testing {@link Node}
+ * A test class for testing {@link Service}
  * 
  * @author Scott Hazlett
  * @author Ishan Sahay
@@ -29,6 +29,7 @@ public class TestNode {
 
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
+	private static boolean IS_VERBOSE = false;
 
 	private MessageDigest md;
 
@@ -117,7 +118,7 @@ public class TestNode {
 			}
 
 		} catch (BufferOverflowException e) {
-			System.out.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
+			System.err.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 	}
 
@@ -133,7 +134,7 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_PUT, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+//		populateOneTest(NodeCommands.CMD_PUT, thisThread+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 
 		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
@@ -148,9 +149,7 @@ public class TestNode {
 
 		populateOneTest(NodeCommands.CMD_GET, thisThread+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
 
-
 		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, thisThread+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
-
 	}
 
 
@@ -168,13 +167,18 @@ public class TestNode {
 		try {
 			serverPort = Integer.parseInt(args[1]);
 		} catch (NumberFormatException e1) {
-			System.out.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
+			System.err.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
 			printUsage();
 			return;
 		}
 		
-		TestNode testNode = new TestNode(serverURL, serverPort);
-		testNode.start();
+		List<TestNode> list = new LinkedList<TestNode>();
+		
+		for (int i=0; i<100; i++)
+			list.add(new TestNode(serverURL, serverPort));
+		
+		while (!list.isEmpty())
+			list.remove(0).start();
 	}
 	
 	public TestNode(String url, int port) {
@@ -213,22 +217,22 @@ public class TestNode {
 			boolean isPass;
 			String failMessage = null;
 
-			System.out.println("-------------- Start Running Tests --------------");
+			if (IS_VERBOSE) System.out.println("-------------- Start Running Tests --------------");
 
 			for (TestData test : tests) {
 				isPass = true;
 
-				System.out.println();
+				if (IS_VERBOSE) System.out.println();
 				System.out.println("--- Running Test: "+test);
 
 
 				try {
 					//Thread.sleep(1000);
-					System.out.print("\t-Writing Test.");
+					if (IS_VERBOSE) System.out.print("\t-Writing Test.");
 					// initiate test with node by sending the test command
 					clientSocket = new Socket(address, port);
 					clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
-					System.out.println("Connected to server ...");
+					if (IS_VERBOSE) System.out.println("Connected to server ...");
 
 					outToServer = new DataOutputStream(clientSocket.getOutputStream());
 					inFromServer = new BufferedInputStream(clientSocket.getInputStream() );
@@ -242,7 +246,7 @@ public class TestNode {
 					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
 					int numBytesRead;
 
-					System.out.print("-Reading Answer.");
+					if (IS_VERBOSE) System.out.print("-Reading Answer.");
 					while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
 
 					if ( numBytesRead > 1 ) {
@@ -265,7 +269,7 @@ public class TestNode {
 						failMessage = "expected reply "+expectedReplyString;
 					}
 
-					System.out.print("-Reading Value of GET.");
+					if (IS_VERBOSE) System.out.print("-Reading Value of GET.");
 					int bytesRead = 0;
 					int totalBytesRead = 0;
 					// If test was a GET command, then additionally read pipe for reply and verify result
@@ -284,21 +288,21 @@ public class TestNode {
 						}
 					}
 
-					System.out.print("-Reading Excess byte in pipe. \n");
-					try {
-						if (isPass && (inFromServer.read() > 0)) {
-							// So far so good, but let's make sure there is no more data on the socket.
-							// If we read even one byte, then this is a failed test.
-							isPass = false;
-							failMessage = "excess bytes in pipe [totalBytesRead == "+totalBytesRead+ "]";
-						}
-					} catch (SocketTimeoutException e) {
-						// read() is a blocking operation, and we did not find any more bytes in the pipe
-						// so we are satisfied that the test passed.  do nothing here.
-					}
+//					if (IS_VERBOSE) System.out.print("-Reading Excess byte in pipe. \n");
+//					try {
+//						if (isPass && (inFromServer.read() > 0)) {
+//							// So far so good, but let's make sure there is no more data on the socket.
+//							// If we read even one byte, then this is a failed test.
+//							isPass = false;
+//							failMessage = "excess bytes in pipe [totalBytesRead == "+totalBytesRead+ "]";
+//						}
+//					} catch (SocketTimeoutException e) {
+//						// read() is a blocking operation, and we did not find any more bytes in the pipe
+//						// so we are satisfied that the test passed.  do nothing here.
+//					}
 
-					System.out.println("\tAbout socket: "+clientSocket.toString());
-					System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
+					if (IS_VERBOSE) System.out.println("\tAbout socket: "+clientSocket.toString());
+					if (IS_VERBOSE) System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
 							", isClosed: "+clientSocket.isClosed()+
 							", isInputShutdown: "+clientSocket.isInputShutdown()+
 							", isOutputShutdown "+clientSocket.isOutputShutdown()			
@@ -309,28 +313,28 @@ public class TestNode {
 						System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
 						testPassed++;
 					} else {
-						System.out.println("### TEST "+test.index+" FAILED - " + failMessage);
+						System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
 						testFailed++;
 					}
 
 
 				} catch (SocketTimeoutException e) {
-					System.out.println("### TEST "+test.index+" FAILED - timeout on network operation");
+					System.err.println("### TEST "+test.index+" FAILED - timeout on network operation");
 					testFailed++;
 
 				} catch (IOException e) {
-					System.out.println("### TEST "+test.index+" FAILED - network error");
+					System.err.println("### TEST "+test.index+" FAILED - network error");
 					testFailed++;
 					e.printStackTrace();
 
 				} finally {
 					if (clientSocket != null && null != inFromServer) { 
-						try {
-							while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > 0) {
-								// regardless of whether the test passed or failed,
-								// we want to slurp the pipe so that the subsequent test will be unaffected
-							}
-						} catch (SocketTimeoutException e) { /* do nothing */ }
+//						try {
+//							while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > 0) {
+//								// regardless of whether the test passed or failed,
+//								// we want to slurp the pipe so that the subsequent test will be unaffected
+//							}
+//						} catch (SocketTimeoutException e) { /* do nothing */ }
 						
 						try {
 							clientSocket.close();
@@ -339,7 +343,8 @@ public class TestNode {
 				}
 			}
 
-			System.out.println("-------------- Finished Running Tests --------------");
+			if (IS_VERBOSE) System.out.println("-------------- Finished Running Tests --------------");
+			
 			System.out.println("-------------- Passed/Fail = "+ testPassed+"/"+testFailed +" ------------------");
 
 

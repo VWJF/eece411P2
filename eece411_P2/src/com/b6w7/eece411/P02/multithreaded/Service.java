@@ -42,6 +42,8 @@ public class Service extends Thread implements JoinThread {
 		boolean doServe;
 		boolean hasExceeded;
 
+		int numAvailableThreads;
+		
 		System.out.println("Server binding to port " + servPort);
 		try {
 			serverSock = new ServerSocket(servPort, server_backlog, InetAddress.getLocalHost());
@@ -71,17 +73,20 @@ public class Service extends Thread implements JoinThread {
 					// then we simply close the socket and do not reply to client
 					if (threadSem == 0) {
 						hasExceeded = true;
+						numAvailableThreads = threadSem;
 
 					} else if (threadSem <= NUM_TCP_REJECTIONS) {
 						// we cannot service this TCP connection, but
 						// we still have a few TCP connections available, so
 						// we reply that server is overloaded
 						threadSem --;
+						numAvailableThreads = threadSem;
 
 					} else {
 						// we have available a TCP socket to service this client
 						doServe = true;
 						threadSem --;
+						numAvailableThreads = threadSem;
 					}
 				}
 
@@ -91,8 +96,8 @@ public class Service extends Thread implements JoinThread {
 					continue;
 				}
 
-				System.out.println("Handling client at " +
-						clientSocket.getInetAddress().getHostAddress());
+				System.err.println("Handling client at " +
+						clientSocket.getInetAddress().getHostAddress() + " with " + numAvailableThreads + " threads available.");
 
 				if (doServe) {
 					// Spawn a worker thread to service the client 
