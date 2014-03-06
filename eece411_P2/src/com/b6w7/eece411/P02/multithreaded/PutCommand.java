@@ -89,11 +89,7 @@ public class PutCommand extends Command {
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
 
 		StringBuilder s = new StringBuilder();
-		/*
-		for (int i=0; i<(NodeCommands.LEN_VALUE_BYTES); i++) { 
-			s.append(Integer.toString((this.value.array()[i] & 0xff) + 0x100, 16).substring(1));
-		}
-		 */
+		StringBuilder k = new StringBuilder();
 
 		try {
 			s.append(new String(this.value.array(), "UTF-8"));
@@ -101,18 +97,24 @@ public class PutCommand extends Command {
 			s.append(new String(this.value.array()));
 		}
 
-		String k = new String(key.array());
-		System.out.println("put (key,value): ("+k+", "+s.toString()+")");
+		try {
+			k.append(new String(this.key.array(), "UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			k.append(new String(this.key.array()));
+		}
+		
+
+		System.out.println("put (key,value): ("+k.toString()+", "+s.toString()+")");
 		System.out.println("put key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
 		System.out.println("put value bytes: "+NodeCommands.byteArrayAsString((s.toString().getBytes())) );
 
 		if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
-			System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k+", "+s.toString()+")");
+			System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
 			//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
 			return false;
 		}
 
-		map.put(new String(key.array()), new String(this.value.array()) );
+		map.put(k.toString(),s.toString() );
 		//	Command.numElements++;
 
 		return true;

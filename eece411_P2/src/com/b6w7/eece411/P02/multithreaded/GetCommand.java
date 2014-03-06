@@ -84,9 +84,16 @@ public class GetCommand extends Command {
 	private ByteBuffer get(){
 	// TODO: Can be improved (with Error checking, Exception checking, etc.)
 
-		String k = new String( key.array() );
-		String val = map.get( k );
-		System.out.println("get (key, value): ("+k+", "+val+")");
+		StringBuilder k = new StringBuilder();
+		
+		try {
+			k.append(new String(this.key.array(), "UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			k.append(new String(this.key.array()));
+		}
+		
+		String val = map.get( k.toString() );
+		System.out.println("get (key, value): ("+k.toString()+", "+val+")");
 		try {
 			System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
 			if(val != null){

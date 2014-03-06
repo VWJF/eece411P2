@@ -1,5 +1,6 @@
 package com.b6w7.eece411.P02.multithreaded;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -92,7 +93,15 @@ public class RemoveCommand extends Command {
 	 */
 	private String remove(){
 		// TODO: Can be improved (with Error checking, Exception checking, etc.)
-		String removed = map.remove(new String(key.array()));
+		
+		StringBuilder k = new StringBuilder();
+		try {
+			k.append(new String(this.key.array(), "UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			k.append(new String(this.key.array()));
+		}
+		
+		String removed = map.remove(k.toString());
 		//if(removed == null)
 		//	Command.numElements--;
 
