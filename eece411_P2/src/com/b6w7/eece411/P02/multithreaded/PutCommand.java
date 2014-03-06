@@ -55,13 +55,14 @@ public class PutCommand extends Command {
 
 	@Override
 	public void execute() {	
+		if( put() ){
+			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+		}
+		else{
+			this.replyCode = (byte) Reply.RPY_OUT_OF_SPACE.getCode(); 
+		}
 		synchronized(execution_completed){
-			if( put() ){
-				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-			}
-			else{
-				this.replyCode = (byte) Reply.RPY_OUT_OF_SPACE.getCode(); 
-			}
+			execution_completed = true;
 		}
 	}
 	
