@@ -150,18 +150,22 @@ public class WorkerThread extends Thread {
 
 			switch (cmdByte) {
 			case NodeCommands.CMD_PUT:
+				System.out.println("Issuing PUT.");
 				cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
 				db.post(cmd);
 				break;				
 			case NodeCommands.CMD_GET:
-				cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				System.out.println("Issuing GET.");
+				cmd = new GetCommand(cmdByte, ByteBuffer.wrap(key), map);
 				db.post(cmd);
 				break;				
 			case NodeCommands.CMD_REMOVE:
-				cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				System.out.println("Issuing REMOVE.");
+				cmd = new RemoveCommand(cmdByte, ByteBuffer.wrap(key), map);
 				db.post(cmd);
 				break;		
 			default:
+				System.out.println("Issuing UNRECOGNIZED.");
 				cmd = new UnrecognizedCommand();
 
 			}
