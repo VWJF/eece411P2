@@ -52,6 +52,7 @@ public class GetCommand extends Command {
 		ByteBuffer value_of_key =  get();
 		if( value_of_key != null ){  
 			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
+			this.replyValue = ByteBuffer.allocate( NodeCommands.LEN_VALUE_BYTES);
 			this.replyValue.put(value_of_key.array(), 0, 1024); 
 		}
 		else{
@@ -68,10 +69,10 @@ public class GetCommand extends Command {
 	@Override
 	public ByteBuffer getReply(){
 		
-		ByteBuffer response = ByteBuffer.allocate( 1 );
+		ByteBuffer response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 		response.put(replyCode);
 		if(replyValue != null){
-			response = ByteBuffer.allocate( 1 + replyValue.capacity());
+			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
 			response.put(replyCode);
 			replyValue.rewind();
 			response.put(replyValue);
@@ -104,7 +105,7 @@ public class GetCommand extends Command {
 			e.printStackTrace();
 		}
 		
-		return (val != null) ? this.replyValue = ByteBuffer.wrap(val.getBytes()) : null;
+		return (val != null) ? ByteBuffer.wrap(val.getBytes()) : null;
 	}
 	
 	@Override

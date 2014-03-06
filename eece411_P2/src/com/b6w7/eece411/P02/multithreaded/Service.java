@@ -20,9 +20,10 @@ public class Service extends Thread implements JoinThread {
 	private final Map<String, String> data = new HashMap<String, String>();
 	private final HandlerThread handler = new HandlerThread();
 
+	private int server_backlog = MAX_ACTIVE_TCP_CONNECTIONS;
+
 	private ServerSocket serverSock;
 	private int servPort;
-	private int backlog = 20;
 	private ExecutorService executor;
 	private boolean keepRunning = true;
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
@@ -43,7 +44,7 @@ public class Service extends Thread implements JoinThread {
 
 		System.out.println("Server binding to port " + servPort);
 		try {
-			serverSock = new ServerSocket(servPort, backlog, InetAddress.getLocalHost());
+			serverSock = new ServerSocket(servPort, server_backlog, InetAddress.getLocalHost());
 			System.out.println("Listening for connections...");
 			System.out.println("Server binding to port " + servPort + " with address: "+InetAddress.getLocalHost());
 		} catch (IOException e1) {
