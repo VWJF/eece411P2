@@ -89,6 +89,7 @@ public class Launcher0 {
 			//	clientSocket.close();
 			//	continue READLOOP;
 			//}
+			
 			end_of_loop = false;
 
 			ClientLoop:while ( !end_of_loop && (recvMsgSize = inFromClient.read(byteBufferIn, 0, CMDSIZE)) > -1 ) {		

@@ -14,9 +14,6 @@ public class RemoveCommand extends Command {
 	final byte cmd;
 	final ByteBuffer key;
 
-	//final Map<String, String> map;
-	//final ReplyCommand reply;
-
 	byte replyCode;
 	ByteBuffer replyValue;
 
@@ -37,6 +34,7 @@ public class RemoveCommand extends Command {
 		//value = null;
 
 
+
 		// TODO error check these values
 		this.map = map;
 
@@ -50,6 +48,14 @@ public class RemoveCommand extends Command {
 		buffer.put(cmd);
 		key.rewind();
 		buffer.put(key);
+
+		/*
+				 if (null != value) {
+
+					value.rewind();
+					buffer.put(value);
+				}
+		 */
 
 		// check arguments for correctness
 		if (client == null) {

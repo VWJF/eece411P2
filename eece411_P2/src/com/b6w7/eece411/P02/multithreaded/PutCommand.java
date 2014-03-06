@@ -16,8 +16,6 @@ public class PutCommand extends Command {
 	final ByteBuffer key;
 
 	final ByteBuffer value;
-	//final Map<String, String> map;
-	//final ReplyCommand reply;
 
 	byte replyCode;
 	ByteBuffer replyValue;

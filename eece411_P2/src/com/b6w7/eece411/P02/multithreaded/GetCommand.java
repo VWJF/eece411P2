@@ -15,9 +15,7 @@ public class GetCommand extends Command {
 	final byte cmd;
 	final ByteBuffer key;
 
-	//final Map<String, String> map;
-	//final ReplyCommand reply;
-	
+
 	byte replyCode;
 	ByteBuffer replyValue;
 
