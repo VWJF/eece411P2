@@ -126,57 +126,11 @@ public class WorkerThread extends Thread {
 						} catch (InterruptedException e) { /* do nothing */ }
 				} while (((new Date().getTime() - timeStart) < 5000) && totalBytesReceived < CMDSIZE);
 
-<<<<<<< HEAD
+
 				// if we did not receive the command within the time frame, throw exception.
 				if (totalBytesReceived < CMDSIZE + KEYSIZE) {
 					throw new IOException("Timeout on channel.  TotalBytesRead = " + totalBytesReceived);
-=======
-			} else {
-				System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+" bytes");
-			}
 
-			dataRead = ByteBuffer.wrap(	byteBufferIn );
-			value = Arrays.copyOfRange(dataRead.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-
-			String s = NodeCommands.requestByteArrayToString(dataRead.array());
-			System.out.println("Request Received(cmd,key,value): "+s.toString());
-			System.out.println("Request Received(cmd,key,value): ("+cmdByte+", "+key+", "+value.toString()+") ");
-
-			switch (cmdByte) {
-			case NodeCommands.CMD_PUT:
-				System.out.println("Issuing PUT.");
-				cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
-				db.post(cmd);
-				break;				
-			case NodeCommands.CMD_GET:
-				System.out.println("Issuing GET.");
-				cmd = new GetCommand(cmdByte, ByteBuffer.wrap(key), map);
-				db.post(cmd);
-				break;				
-			case NodeCommands.CMD_REMOVE:
-				System.out.println("Issuing REMOVE.");
-				cmd = new RemoveCommand(cmdByte, ByteBuffer.wrap(key), map);
-				db.post(cmd);
-				break;		
-			default:
-				System.out.println("Issuing UNRECOGNIZED.");
-				cmd = new UnrecognizedCommand();
-
-			}
-
-			//Obtain a connected client and reply to the client with its response.
-			//Command clientToReply =	connected_clients.poll();
-
-			// We have sent the command to be processed,
-			// now we wait for asynchronous reply.
-			// We poll for result, then send it along wire
-			// retrying at 100ms intervals
-			// with a total timeout of 5000ms
-			boolean resultReady = false;
-			do {
-				synchronized (cmd.execution_completed) {
-					resultReady = cmd.execution_completed;
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 				}
 
 				//Parse and Extract relevant data -- cmd and key 
