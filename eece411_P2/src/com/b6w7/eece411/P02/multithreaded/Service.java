@@ -9,8 +9,14 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class Service extends Thread {
+public class Service extends Thread implements JoinThread {
 
+	// 30 max on planetlab
+	// -1 for serverSocket itself that listens which is also a TCP connection
+	// -1 for SSH connections for debugging
+	// -5 for various planetlab connections occurring in background
+	private static final int MAX_ACTIVE_TCP_CONNECTIONS = 30 -1 -1 -5;
+	private static final int NUM_TCP_REJECTIONS = 2;
 	private final Map<String, String> data = new HashMap<String, String>();
 	private final HandlerThread handler = new HandlerThread();
 
@@ -19,6 +25,7 @@ public class Service extends Thread {
 	private int backlog = 20;
 	private ExecutorService executor;
 	private boolean keepRunning = true;
+	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
 	public Service(int servPort) {
 		this.servPort = servPort;
@@ -31,6 +38,8 @@ public class Service extends Thread {
 	public void run() {
 		Socket clientSocket;
 		Runnable worker;
+		boolean doServe;
+		boolean hasExceeded;
 
 		System.out.println("Server binding to port " + servPort);
 		try {
@@ -41,22 +50,58 @@ public class Service extends Thread {
 			System.out.println("Failed to bind to port " + servPort);
 			return;
 		} 
-		
+
 		// start handler thread
 		handler.start();
 
 		// we are listening, so now allocated a ThreadPool to handle new sockets connections
-		executor = Executors.newFixedThreadPool(30);
+		executor = Executors.newFixedThreadPool(MAX_ACTIVE_TCP_CONNECTIONS);
 
 		while (keepRunning) {
 			try {
+				doServe = false;
+				hasExceeded = false;
+
 				// Spawn a new socket when client connects
 				clientSocket = serverSock.accept();
+
+				synchronized (threadSem) {
+					// unexpected but if we hit 0 TCP connections allowed, 
+					// then we simply close the socket and do not reply to client
+					if (threadSem == 0) {
+						hasExceeded = true;
+
+					} else if (threadSem <= NUM_TCP_REJECTIONS) {
+						// we cannot service this TCP connection, but
+						// we still have a few TCP connections available, so
+						// we reply that server is overloaded
+						threadSem --;
+
+					} else {
+						// we have available a TCP socket to service this client
+						doServe = true;
+						threadSem --;
+					}
+				}
+
+				if (hasExceeded) {
+					System.err.println("Exceeded maximum of " + MAX_ACTIVE_TCP_CONNECTIONS + " connections.  Closing incoming socket.");
+					clientSocket.close();
+					continue;
+				}
+
 				System.out.println("Handling client at " +
 						clientSocket.getInetAddress().getHostAddress());
 
-				// Spawn a worker thread for the client socket and schedule to start
-				worker = new WorkerThread(clientSocket, handler, data);
+				if (doServe) {
+					// Spawn a worker thread to service the client 
+					worker = new WorkerThread(clientSocket, handler, data, this);
+				} else {
+					// Spawn a worker thread merely to reject the client 
+					worker = new WorkerThread(clientSocket, this);
+				}
+				
+				// schedule to start
 				executor.execute(worker);
 
 			} catch (IOException e) {
@@ -78,7 +123,7 @@ public class Service extends Thread {
 				} catch (InterruptedException e) { /* do nothing */ }
 			} while (handler.isAlive());
 		}
-		
+
 		System.out.println("All threads completed");
 	}
 
@@ -87,12 +132,12 @@ public class Service extends Thread {
 			printUsage();
 			return;
 		}
-		
+
 		int servPort = Integer.parseInt(args[0]);
 		Service service = new Service(servPort);
 		service.start();
 	}
-	
+
 	private static void printUsage() {
 		System.out.println("USAGE:\n"
 				+ " java -cp"
@@ -104,4 +149,11 @@ public class Service extends Thread {
 				+ " 55699");
 	}
 
+	@Override
+	public void announceDeath() {
+		// announce the release of a TCP resource
+		synchronized (threadSem) {
+			threadSem ++;
+		}
+	}
 }

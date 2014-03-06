@@ -14,7 +14,7 @@ public class HandlerThread extends Thread implements PostCommand {
 
 	@Override
 	public void run() {
-		System.out.println("HandlerThread()::run() start");
+//		System.out.println("HandlerThread()::run() start");
 
 		Command cmd = null;
 
@@ -34,16 +34,16 @@ public class HandlerThread extends Thread implements PostCommand {
 				cmd.execute();
 			}
 		}
-		System.out.println("HandlerThread()::run() end");
+//		System.out.println("HandlerThread()::run() end");
 	}
 
 	@Override
 	public void post(Command cmd) {
-		System.out.println("HandlerThread()::post() start");
+//		System.out.println("HandlerThread()::post() start");
 		synchronized(inQueue) {
 			inQueue.add(cmd);
 			inQueue.notifyAll();
 		}
-		System.out.println("HandlerThread()::post() end");
+//		System.out.println("HandlerThread()::post() end");
 	}
 }
