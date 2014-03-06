@@ -26,7 +26,7 @@ public class Command {
 	protected static int numElements;
 	
 	private static final byte ERROR = -1;
-	private static final byte MAX_MEMORY = 3;
+	private static final int MAX_MEMORY = 40000;
 	private static final Map<String, String> data = new HashMap<String, String>();
 	
 	private boolean execution_completed = false;

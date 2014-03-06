@@ -3,7 +3,6 @@ package com.b6w7.eece411.P02.Test;
 import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -16,6 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
 
+
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.NodeCommands;
 /**
@@ -27,14 +27,19 @@ import com.b6w7.eece411.P02.NodeCommands;
  */
 public class TestNode {
 
-	private static final int TCP_READ_TIMEOUT_MS = 0;
+	// set to 0 to disable timeout
+	private final int TCP_READ_TIMEOUT_MS = 0;
 
-	private static MessageDigest md;
+	private MessageDigest md;
 
-	private static int testPassed = 0;
-	private static int testFailed = 0;
+	private int testPassed = 0;
+	private int testFailed = 0;
 	// list of test cases, each entry representing one test case
-	private static List<TestData> tests = new LinkedList<TestData>();
+	private List<TestData> tests = new LinkedList<TestData>();
+
+	private final String url;
+	private final int port;
+	
 
 	private static void printUsage() {
 		System.out.println("USAGE:\n"
@@ -52,7 +57,7 @@ public class TestNode {
 	}
 
 
-	private static void populateOneTest(byte cmd, String keyString, String valueString, byte reply) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+	private void populateOneTest(byte cmd, String keyString, String valueString, byte reply) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// we can reuse 'value' for both the sending of a PUT as well as receiving of a GET operation,
 		// so no need two arguments
 
@@ -116,7 +121,7 @@ public class TestNode {
 		}
 	}
 
-	private static void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
 		String thisThread = Thread.currentThread().toString();
@@ -143,6 +148,7 @@ public class TestNode {
 
 		populateOneTest(NodeCommands.CMD_GET, thisThread+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
 
+
 		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, thisThread+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
 
 	}
@@ -166,18 +172,28 @@ public class TestNode {
 			printUsage();
 			return;
 		}
-
+		
+		TestNode testNode = new TestNode(serverURL, serverPort);
+		testNode.start();
+	}
+	
+	public TestNode(String url, int port) {
+		this.url = url;
+		this.port = port;
+	}
+	
+	public void start() {
 		Socket clientSocket = null;
 
 		try {
 			// There may be multiple IP addresses; but we only need one
 			// so calling .getByName() is sufficient over .getAllByName()
-			InetAddress address = InetAddress.getByName(serverURL);
+			InetAddress address = InetAddress.getByName(url);
 			System.out.println(
 					"Connecting to: " 
 							+ address.toString().replaceAll("/", " == ") 
 							+ " on port " 
-							+ serverPort);
+							+ port);
 
 			// create a TCP socket to the server
 			// Set a timeout on read operation as 3 seconds
@@ -207,9 +223,10 @@ public class TestNode {
 
 
 				try {
+					//Thread.sleep(1000);
 					System.out.print("\t-Writing Test.");
 					// initiate test with node by sending the test command
-					clientSocket = new Socket(address, serverPort);
+					clientSocket = new Socket(address, port);
 					clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
 					System.out.println("Connected to server ...");
 
