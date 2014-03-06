@@ -38,7 +38,7 @@ public class WorkerThread extends Thread {
 	 * @param socket to the client
 	 * @param parent interface to announce that the socket has been closed
 	 */
-	public WorkerThread(Socket socket, PostCommand db, Map<byte[], byte[]> map, JoinThread parent) {
+	public WorkerThread(Socket socket, PostCommand db, Map<ByteArrayWrapper, byte[]> map, JoinThread parent) {
 		System.out.println("Instantiating WorkerThread for service");
 		// TODO check for null
 		this.socket = socket;
