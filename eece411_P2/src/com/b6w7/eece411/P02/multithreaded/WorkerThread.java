@@ -61,6 +61,7 @@ public class WorkerThread extends Thread {
 
 			long timeStart = new Date().getTime();
 
+			System.out.println("Parsing Command");
 			// We want to decode the command
 			// We try to get CMDSIZE number of bytes from pipe to decode the command
 			// retrying at 100ms intervals
@@ -81,6 +82,7 @@ public class WorkerThread extends Thread {
 				throw new IOException("Timeout on channel.  TotalBytesRead = " + totalBytesReceived);
 			}
 
+			System.out.println("Parsing Key");
 			// we have successfully parsed the command
 			// next, we want to decode the key
 			// We try to get KEYSIZE number of bytes from pipe to decode the command
@@ -102,9 +104,6 @@ public class WorkerThread extends Thread {
 				throw new IOException("Timeout on channel.  TotalBytesRead = " + totalBytesReceived);
 			}
 
-			// we have successfully parsed the command and the key
-			System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+" bytes");
-
 			//Parse and Extract relevant data -- cmd and key 
 			byte cmdByte;
 			byte[] key;
@@ -120,6 +119,7 @@ public class WorkerThread extends Thread {
 			// retrying at 100ms intervals
 			// with a total timeout of 5000ms
 			if( cmdByte == (byte) Request.CMD_PUT.getCode() ){
+				System.out.println("Parsing Value");
 				do {
 					recvMsgSize = inFromClient.read(byteBufferIn
 							, totalBytesReceived
@@ -137,10 +137,10 @@ public class WorkerThread extends Thread {
 				}
 
 				// we have successfully parsed the command, the key, and the value
-				System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived+"bytes");
+				System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived+" bytes");
 
 			} else {
-				System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+"bytes");
+				System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+" bytes");
 			}
 
 			dataRead = ByteBuffer.wrap(	byteBufferIn );
