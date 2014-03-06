@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
 
+
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.NodeCommands;
 /**
@@ -142,6 +143,16 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_GET, "localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
 
 		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+//Repeating:
+		populateOneTest(NodeCommands.CMD_PUT, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+
+		populateOneTest(NodeCommands.CMD_PUT, "John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+
+		populateOneTest(NodeCommands.CMD_GET, "Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, "Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, "ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 
 	}
 
@@ -205,6 +216,7 @@ public class TestNode {
 
 
 				try {
+					//Thread.sleep(1000);
 					System.out.print("\t-Writing Test.");
 					// initiate test with node by sending the test command
 					clientSocket = new Socket(address, serverPort);
