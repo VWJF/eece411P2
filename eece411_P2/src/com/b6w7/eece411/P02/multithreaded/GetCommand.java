@@ -52,8 +52,8 @@ public class GetCommand extends Command {
 		ByteBuffer value_of_key =  get();
 		if( value_of_key != null ){  
 			this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
-			this.replyValue = ByteBuffer.allocate( NodeCommands.LEN_VALUE_BYTES);
-			this.replyValue.put(value_of_key.array(), 0, 1024); 
+			this.replyValue = ByteBuffer.allocate( NodeCommands.LEN_VALUE_BYTES );
+			this.replyValue.put(value_of_key.array(), 0, NodeCommands.LEN_VALUE_BYTES); 
 		}
 		else{
 			this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
@@ -94,12 +94,16 @@ public class GetCommand extends Command {
 		}
 		
 		String val = map.get( k.toString() );
+		
+
 		System.out.println("get (key, value): ("+k.toString()+", "+val+")");
 		try {
 			System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
 			if(val != null){
 				System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(val.getBytes("UTF-8")) );
-			}
+				System.out.println("val.length: "+val.length() +
+						"val.getbytes.length: "+val.getBytes().length);
+				}
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
