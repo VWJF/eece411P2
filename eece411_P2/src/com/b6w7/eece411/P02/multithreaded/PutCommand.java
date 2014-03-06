@@ -65,6 +65,24 @@ public class PutCommand extends Command {
 			}
 		}
 	}
+	
+	/*
+	 * returns the appropriate response to be sent to the client for the requested (command,key,value)
+	 */
+	@Override
+	public ByteBuffer getReply(){
+		
+		ByteBuffer response = ByteBuffer.allocate( 1 );
+		response.put(replyCode);
+		if(replyValue != null){
+			response = ByteBuffer.allocate( 1 + replyValue.capacity());
+			response.put(replyCode);
+			replyValue.rewind();
+			response.put(replyValue);
+		}
+		
+		return response;
+	}
 
 	private boolean put(){
 

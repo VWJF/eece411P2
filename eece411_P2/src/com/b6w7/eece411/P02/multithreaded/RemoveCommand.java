@@ -69,6 +69,24 @@ public class RemoveCommand extends Command {
 	}
 
 	/*
+	 * returns the appropriate response to be sent to the client for the requested (command,key,value)
+	 */
+	@Override
+	public ByteBuffer getReply(){
+		
+		ByteBuffer response = ByteBuffer.allocate( 1 );
+		response.put(replyCode);
+		if(replyValue != null){
+			response = ByteBuffer.allocate( 1 + replyValue.capacity());
+			response.put(replyCode);
+			replyValue.rewind();
+			response.put(replyValue);
+		}
+		
+		return response;
+	}
+	
+	/*
 	 * removes the (key,value) pair from the data structure. 
 	 * returns the value if the key was present in the structure, null otherwise.
 	 */
