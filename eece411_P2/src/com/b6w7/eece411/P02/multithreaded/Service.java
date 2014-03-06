@@ -17,7 +17,7 @@ public class Service extends Thread implements JoinThread {
 	// -5 for various planetlab connections occurring in background
 	private static final int MAX_ACTIVE_TCP_CONNECTIONS = 30 -1 -1 -5;
 	private static final int NUM_TCP_REJECTIONS = 2;
-	private final Map<String, String> data = new HashMap<String, String>();
+	private final Map<byte[], byte[]> data = new HashMap<byte[], byte[]>();
 	private final HandlerThread handler = new HandlerThread();
 
 	private int server_backlog = MAX_ACTIVE_TCP_CONNECTIONS;

@@ -40,23 +40,19 @@ public class UnrecognizedCommand extends Command {
 
 	@Override
 	public void execute() {
+		throw new UnsupportedOperationException();
 	}
 	/*
 	 * returns the appropriate response to be sent to the client for the requested (command,key,value)
 	 */
 	@Override
-	public ByteBuffer getReply(){
-		
-		ByteBuffer response = ByteBuffer.allocate( 1 );
+	public byte[] getReply(){
+		ByteBuffer response;
+
+		response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 		response.put(replyCode);
-		if(replyValue != null){
-			response = ByteBuffer.allocate( 1 + replyValue.capacity());
-			response.put(replyCode);
-			replyValue.rewind();
-			response.put(replyValue);
-		}
 		
-		return response;
+		return response.array();
 	}
 	
 	@Override
