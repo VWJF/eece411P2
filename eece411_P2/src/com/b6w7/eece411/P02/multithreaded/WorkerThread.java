@@ -17,7 +17,7 @@ public class WorkerThread extends Thread {
 
 	private final Socket socket;
 	private final PostCommand db;
-	private final Map<String, String> map;
+	private final Map<byte[], byte[]> map;
 	private final JoinThread parent;
 
 	// number of bytes in protocol field
@@ -38,7 +38,7 @@ public class WorkerThread extends Thread {
 	 * @param socket to the client
 	 * @param parent interface to announce that the socket has been closed
 	 */
-	public WorkerThread(Socket socket, PostCommand db, Map<String, String> map, JoinThread parent) {
+	public WorkerThread(Socket socket, PostCommand db, Map<byte[], byte[]> map, JoinThread parent) {
 		System.out.println("Instantiating WorkerThread for service");
 		// TODO check for null
 		this.socket = socket;
@@ -181,17 +181,17 @@ public class WorkerThread extends Thread {
 				switch (cmdByte) {
 				case NodeCommands.CMD_PUT:
 					System.out.println("Issuing PUT.");
-					cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+					cmd = new PutCommand(cmdByte, key, value, map);
 					db.post(cmd);
 					break;				
 				case NodeCommands.CMD_GET:
 					System.out.println("Issuing GET.");
-					cmd = new GetCommand(cmdByte, ByteBuffer.wrap(key), map);
+					cmd = new GetCommand(cmdByte, key, map);
 					db.post(cmd);
 					break;				
 				case NodeCommands.CMD_REMOVE:
 					System.out.println("Issuing REMOVE.");
-					cmd = new RemoveCommand(cmdByte, ByteBuffer.wrap(key), map);
+					cmd = new RemoveCommand(cmdByte, key, map);
 					db.post(cmd);
 					break;		
 				default:
@@ -223,15 +223,17 @@ public class WorkerThread extends Thread {
 				if( socket != null){
 					System.out.println("Writing Response.");
 
-					byteBufferOut= cmd.getReply().array();
-					String p = new String(byteBufferOut);
+					outToClient.write(cmd.getReply());
+					
+					byteBufferOut = cmd.getReply();
+//					String p = new String(byteBufferOut, "UTF-8");
 					String q = NodeCommands.byteArrayAsString(byteBufferOut);
-					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
+//					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
+					
 					System.out.println("Total elements in map: "+ map.size());
 					//	System.out.println("Total elements in map: "+ Command.getNumElements());
-					System.out.println("All Bytes Written(string,array): ("+ p+", "+q.substring(0, 2)+" "+q.substring(2)+")");
-					System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + p.length()+ ", " +outToClient.size()+")");
-
+					System.out.println("All Bytes Written(array): ( "+q.substring(0, 2)+" "+q.substring(2)+")");
+					System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + q.length()+ ", " +outToClient.size()+")");
 				} 
 				//System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
 				//clientToReply.getSocket().close(); // Close the socket.  We are done with this client!
