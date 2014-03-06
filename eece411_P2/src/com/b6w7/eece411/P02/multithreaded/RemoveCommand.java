@@ -9,90 +9,55 @@ import com.b6w7.eece411.P02.NodeCommands.Reply;
 
 public class RemoveCommand extends Command {
 	private final Socket clientSock;
-	
+
 	final ByteBuffer buffer;//= ByteBuffer.allocate(1+32+1024);
 	final byte cmd;
 	final ByteBuffer key;
-	
+
 	//final Map<String, String> map;
-	final ReplyCommand reply;
-	
+	//final ReplyCommand reply;
+
 	byte replyCode;
 	ByteBuffer replyValue;
 
 	// protocol for Request: remove command <cmd,key>
 	// protocol for Response: <cmd>
-	public RemoveCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map, ReplyCommand reply) {
+	public RemoveCommand(Socket client, byte cmd, ByteBuffer key, Map<String, String> map) {
 		// check arguments for correctness
-				if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
-					throw new IllegalArgumentException("key must be 32 bytes for all operations");
-				}
+		if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) {
+			throw new IllegalArgumentException("key must be 32 bytes for all operations");
+		}
 
-			/*	//if (NodeCommands.CMD_PUT == cmd) {
-					if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
-						throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
+		if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
+			throw new IllegalArgumentException("key must be 32 bytes for Remove operation");
 
-					buffer = ByteBuffer.allocate(
-							NodeCommands.LEN_CMD_BYTES
-							+NodeCommands.LEN_KEY_BYTES
-							+NodeCommands.LEN_VALUE_BYTES);
-			/*
-				} else if (NodeCommands.CMD_GET == cmd) {
-					if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
-						throw new IllegalArgumentException("key must be 32 bytes for GET operation");
+		buffer = ByteBuffer.allocate(
+				NodeCommands.LEN_CMD_BYTES
+				+NodeCommands.LEN_KEY_BYTES);
+		//value = null;
 
-					buffer = ByteBuffer.allocate(
-							NodeCommands.LEN_CMD_BYTES
-							+NodeCommands.LEN_KEY_BYTES);
-					value = null;
 
-				} elseif (NodeCommands.CMD_REMOVE == cmd) {
-				*/	if (null == key || key.limit() != NodeCommands.LEN_KEY_BYTES) 
-						throw new IllegalArgumentException("key must be 32 bytes for Remove operation");
+		// TODO error check these values
+		this.map = map;
 
-					buffer = ByteBuffer.allocate(
-							NodeCommands.LEN_CMD_BYTES
-							+NodeCommands.LEN_KEY_BYTES);
-					//value = null;
-				/*} else {
-					buffer = ByteBuffer.allocate(
-						NodeCommands.LEN_CMD_BYTES
-						+NodeCommands.LEN_KEY_BYTES
-						+NodeCommands.LEN_VALUE_BYTES);
-						//throw new IllegalArgumentException("Unknown command");
-				}
-				 */
+		// Save parameters, and 
+		// Place {Cmd, Key, Value} into ByteBuffer 
+		// to be ready to be sent down a pipe.  
+		this.cmd = cmd;
+		this.key = key;
+		//this.value = value;
 
-				// TODO error check these values
-				this.reply = reply;
-				this.map = map;
-
-				// Save parameters, and 
-				// Place {Cmd, Key, Value} into ByteBuffer 
-				// to be ready to be sent down a pipe.  
-				this.cmd = cmd;
-				this.key = key;
-				//this.value = value;
-			
-				buffer.put(cmd);
-				key.rewind();
-				buffer.put(key);
-
-				/*
-				 if (null != value) {
-				 
-					value.rewind();
-					buffer.put(value);
-				}
-				*/
+		buffer.put(cmd);
+		key.rewind();
+		buffer.put(key);
 
 		// check arguments for correctness
 		if (client == null) {
 			throw new IllegalArgumentException("client socket cannot be null");
 		}
-		
+
 		this.clientSock = client;
-		
+
 	}
 
 	@Override
@@ -106,7 +71,7 @@ public class RemoveCommand extends Command {
 			}
 		}
 	}
-	
+
 	/*
 	 * removes the (key,value) pair from the data structure. 
 	 * returns the value if the key was present in the structure, null otherwise.
@@ -116,7 +81,7 @@ public class RemoveCommand extends Command {
 		String removed = map.remove(new String(key.array()));
 		//if(removed == null)
 		//	Command.numElements--;
-		
+
 		return removed;
 	}
 }

@@ -150,13 +150,13 @@ public class WorkerThread extends Thread implements ReplyCommand {
 
 			switch (cmd) {
 			case NodeCommands.CMD_PUT:
-				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map, this));
+				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map));
 				break;				
 			case NodeCommands.CMD_GET:
-				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map, this));
+				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map));
 				break;				
 			case NodeCommands.CMD_REMOVE:
-				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map, this));
+				db.post(new PutCommand(socket, cmd, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map));
 				break;				
 			}
 
