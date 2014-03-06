@@ -70,8 +70,6 @@ public class WorkerThread extends Thread {
 		byte[] byteBufferIn = new byte[REQSIZE];  // Receive buffer
 		byte[] byteBufferOut = new byte[RESSIZE]; // Response buffer
 
-		int attempt = 0;
-
 		try {
 
 			DataOutputStream outToClient = 
@@ -165,10 +163,10 @@ public class WorkerThread extends Thread {
 					}
 
 					// we have successfully parsed the command, the key, and the value
-					System.out.println("Sucessfully read CMD+KEY+VALUE... "+totalBytesReceived+" bytes");
+					System.out.println("Successfully read CMD+KEY+VALUE... "+totalBytesReceived+" bytes");
 
 				} else {
-					System.out.println("Sucessfully read CMD+KEY... "+totalBytesReceived+" bytes");
+					System.out.println("Successfully read CMD+KEY... "+totalBytesReceived+" bytes");
 				}
 
 				dataRead = ByteBuffer.wrap(	byteBufferIn );
@@ -197,7 +195,6 @@ public class WorkerThread extends Thread {
 				default:
 					System.out.println("Issuing UNRECOGNIZED.");
 					cmd = new UnrecognizedCommand();
-
 				}
 
 				//Obtain a connected client and reply to the client with its response.
@@ -217,7 +214,7 @@ public class WorkerThread extends Thread {
 
 				// if we did not receive the command within the time frame, throw exception.
 				if (!resultReady) {
-					throw new IOException("Timeout on reply from database.  TotalBytesRead = " + totalBytesReceived);
+					throw new IOException("Timeout on reply from database. TotalBytesRead = " + totalBytesReceived + " ResultReady: "+resultReady);
 				}
 
 				// Send reply to client

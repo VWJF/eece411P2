@@ -1,6 +1,5 @@
 package com.b6w7.eece411.P02.multithreaded;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Map;
@@ -63,8 +62,7 @@ public class PutCommand extends Command {
 		
 		return response.array();
 	}
-
-	private boolean put(){
+private boolean put(){
 		//		StringBuilder s = new StringBuilder();
 		//		StringBuilder k = new StringBuilder();
 		//
@@ -90,6 +88,16 @@ public class PutCommand extends Command {
 					//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
 					return false;
 				} else {
+
+//					byte[] val = map.get( key );
+					
+					System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key) );
+					System.out.println("key.length: "+key.length);
+					
+					if(value != null) {
+						System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(value) );
+						System.out.println("value.length: "+value.length);
+					}
 
 //					byte[] val = map.get( key );
 					
