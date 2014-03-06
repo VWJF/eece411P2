@@ -50,7 +50,6 @@ public class GetCommand extends Command {
 
 	@Override
 	public void execute() {
-		synchronized(execution_completed){
 			ByteBuffer value_of_key =  get();
 			if( value_of_key != null ){  
 				this.replyCode = (byte) Reply.RPY_SUCCESS.getCode(); 
@@ -59,8 +58,29 @@ public class GetCommand extends Command {
 			else{
 				this.replyCode = (byte) Reply.RPY_INEXISTENT.getCode();
 			}
+		synchronized(execution_completed){
+				execution_completed = true;
 		}
 	}
+	
+	/*
+	 * returns the appropriate response to be sent to the client for the requested (command,key,value)
+	 */
+	@Override
+	public ByteBuffer getReply(){
+		
+		ByteBuffer response = ByteBuffer.allocate( 1 );
+		response.put(replyCode);
+		if(replyValue != null){
+			response = ByteBuffer.allocate( 1 + replyValue.capacity());
+			response.put(replyCode);
+			replyValue.rewind();
+			response.put(replyValue);
+		}
+		
+		return response;
+	}
+	
 	
 	private ByteBuffer get(){
 	// TODO: Can be improved (with Error checking, Exception checking, etc.)
