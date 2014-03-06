@@ -33,6 +33,7 @@ public class WorkerThread extends Thread {
 	public boolean keepRunning = true;
 
 	public WorkerThread(Socket socket, PostCommand db, Map<String, String> map) {
+		System.out.println("Instantiating WorkerThread");
 		// TODO check for null
 		this.socket = socket;
 		this.db = db;
@@ -151,15 +152,15 @@ public class WorkerThread extends Thread {
 			Command cmd2;
 			switch (cmdByte) {
 			case NodeCommands.CMD_PUT:
-				cmd2 = new PutCommand(socket, cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				cmd2 = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
 				db.post(cmd2);
 				break;				
 			case NodeCommands.CMD_GET:
-				cmd2 = new PutCommand(socket, cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				cmd2 = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
 				db.post(cmd2);
 				break;				
 			case NodeCommands.CMD_REMOVE:
-				cmd2 = new PutCommand(socket, cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				cmd2 = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
 				db.post(cmd2);
 				break;		
 			default:

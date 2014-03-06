@@ -121,12 +121,18 @@ public class NodeCommands {
 		}
 		*/
 		
-		byte valueArrayTemp[] = Arrays.copyOfRange(recvBytes, LEN_CMD_BYTES+LEN_KEY_BYTES, LEN_CMD_BYTES+LEN_KEY_BYTES+LEN_VALUE_BYTES);
+		byte valueArrayTemp[] = null;
+
 		try {
+			Arrays.copyOfRange(recvBytes, LEN_CMD_BYTES+LEN_KEY_BYTES, LEN_CMD_BYTES+LEN_KEY_BYTES+LEN_VALUE_BYTES);
+
 			// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
 			s.append(new String(valueArrayTemp, "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			s.append(new String(valueArrayTemp));
+		} catch (Exception e) {
+			// do nothing.
+			// 'Value' does not exist.
 		}
 		return s.toString();
 	}
