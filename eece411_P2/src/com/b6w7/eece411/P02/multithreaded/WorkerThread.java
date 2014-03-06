@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Date;
@@ -28,7 +29,7 @@ public class WorkerThread extends Thread {
 	private static final int REQSIZE = CMDSIZE+KEYSIZE+VALUESIZE;  // request buffer
 	private static final int RESSIZE = CMDSIZE+VALUESIZE;   //response buffer
 
-	private Command cmd;
+	private Command cmd = null;
 
 	public boolean keepRunning = true;
 
@@ -42,15 +43,15 @@ public class WorkerThread extends Thread {
 
 	@Override
 	public void run() {
+		int recvMsgSize = 0;   // Size of received message
+		int totalBytesReceived = 0;   // Size of received message
+
+		byte[] byteBufferIn = new byte[REQSIZE];  // Receive buffer
+		byte[] byteBufferOut = new byte[RESSIZE]; // Response buffer
+
+		int attempt = 0;
 
 		try {
-			int recvMsgSize = 0;   // Size of received message
-			int totalBytesReceived = 0;   // Size of received message
-
-			byte[] byteBufferIn = new byte[REQSIZE];  // Receive buffer
-			byte[] byteBufferOut = new byte[RESSIZE]; // Response buffer
-
-			int attempt = 0; //
 
 			DataOutputStream outToClient = 
 					new DataOutputStream(socket.getOutputStream());
@@ -149,25 +150,24 @@ public class WorkerThread extends Thread {
 			System.out.println("Request Received(cmd,key,value): "+s.toString());
 			System.out.println("Request Received(cmd,key,value): ("+cmdByte+", "+key+", "+value.toString()+") ");
 
-			Command cmd2;
 			switch (cmdByte) {
 			case NodeCommands.CMD_PUT:
-				cmd2 = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
-				db.post(cmd2);
+				cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				db.post(cmd);
 				break;				
 			case NodeCommands.CMD_GET:
-				cmd2 = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
-				db.post(cmd2);
+				cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				db.post(cmd);
 				break;				
 			case NodeCommands.CMD_REMOVE:
-				cmd2 = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
-				db.post(cmd2);
+				cmd = new PutCommand(cmdByte, ByteBuffer.wrap(key), ByteBuffer.wrap(value), map);
+				db.post(cmd);
 				break;		
 			default:
-				cmd2 = new UnrecognizedCommand();
+				cmd = new UnrecognizedCommand();
 
 			}
-			
+
 			//Obtain a connected client and reply to the client with its response.
 			//Command clientToReply =	connected_clients.poll();
 
@@ -178,8 +178,8 @@ public class WorkerThread extends Thread {
 			// with a total timeout of 5000ms
 			boolean resultReady = false;
 			do {
-				synchronized (cmd2.execution_completed) {
-					resultReady = cmd2.execution_completed;
+				synchronized (cmd.execution_completed) {
+					resultReady = cmd.execution_completed;
 				}
 			} while (resultReady == false && ((new Date().getTime() - timeStart) < 5000));
 
@@ -190,51 +190,31 @@ public class WorkerThread extends Thread {
 
 			// Send reply to client
 			if( socket != null){
-				try {
-					System.out.println("Writing Response.");
+				System.out.println("Writing Response.");
 
-					byteBufferOut= cmd2.getReply().array();
-					String p = new String(byteBufferOut);
-					String q = NodeCommands.byteArrayAsString(byteBufferOut);
-					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
-					//								System.out.println("Total elements in map: "+ Command.getNumElements());
-					//								System.out.println("Total elements in map: "+ Command.getNumElements());
-					System.out.println("All Bytes Written(string,array): ("+ p+", "+q.substring(0, 2)+" "+q.substring(2)+")");
-					System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + p.length()+ ", " +outToClient.size()+")");
+				byteBufferOut= cmd.getReply().array();
+				String p = new String(byteBufferOut);
+				String q = NodeCommands.byteArrayAsString(byteBufferOut);
+				outToClient.write(byteBufferOut, 0, byteBufferOut.length);
+				//								System.out.println("Total elements in map: "+ Command.getNumElements());
+				//								System.out.println("Total elements in map: "+ Command.getNumElements());
+				System.out.println("All Bytes Written(string,array): ("+ p+", "+q.substring(0, 2)+" "+q.substring(2)+")");
+				System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + p.length()+ ", " +outToClient.size()+")");
 
-				} catch (IOException e1) {
-					// TODO:
-					// Error in writing to output stream.
-					e1.printStackTrace();
-					System.out.println("Socket exception when sending data.");
-				}
-				//System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
-				//clientToReply.getSocket().close(); // Close the socket.  We are done with this client!
+			} 
+			//System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
+			//clientToReply.getSocket().close(); // Close the socket.  We are done with this client!
 
-//				System.out.println("Completed Processing.");
-//
-//				System.out.println("\tAbout socket: "+socket.toString());
-//				System.out.println("\tSoTimeout: "+socket.getSoTimeout()+
-//						", isClosed: "+socket.isClosed()+
-//						", isInputShutdown: "+socket.isInputShutdown()+
-//						", isOutputShutdown "+socket.isOutputShutdown()+
-//						", getSendBufferSize "+socket.getSendBufferSize()+
-//						", getReceiveBufferSize "+socket.getReceiveBufferSize()
-//						);
-
-			}
-
-			System.out.println("\tAbout socket: "+socket.toString());
-			System.out.println("\tSoTimeout: "+socket.getSoTimeout()+
-					", isClosed: "+socket.isClosed()+
-					", isInputShutdown: "+socket.isInputShutdown()+
-					", isOutputShutdown "+socket.isOutputShutdown()+
-					", getSendBufferSize "+socket.getSendBufferSize()+
-					", getReceiveBufferSize "+socket.getReceiveBufferSize()
-					);
-			
-			System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
-			socket.close();
+			//				System.out.println("Completed Processing.");
+			//
+			//				System.out.println("\tAbout socket: "+socket.toString());
+			//				System.out.println("\tSoTimeout: "+socket.getSoTimeout()+
+			//						", isClosed: "+socket.isClosed()+
+			//						", isInputShutdown: "+socket.isInputShutdown()+
+			//						", isOutputShutdown "+socket.isOutputShutdown()+
+			//						", getSendBufferSize "+socket.getSendBufferSize()+
+			//						", getReceiveBufferSize "+socket.getReceiveBufferSize()
+			//						);
 
 
 			// TODO write appropriate data depending on result of operation
@@ -250,9 +230,38 @@ public class WorkerThread extends Thread {
 			// workerThread and the logic of the Command, but may be simpler.  Not sure.
 
 
-		} catch (IOException e) {
-			// TODO Check for exception
-			e.printStackTrace();
+		} catch (IOException e1) {
+			// TODO:
+			// Error in reading and writing to output stream.
+			e1.printStackTrace();
+			System.out.println("Socket exception when reading/sending data.");
+		} finally{
+
+			if(socket != null){
+				try{	
+					System.out.println("\tAbout socket: "+socket.toString());
+
+					System.out.println("\tSoTimeout: "+socket.getSoTimeout()+
+							", isClosed: "+socket.isClosed()+
+							", isInputShutdown: "+socket.isInputShutdown()+
+							", isOutputShutdown "+socket.isOutputShutdown()+
+							", getSendBufferSize "+socket.getSendBufferSize()+
+							", getReceiveBufferSize "+socket.getReceiveBufferSize()
+							);
+				} catch(SocketException se){
+					se.printStackTrace();
+				}
+
+				try{	
+					System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
+					socket.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 		}
+
 	}
 }
+
