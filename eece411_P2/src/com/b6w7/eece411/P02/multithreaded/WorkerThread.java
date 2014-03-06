@@ -195,8 +195,8 @@ public class WorkerThread extends Thread {
 				String p = new String(byteBufferOut);
 				String q = NodeCommands.byteArrayAsString(byteBufferOut);
 				outToClient.write(byteBufferOut, 0, byteBufferOut.length);
-				//								System.out.println("Total elements in map: "+ Command.getNumElements());
-				//								System.out.println("Total elements in map: "+ Command.getNumElements());
+				System.out.println("Total elements in map: "+ map.size());
+				//	System.out.println("Total elements in map: "+ Command.getNumElements());
 				System.out.println("All Bytes Written(string,array): ("+ p+", "+q.substring(0, 2)+" "+q.substring(2)+")");
 				System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + p.length()+ ", " +outToClient.size()+")");
 

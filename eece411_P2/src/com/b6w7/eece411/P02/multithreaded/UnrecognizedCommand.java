@@ -58,4 +58,12 @@ public class UnrecognizedCommand extends Command {
 		
 		return response;
 	}
+	
+	@Override
+	public String toString(){
+
+		//String k = new String( key.array() );
+		String s = NodeCommands.requestByteArrayToString(buffer.array());
+		return Thread.currentThread().getName() + " "+ s.toString();
+	}
 }
