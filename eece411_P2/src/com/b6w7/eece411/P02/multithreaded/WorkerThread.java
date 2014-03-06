@@ -17,7 +17,7 @@ public class WorkerThread extends Thread {
 
 	private final Socket socket;
 	private final PostCommand db;
-	private final Map<byte[], byte[]> map;
+	private final Map<ByteArrayWrapper, byte[]> map;
 	private final JoinThread parent;
 
 	// number of bytes in protocol field
