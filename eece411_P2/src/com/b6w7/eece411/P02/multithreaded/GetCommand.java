@@ -16,7 +16,7 @@ public class GetCommand extends Command {
 
 	// protocol for Request: get command <cmd,key>
 	// protocol for Response: <cmd,value>
-	public GetCommand(byte cmd, byte[] key, Map<byte[], byte[]> map) {
+	public GetCommand(byte cmd, byte[] key, Map<ByteArrayWrapper, byte[]> map) {
 		// check arguments for correctness
 		if (null == key || key.length != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -84,7 +84,7 @@ public class GetCommand extends Command {
 //			k.append(new String(this.key.array()));
 //		}
 //		
-		byte[] val = map.get( key );
+		byte[] val = map.get( new ByteArrayWrapper(key) );
 		
 		System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key) );
 		System.out.println("key.length: "+key.length);
