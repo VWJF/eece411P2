@@ -141,7 +141,7 @@ public class TestNode {
 
 		populateOneTest(NodeCommands.CMD_GET, "localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
 
-//		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, "Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
 
 	}
 

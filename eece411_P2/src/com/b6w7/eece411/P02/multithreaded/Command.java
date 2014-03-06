@@ -5,7 +5,7 @@ import java.util.Map;
 
 public abstract class Command {
 	
-	protected static final byte MAX_MEMORY = 5;
+	protected static final byte MAX_MEMORY = 3;
 	
 	protected Map<String, String> map;// = new HashMap<String, String>();
 
