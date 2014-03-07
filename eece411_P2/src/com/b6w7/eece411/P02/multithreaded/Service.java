@@ -11,11 +11,11 @@ import java.util.concurrent.Executors;
 
 public class Service extends Thread implements JoinThread {
 
-	// 30 max on planetlab
+	// 50 max on planetlab
 	// -1 for serverSocket itself that listens which is also a TCP connection
 	// -1 for SSH connections for debugging
 	// -5 for various planetlab connections occurring in background
-	private static final int MAX_ACTIVE_TCP_CONNECTIONS = 30 -1 -1 -5;
+	private static final int MAX_ACTIVE_TCP_CONNECTIONS = 50 -1 -1 -5;
 	private static final int NUM_TCP_REJECTIONS = 2;
 	private final Map<ByteArrayWrapper, byte[]> data = new HashMap<ByteArrayWrapper, byte[]>();
 	private final HandlerThread handler = new HandlerThread();
