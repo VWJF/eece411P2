@@ -75,9 +75,9 @@ public class RemoveCommand extends Command {
 	 * returns the value if the key was present in the structure, null otherwise.
 	 */
 	private byte[] remove(){
-		System.out.println("(key.length, get key bytes): ("+key.length+
-				", "+NodeCommands.byteArrayAsString(key) +")" );
-
+//		System.out.println("(key.length, get key bytes): ("+key.length+
+//				", "+NodeCommands.byteArrayAsString(key) +")" );
+				
 		return map.remove(new ByteArrayWrapper(key));
 
 	}

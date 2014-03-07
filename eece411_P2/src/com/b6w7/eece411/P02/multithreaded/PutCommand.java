@@ -91,17 +91,17 @@ private boolean put(){
 
 //					byte[] val = map.get( key );
 					
-					System.out.println("(key.length, get key bytes): ("+key.length+
-							", "+NodeCommands.byteArrayAsString(key) +")" );
-					
+//					System.out.println("(key.length, get key bytes): ("+key.length+
+//							", "+NodeCommands.byteArrayAsString(key) +")" );
+			
 					if(value != null) {
-						System.out.println("(value.length, get value bytes): ("+value.length+
-								", "+NodeCommands.byteArrayAsString(value) +")" );
+						// NONEXISTENT -- we want to debug here
+						System.out.println("PutCommand() *** Replacing Key " + this.toString());
 					}
 	
 					map.put(new ByteArrayWrapper(key), value);
 					
-					System.out.println("TESTING POST PUT COMMAND");
+					//System.out.println("TESTING POST PUT COMMAND");
 //					byte[] test = map.get(key);
 //					
 //					System.out.println("test bytes: "+NodeCommands.byteArrayAsString(test) );

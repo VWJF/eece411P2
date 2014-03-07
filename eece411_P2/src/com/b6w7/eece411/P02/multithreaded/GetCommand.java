@@ -44,7 +44,6 @@ public class GetCommand extends Command {
 		else {
 			this.replyCode = Reply.RPY_INEXISTENT.getCode();
 			System.err.println(" ### ");
-
 		}
 		synchronized(execution_completed){
 			execution_completed = true;
@@ -79,12 +78,12 @@ public class GetCommand extends Command {
 
 		byte[] val = map.get( new ByteArrayWrapper(key) );
 
-		System.out.println("(key.length, get key bytes): ("+key.length+
-				", "+NodeCommands.byteArrayAsString(key) +")" );
+//		System.out.println("(key.length, get key bytes): ("+key.length+
+//				", "+NodeCommands.byteArrayAsString(key) +")" );
 
 		if(val != null) {
 			// NONEXISTENT -- we want to debug here
-			System.out.println("GetCommand() ### Not Found " + this.toString());
+			System.out.println("GetCommand() *** Not Found " + this.toString());
 		}
 		return val;
 	}
