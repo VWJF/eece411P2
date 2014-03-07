@@ -33,6 +33,7 @@ public class TestNode extends Thread {
 	private static int NUM_TEST_THREADS = 10;
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
+	private int myCount;
 	
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
@@ -129,15 +130,17 @@ public class TestNode extends Thread {
 
 		} catch (BufferOverflowException e) {
 			System.err.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
-			System.out.println("Thread: "+count.get()+"\ntest skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
+			System.out.println("Thread: "+myCount+"\ntest skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 	}
 
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
-		String myCount = Thread.currentThread().toString(); //String does not change with different threads
-		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
+		int myCount = count.addAndGet(1);
+		System.out.println(myCount);	
+//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
+//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
 		
 		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
@@ -167,7 +170,7 @@ public class TestNode extends Thread {
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 		
-		int myCount = count.addAndGet(1);
+		this.myCount = count.addAndGet(1);
 		System.out.println(myCount);
 //		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 //		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
@@ -209,7 +212,7 @@ public class TestNode extends Thread {
 			serverPort = Integer.parseInt(args[1]);
 		} catch (NumberFormatException e1) {
 			System.err.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
-			System.out.println("Thread: "+count.get()+" Invalid input.  Server Port and Student ID must be numerical digits only.");
+			System.out.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
 			printUsage();
 			return;
 		}
@@ -364,7 +367,7 @@ public class TestNode extends Thread {
 						}
 					} else {
 						System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
-						System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - " + failMessage );
+						System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage );
 						synchronized (testFailed) {
 							testFailed++;
 						}
@@ -373,14 +376,14 @@ public class TestNode extends Thread {
 
 				} catch (SocketTimeoutException e) {
 					System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
-					System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - " + failMessage);
+					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage);
 					synchronized (testFailed) {
 						testFailed++;
 					}
 
 				} catch (IOException e) {
 					System.err.println("### TEST "+test.index+" FAILED - network error");
-					System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - network error");
+					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - network error");
 					synchronized (testFailed) {
 						testFailed++;
 					}
