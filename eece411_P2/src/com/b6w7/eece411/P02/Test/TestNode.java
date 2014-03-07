@@ -18,8 +18,13 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
+
+
+
 //import com.b6w7.eece411.P02.Node;
-import com.b6w7.eece411.P02.NodeCommands;
+
+import com.b6w7.eece411.P02.multithreaded.NodeCommands;
+import com.b6w7.eece411.P02.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.Service;
 /**
  * A test class for testing {@link Service}
@@ -30,8 +35,10 @@ import com.b6w7.eece411.P02.multithreaded.Service;
  */
 public class TestNode extends Thread {
 
-	private static int NUM_TEST_THREADS = 100;
-	
+	private static final long TIME_RETRY_MS = 200;
+
+	private static int NUM_TEST_THREADS = 5005;
+
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
 	private int myCount;
@@ -52,7 +59,7 @@ public class TestNode extends Thread {
 
 	private final String url;
 	private final int port;
-	
+
 
 	private static void printUsage() {
 		System.out.println("USAGE:\n"
@@ -107,18 +114,18 @@ public class TestNode extends Thread {
 			}
 			// value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			value.put(valueString.getBytes("UTF-8"));
-			//reply = NodeCommands.RPY_SUCCESS;
+			//reply = NodeCommands.Reply.RPY_SUCCESS.getCode();
 
-			if (NodeCommands.CMD_PUT == cmd) {
+			if (NodeCommands.Request.CMD_PUT.getCode() == cmd) {
 				// If we are performing a PUT, then we need to send value
 				tests.add(new TestData(cmd, hashedKey, value, reply, null));
 
-			} else if (NodeCommands.CMD_GET == cmd){
+			} else if (NodeCommands.Request.CMD_GET.getCode() == cmd){
 				// If we are performing a GET, then we do not have to send 'value', 
 				// but we must see the value replied to us
 				tests.add(new TestData(cmd, hashedKey, null, reply, value));
 
-			} else if (NodeCommands.CMD_REMOVE == cmd){
+			} else if (NodeCommands.Request.CMD_REMOVE.getCode() == cmd){
 				// If we are performing a REMOVE, then we do not have to send 'value',
 				// and neither do we have to expect it as a returned value
 				tests.add(new TestData(cmd, hashedKey, null, reply, null));
@@ -140,65 +147,65 @@ public class TestNode extends Thread {
 
 		int myCount = count.addAndGet(1);
 		System.out.println(myCount);	
-//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
-//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
-		
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
+		//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
 
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-//		populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		//		populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, myCount+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+
+		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
 	}
 
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
-		
+
 		this.myCount = count.addAndGet(1);
 		System.out.println(myCount);
-		
-//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		//		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-/*		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
+
+		/*		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
-*/
-	//	populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
-		
-	//	populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		 */
+		//	populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+
+		//	populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
 	}
-	
+
 	public static void main(String[] args) {
 
 		// If the command line arguments are missing, or invalid, then nothing to do
@@ -218,23 +225,23 @@ public class TestNode extends Thread {
 			printUsage();
 			return;
 		}
-		
+
 		List<TestNode> list = new LinkedList<TestNode>();
-		
+
 		for (int i=0; i<NUM_TEST_THREADS; i++)
 			list.add(new TestNode(serverURL, serverPort));
-		
+
 		if (!IS_BREVITY) System.out.println("-------------- Start Running Test --------------");
 
 		while (!list.isEmpty())
 			list.remove(0).start();
 	}
-	
+
 	public TestNode(String url, int port) {
 		this.url = url;
 		this.port = port;
 	}
-	
+
 	@Override
 	public void run() {
 		Socket clientSocket = null;
@@ -278,137 +285,146 @@ public class TestNode extends Thread {
 				if (!IS_BREVITY) System.out.println("--- Running Test: "+test);
 
 
-				try {
-					//Thread.sleep(1000);
-					if (IS_VERBOSE) System.out.print("\t-Writing Test.");
-					// initiate test with node by sending the test command
-					clientSocket = new Socket(address, port);
-					clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
-					if (IS_VERBOSE) System.out.println("Connected to server ...");
+				boolean tryAgain = true;
+				while (tryAgain) {
+					try {
+						//Thread.sleep(1000);
+						if (IS_VERBOSE) System.out.print("\t-Writing Test.");
+						// initiate test with node by sending the test command
+						clientSocket = new Socket(address, port);
+						clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
+						if (IS_VERBOSE) System.out.println("Connected to server ...");
 
-					outToServer = new DataOutputStream(clientSocket.getOutputStream());
-					inFromServer = new BufferedInputStream(clientSocket.getInputStream() );
+						outToServer = new DataOutputStream(clientSocket.getOutputStream());
+						inFromServer = new BufferedInputStream(clientSocket.getInputStream() );
 
-					outToServer.write(test.buffer.array());
-					//StandardCharsets.UTF_8.displayName()
+						outToServer.write(test.buffer.array());
+						//StandardCharsets.UTF_8.displayName()
 
-					// Code converting byte to hex representation obtained from
-					// http://stackoverflow.com/questions/6120657/how-to-generate-a-unique-hash-code-for-string-input-in-android
+						// Code converting byte to hex representation obtained from
+						// http://stackoverflow.com/questions/6120657/how-to-generate-a-unique-hash-code-for-string-input-in-android
 
-					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
-					int numBytesRead;
+						// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
+						int numBytesRead;
 
-					if (IS_VERBOSE) System.out.print("-Reading Answer.");
-					while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
+						if (IS_VERBOSE) System.out.print("-Reading Answer.");
+						while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
 
-					if ( numBytesRead > 1 ) {
-						// did not receive the one byte reply that was expected.
-						failMessage = "excess bytes reply.";
-						isPass = false;
-
-					} else if ( numBytesRead == -1 ) {
-						// did not receive the one byte reply that was expected.
-						failMessage = "broken pipe";
-						isPass = false;
-
-					}
-					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
-					//expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
-					//actualReplyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
-
-					// Check the received reply against the expected reply and determine success of test
-					if (recvBuffer[0] != test.replyCode) {
-						isPass = false;
-						failMessage = "expected "+NodeCommands.Reply.values()[test.replyCode & 0xFF].toString()+" but instead "+ NodeCommands.Reply.values()[recvBuffer[0] & 0xFF].toString();
-					}
-
-					if (IS_VERBOSE) System.out.print("-Reading Value of GET.");
-					int bytesRead = 0;
-					int totalBytesRead = 0;
-					// If test was a GET command, then additionally read pipe for reply and verify result
-					if (isPass && NodeCommands.CMD_GET == test.cmd) {
-
-						// we expect 1024 bytes of 'value' from this GET command
-						while (bytesRead != -1 && inFromServer.available() > 0) {
-							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
-							totalBytesRead += bytesRead;
-						}
-
-						if (recvBuffer[0] == NodeCommands.RPY_SUCCESS && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
+						if ( numBytesRead > NodeCommands.LEN_CMD_BYTES ) {
+							// did not receive the one byte reply that was expected.
+							failMessage = "excess bytes reply.";
 							isPass = false;
-							failMessage = "expected value "+test.value +
-									" Number of bytes received: "+totalBytesRead;
+							tryAgain = false;
+
+						} else if ( numBytesRead == -1 ) {
+							// network error closed the socket prematurely
+							throw new IOException();
 						}
-					}
+						replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
+						//expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
+						//actualReplyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
 
-//					if (IS_VERBOSE) System.out.print("-Reading Excess byte in pipe. \n");
-//					try {
-//						if (isPass && (inFromServer.read() > 0)) {
-//							// So far so good, but let's make sure there is no more data on the socket.
-//							// If we read even one byte, then this is a failed test.
-//							isPass = false;
-//							failMessage = "excess bytes in pipe [totalBytesRead == "+totalBytesRead+ "]";
-//						}
-//					} catch (SocketTimeoutException e) {
-//						// read() is a blocking operation, and we did not find any more bytes in the pipe
-//						// so we are satisfied that the test passed.  do nothing here.
-//					}
+						// Check the received reply against the expected reply and determine success of test
+						if (recvBuffer[0] != test.replyCode) {
+							if (Reply.values()[recvBuffer[0]] == Reply.RPY_OVERLOAD) {
+								throw new IOException();
+							}
 
-					if (IS_VERBOSE) System.out.println("\tAbout socket: "+clientSocket.toString());
-					if (IS_VERBOSE) System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
-							", isClosed: "+clientSocket.isClosed()+
-							", isInputShutdown: "+clientSocket.isInputShutdown()+
-							", isOutputShutdown "+clientSocket.isOutputShutdown()			
-							);
-
-					// Display result of test
-					if (isPass) {
-						if (!IS_BREVITY) System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
-						synchronized (testPassed) {
-							testPassed++;
+							isPass = false;
+							tryAgain = false;
+							failMessage = "expected "+NodeCommands.Reply.values()[test.replyCode & 0xFF].toString()+" but instead "+ NodeCommands.Reply.values()[recvBuffer[0] & 0xFF].toString();
 						}
-					} else {
-						System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
-						System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage );
+
+						if (IS_VERBOSE) System.out.print("-Reading Value of GET.");
+						int bytesRead = 0;
+						int totalBytesRead = 0;
+						// If test was a GET command, then additionally read pipe for reply and verify result
+						if (isPass && NodeCommands.CMD_GET == test.cmd) {
+
+							// we expect 1024 bytes of 'value' from this GET command
+							while (bytesRead != -1 && inFromServer.available() > 0) {
+								bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
+								totalBytesRead += bytesRead;
+							}
+
+							if (recvBuffer[0] == NodeCommands.RPY_SUCCESS && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
+								isPass = false;
+								tryAgain = false;
+								failMessage = "expected value "+test.value +
+										" Number of bytes received: "+totalBytesRead;
+							}
+						}
+
+						//					if (IS_VERBOSE) System.out.print("-Reading Excess byte in pipe. \n");
+						//					try {
+						//						if (isPass && (inFromServer.read() > 0)) {
+						//							// So far so good, but let's make sure there is no more data on the socket.
+						//							// If we read even one byte, then this is a failed test.
+						//							isPass = false;
+						//							failMessage = "excess bytes in pipe [totalBytesRead == "+totalBytesRead+ "]";
+						//						}
+						//					} catch (SocketTimeoutException e) {
+						//						// read() is a blocking operation, and we did not find any more bytes in the pipe
+						//						// so we are satisfied that the test passed.  do nothing here.
+						//					}
+
+						if (IS_VERBOSE) System.out.println("\tAbout socket: "+clientSocket.toString());
+						if (IS_VERBOSE) System.out.println("\tSoTimeout: "+clientSocket.getSoTimeout()+
+								", isClosed: "+clientSocket.isClosed()+
+								", isInputShutdown: "+clientSocket.isInputShutdown()+
+								", isOutputShutdown "+clientSocket.isOutputShutdown()			
+								);
+
+						// Made it this far without an IOException, so we do not need to retry this loop
+						// set 'tryAgain' to false
+						tryAgain = false;
+
+						// Display result of test
+						if (isPass) {
+							if (!IS_BREVITY) System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
+							synchronized (testPassed) {
+								testPassed++;
+							} 
+
+						} else {
+							System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
+							System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage );
+							synchronized (testFailed) {
+								testFailed++;
+							}
+						}
+					} catch (SocketTimeoutException e) {
+						System.err.println("### "+ test.toString() + " " + failMessage);
+						System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage);
 						synchronized (testFailed) {
 							testFailed++;
 						}
-					}
 
-
-				} catch (SocketTimeoutException e) {
-					System.err.println("### "+ test.toString() + " " + failMessage);
-					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage);
-					synchronized (testFailed) {
-						testFailed++;
-					}
-
-				} catch (IOException e) {
-					System.err.println("### "+ test.toString() + " " + failMessage);
-					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - network error");
-					synchronized (testFailed) {
-						testFailed++;
-					}
-					e.printStackTrace();
-
-				} finally {
-					if (clientSocket != null && null != inFromServer) { 
-//						try {
-//							while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > 0) {
-//								// regardless of whether the test passed or failed,
-//								// we want to slurp the pipe so that the subsequent test will be unaffected
-//							}
-//						} catch (SocketTimeoutException e) { /* do nothing */ }
-						
+					} catch (IOException e) {
+						System.err.println("*** network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
 						try {
-							clientSocket.close();
-						} catch (IOException e) { /* do nothing */ }
+							Thread.sleep(TIME_RETRY_MS);
+						} catch (InterruptedException e1) {}
+
+					} finally {
+						if (clientSocket != null && null != inFromServer) { 
+							//						try {
+							//							while (inFromServer.read(recvBuffer, 0, recvBuffer.length) > 0) {
+							//								// regardless of whether the test passed or failed,
+							//								// we want to slurp the pipe so that the subsequent test will be unaffected
+							//							}
+							//						} catch (SocketTimeoutException e) { /* do nothing */ }
+
+							try {
+								clientSocket.close();
+							} catch (IOException e) { /* do nothing */ }
+						}
 					}
 				}
 			}
 
 			if (IS_VERBOSE) System.out.println("-------------- Finished Running Tests --------------");
-			
+
 			System.out.println("-------------- Passed/Fail = "+ testPassed+"/"+testFailed +" ------------------");
 
 
