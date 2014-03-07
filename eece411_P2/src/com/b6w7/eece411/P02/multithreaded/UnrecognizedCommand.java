@@ -2,8 +2,6 @@ package com.b6w7.eece411.P02.multithreaded;
 
 import java.nio.ByteBuffer;
 
-import com.b6w7.eece411.P02.NodeCommands;
-
 public class UnrecognizedCommand extends Command {
 	final byte cmd = NodeCommands.Request.CMD_UNRECOG.getCode();
 	byte replyCode = NodeCommands.Reply.CMD_UNRECOGNIZED.getCode();
