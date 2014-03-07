@@ -86,12 +86,13 @@ public class GetCommand extends Command {
 //		
 		byte[] val = map.get( new ByteArrayWrapper(key) );
 		
-		System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key) );
-		System.out.println("key.length: "+key.length);
+		
+		System.out.println("(key.length, get key bytes): ("+key.length+
+				", "+NodeCommands.byteArrayAsString(key) +")" );
 		
 		if(val != null) {
-			System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(val) );
-			System.out.println("val.length: "+val.length);
+			System.out.println("(value.length, get value bytes): ("+val.length+
+					", "+NodeCommands.byteArrayAsString(val) +")" );
 		}
 //		
 //		if (val == null) {

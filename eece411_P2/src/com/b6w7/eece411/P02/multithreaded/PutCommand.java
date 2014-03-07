@@ -91,25 +91,14 @@ private boolean put(){
 
 //					byte[] val = map.get( key );
 					
-					System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key) );
-					System.out.println("key.length: "+key.length);
+					System.out.println("(key.length, get key bytes): ("+key.length+
+							", "+NodeCommands.byteArrayAsString(key) +")" );
 					
 					if(value != null) {
-						System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(value) );
-						System.out.println("value.length: "+value.length);
+						System.out.println("(value.length, get value bytes): ("+value.length+
+								", "+NodeCommands.byteArrayAsString(value) +")" );
 					}
-
-//					byte[] val = map.get( key );
-					
-					System.out.println("get key bytes: "+NodeCommands.byteArrayAsString(key) );
-					System.out.println("key.length: "+key.length);
-					
-					if(value != null) {
-						System.out.println("get value bytes: "+NodeCommands.byteArrayAsString(value) );
-						System.out.println("value.length: "+value.length);
-					}
-
-					
+	
 					map.put(new ByteArrayWrapper(key), value);
 					
 					System.out.println("TESTING POST PUT COMMAND");

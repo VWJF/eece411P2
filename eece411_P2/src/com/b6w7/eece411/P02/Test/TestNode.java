@@ -155,7 +155,42 @@ public class TestNode {
 		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, thisThread+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
 	}
 
+	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// test 1: put 'Scott' => '63215065', and so on ... 
 
+		String thisThread = Thread.currentThread().toString();
+		
+//		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+//		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+/*
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "60038106", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Vancouver", "British Columbia", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Seattle", "Washington", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ottawa", "Canada", NodeCommands.RPY_SUCCESS);
+		
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Paris", "Texas", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scotsdale", "Arizona", NodeCommands.RPY_SUCCESS);
+
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Paris", "Texas", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scotsdale", "Arizona", NodeCommands.RPY_SUCCESS);
+*/
+	
+	//	populateOneTest(NodeCommands.CMD_PUT, thisThread+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+		
+	//	populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+
+	}
+	
 	public static void main(String[] args) {
 
 		// If the command line arguments are missing, or invalid, then nothing to do
@@ -177,7 +212,7 @@ public class TestNode {
 		
 		List<TestNode> list = new LinkedList<TestNode>();
 		
-		for (int i=0; i<100; i++)
+		for (int i=0; i<1; i++)
 			list.add(new TestNode(serverURL, serverPort));
 		
 		if (!IS_BREVITY) System.out.println("-------------- Start Running Test --------------");
@@ -208,7 +243,8 @@ public class TestNode {
 			// Set a timeout on read operation as 3 seconds
 			//			clientSocket = new Socket(serverURL, serverPort);
 
-			populateTests();
+			//populateTests();
+			populateMemoryTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

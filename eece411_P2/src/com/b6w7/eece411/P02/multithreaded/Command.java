@@ -4,7 +4,7 @@ import java.util.Map;
 
 public abstract class Command {
 	
-	protected static final int MAX_MEMORY = 40000;
+	protected static final int MAX_MEMORY = 30;
 	
 	protected Map<ByteArrayWrapper, byte[]> map;// = new HashMap<String, String>();
 

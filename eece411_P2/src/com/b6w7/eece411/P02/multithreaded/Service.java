@@ -53,7 +53,8 @@ public class Service extends Thread implements JoinThread {
 			System.out.println("Failed to bind to port " + servPort);
 			return;
 		} 
-
+		System.out.println();
+		
 		// start handler thread
 		handler.start();
 
