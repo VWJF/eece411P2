@@ -311,13 +311,13 @@ public class TestNode extends Thread {
 
 					}
 					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
-					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
-					actualReplyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
+					//expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
+					//actualReplyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
 
 					// Check the received reply against the expected reply and determine success of test
 					if (recvBuffer[0] != test.replyCode) {
 						isPass = false;
-						failMessage = "expected reply "+expectedReplyString+" but instead received "+ actualReplyString;
+						failMessage = "expected "+NodeCommands.Reply.values()[test.replyCode & 0xFF].toString()+" but instead "+ NodeCommands.Reply.values()[recvBuffer[0] & 0xFF].toString();
 					}
 
 					if (IS_VERBOSE) System.out.print("-Reading Value of GET.");
