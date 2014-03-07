@@ -77,35 +77,15 @@ public class GetCommand extends Command {
 	 */
 	private byte[] get(){
 
-		
-//		StringBuilder k = new StringBuilder();
-//		
-//		try {
-//			k.append(new String(this.key.array(), "UTF-8"));
-//		} catch (UnsupportedEncodingException e) {
-//			k.append(new String(this.key.array()));
-//		}
-//		
 		byte[] val = map.get( new ByteArrayWrapper(key) );
-		
 		
 		System.out.println("(key.length, get key bytes): ("+key.length+
 				", "+NodeCommands.byteArrayAsString(key) +")" );
 		
 		if(val != null) {
-			System.out.println("(value.length, get value bytes): ("+val.length+
-					", "+NodeCommands.byteArrayAsString(val) +")" );
+			// NONEXISTENT -- we want to debug here
+			System.out.println("GetCommand() ### Not Found " + this.toString());
 		}
-//		
-//		if (val == null) {
-//			System.out.println("  &&&  val is null");
-//			return null;
-//		} else {
-//			System.out.println("  &&&  val.length()=="+val.length());
-//			System.out.println("  &&&  val.getBytes().length=="+val.getBytes().length);
-//			return ByteBuffer.wrap(val.getBytes());
-//		}
-
 		return val;
 	}
 	
@@ -116,13 +96,13 @@ public class GetCommand extends Command {
 
 		s.append("[command=>");
 		s.append(NodeCommands.Request.values()[cmd].toString());
-		s.append("] [key=>");
+		s.append("] [key["+key.length+"]=>");
 		for (int i=0; i<key.length; i++)
 			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 
 		s.append("] [replyCode=>");
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
-		s.append("] [replyValue=>");
+		s.append("] [replyValue["+replyValue.length+"]=>");
 		for (int i=0; i<replyValue.length; i++)
 			s.append(Integer.toString((replyValue[i] & 0xff) + 0x100, 16).substring(1));
 		s.append("]");

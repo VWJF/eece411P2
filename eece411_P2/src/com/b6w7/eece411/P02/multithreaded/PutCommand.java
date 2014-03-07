@@ -136,7 +136,7 @@ private boolean put(){
 		for (int i=0; i<key.length; i++)
 			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 
-		s.append("] [value=>");
+		s.append("] [value["+value.length+"]=>");
 		for (int i=0; i<value.length; i++)
 			s.append(Integer.toString((value[i] & 0xff) + 0x100, 16).substring(1));
 
