@@ -20,7 +20,7 @@ public class TestData {
 	final ByteBuffer replyValue;
 	final int index;
 
-	private static int _index = 0;
+	private static Integer _index = new Integer(0);
 
 	@SuppressWarnings("unused")
 	private TestData() {
@@ -93,8 +93,10 @@ public class TestData {
 			buffer.put(value);
 		}
 
-		this.index = _index;
-		_index ++;
+		synchronized (_index) {
+			this.index = _index;
+			_index ++;
+		}
 	}
 
 	@Override
