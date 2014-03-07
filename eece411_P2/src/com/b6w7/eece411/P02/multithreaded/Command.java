@@ -4,11 +4,7 @@ import java.util.Map;
 
 public abstract class Command {
 	
-<<<<<<< HEAD
 	protected static final int MAX_MEMORY = 40000;
-=======
-	protected static final int MAX_MEMORY = 40;
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 	
 	public Map<ByteArrayWrapper, byte[]> map;// = new HashMap<String, String>();
 

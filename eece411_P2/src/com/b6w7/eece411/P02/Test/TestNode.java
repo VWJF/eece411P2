@@ -14,21 +14,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-
-
-
-
-//import com.b6w7.eece411.P02.Node;
-
-import com.b6w7.eece411.P02.multithreaded.NodeCommands;
-<<<<<<< HEAD
-import com.b6w7.eece411.P02.NodeCommands.Reply;
-=======
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 import com.b6w7.eece411.P02.multithreaded.Service;
+//import com.b6w7.eece411.P02.Node;
+import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 /**
  * A test class for testing {@link Service}
  * 
@@ -38,15 +28,10 @@ import com.b6w7.eece411.P02.multithreaded.Service;
  */
 public class TestNode extends Thread {
 
-<<<<<<< HEAD
 	private static final long TIME_RETRY_MS = 200;
 
 	private static int NUM_TEST_THREADS = 5005;
 
-=======
-	private static int NUM_TEST_THREADS = 10;
-	
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
 	private int myCount;
@@ -155,73 +140,31 @@ public class TestNode extends Thread {
 
 		int myCount = count.addAndGet(1);
 		System.out.println(myCount);	
-<<<<<<< HEAD
 		//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
 		//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
-=======
-//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
-//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
-		
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
-<<<<<<< HEAD
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-=======
+
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
-<<<<<<< HEAD
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
-=======
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"John", "Smith", NodeCommands.Reply.RPY_OUT.getCode()_OF_SPACE);
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
-
-<<<<<<< HEAD
 		//		populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
-=======
+
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
-<<<<<<< HEAD
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
-=======
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
-<<<<<<< HEAD
-		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
-=======
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
-<<<<<<< HEAD
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-=======
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
-
-<<<<<<< HEAD
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-=======
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
 	}
 
@@ -230,36 +173,15 @@ public class TestNode extends Thread {
 
 		this.myCount = count.addAndGet(1);
 		System.out.println(myCount);
-<<<<<<< HEAD
-=======
-		
-//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
-<<<<<<< HEAD
 		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 		//		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-=======
+
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
-<<<<<<< HEAD
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
-=======
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
-
-<<<<<<< HEAD
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -274,17 +196,6 @@ public class TestNode extends Thread {
 		//	populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 
 		//	populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-=======
-/*		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-		
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
-*/
-	//	populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"John", "Smith", NodeCommands.Reply.RPY_OUT.getCode()_OF_SPACE);
-		
-	//	populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 
 	}
 
@@ -392,46 +303,9 @@ public class TestNode extends Thread {
 						if (IS_VERBOSE) System.out.print("-Reading Answer.");
 						while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
 
-<<<<<<< HEAD
 						if ( numBytesRead > NodeCommands.LEN_CMD_BYTES ) {
 							// did not receive the one byte reply that was expected.
 							failMessage = "excess bytes reply.";
-=======
-					if ( numBytesRead > 1 ) {
-						// did not receive the one byte reply that was expected.
-						failMessage = "excess bytes reply.";
-						isPass = false;
-
-					} else if ( numBytesRead == -1 ) {
-						// did not receive the one byte reply that was expected.
-						failMessage = "broken pipe";
-						isPass = false;
-
-					}
-					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
-					//expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
-					//actualReplyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
-
-					// Check the received reply against the expected reply and determine success of test
-					if (recvBuffer[0] != test.replyCode) {
-						isPass = false;
-						failMessage = "expected "+NodeCommands.Reply.values()[test.replyCode & 0xFF].toString()+" but instead "+ NodeCommands.Reply.values()[recvBuffer[0] & 0xFF].toString();
-					}
-
-					if (IS_VERBOSE) System.out.print("-Reading Value of GET.");
-					int bytesRead = 0;
-					int totalBytesRead = 0;
-					// If test was a GET command, then additionally read pipe for reply and verify result
-					if (isPass && NodeCommands.Request.CMD_GET.getCode() == test.cmd) {
-
-						// we expect 1024 bytes of 'value' from this GET command
-						while (bytesRead != -1 && inFromServer.available() > 0) {
-							bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
-							totalBytesRead += bytesRead;
-						}
-
-						if (recvBuffer[0] == NodeCommands.Reply.RPY_SUCCESS.getCode() && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 							isPass = false;
 							tryAgain = false;
 
@@ -445,7 +319,7 @@ public class TestNode extends Thread {
 
 						// Check the received reply against the expected reply and determine success of test
 						if (recvBuffer[0] != test.replyCode) {
-							if (Reply.values()[recvBuffer[0]] == Reply.RPY_OVERLOAD) {
+							if (NodeCommands.Reply.values()[recvBuffer[0]] == NodeCommands.Reply.RPY_OVERLOAD) {
 								throw new IOException();
 							}
 
@@ -458,7 +332,7 @@ public class TestNode extends Thread {
 						int bytesRead = 0;
 						int totalBytesRead = 0;
 						// If test was a GET command, then additionally read pipe for reply and verify result
-						if (isPass && NodeCommands.CMD_GET == test.cmd) {
+						if (isPass && NodeCommands.Request.CMD_GET.getCode() == test.cmd) {
 
 							// we expect 1024 bytes of 'value' from this GET command
 							while (bytesRead != -1 && inFromServer.available() > 0) {
@@ -466,7 +340,7 @@ public class TestNode extends Thread {
 								totalBytesRead += bytesRead;
 							}
 
-							if (recvBuffer[0] == NodeCommands.RPY_SUCCESS && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
+							if (recvBuffer[0] == NodeCommands.Reply.RPY_SUCCESS.getCode() && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 								isPass = false;
 								tryAgain = false;
 								failMessage = "expected value "+test.value +
