@@ -29,12 +29,12 @@ public class TestNode {
 
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
-	private static boolean IS_VERBOSE = true;
+	private static boolean IS_VERBOSE = false;
 
 	private MessageDigest md;
 
-	private int testPassed = 0;
-	private int testFailed = 0;
+	private static Integer testPassed = new Integer(0);
+	private static Integer testFailed = new Integer(0);
 	// list of test cases, each entry representing one test case
 	private List<TestData> tests = new LinkedList<TestData>();
 
@@ -127,29 +127,29 @@ public class TestNode {
 
 		String thisThread = Thread.currentThread().toString();
 		
-//		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
 		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_PUT, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-//
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+
 //		populateOneTest(NodeCommands.CMD_PUT, thisThread+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 
 		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_GET, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-//
-//		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-//		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-//
-//		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
-//
-//		populateOneTest(NodeCommands.CMD_GET, thisThread+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
-//
-//		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, thisThread+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+
+		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
+
+		populateOneTest(NodeCommands.CMD_GET, thisThread+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+
+		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, thisThread+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
 	}
 
 
@@ -174,7 +174,7 @@ public class TestNode {
 		
 		List<TestNode> list = new LinkedList<TestNode>();
 		
-		for (int i=0; i<1; i++)
+		for (int i=0; i<100; i++)
 			list.add(new TestNode(serverURL, serverPort));
 		
 		while (!list.isEmpty())
@@ -311,10 +311,14 @@ public class TestNode {
 					// Display result of test
 					if (isPass) {
 						System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
-						testPassed++;
+						synchronized (testPassed) {
+							testPassed++;
+						}
 					} else {
 						System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
-						testFailed++;
+						synchronized (testFailed) {
+							testFailed++;
+						}
 					}
 
 
