@@ -29,7 +29,10 @@ public class TestNode {
 
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
+	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;
+	// reduced debug outut from normal
+	private static boolean IS_BREVITY = true;
 
 	private MessageDigest md;
 
@@ -177,6 +180,8 @@ public class TestNode {
 		for (int i=0; i<100; i++)
 			list.add(new TestNode(serverURL, serverPort));
 		
+		if (!IS_BREVITY) System.out.println("-------------- Start Running Test --------------");
+
 		while (!list.isEmpty())
 			list.remove(0).start();
 	}
@@ -193,7 +198,7 @@ public class TestNode {
 			// There may be multiple IP addresses; but we only need one
 			// so calling .getByName() is sufficient over .getAllByName()
 			InetAddress address = InetAddress.getByName(url);
-			System.out.println(
+			if (!IS_BREVITY) System.out.println(
 					"Connecting to: " 
 							+ address.toString().replaceAll("/", " == ") 
 							+ " on port " 
@@ -217,13 +222,13 @@ public class TestNode {
 			boolean isPass;
 			String failMessage = null;
 
-			if (IS_VERBOSE) System.out.println("-------------- Start Running Tests --------------");
+			if (!IS_BREVITY) System.out.println("-------------- Start Running Test --------------");
 
 			for (TestData test : tests) {
 				isPass = true;
 
 				if (IS_VERBOSE) System.out.println();
-				System.out.println("--- Running Test: "+test);
+				if (!IS_BREVITY) System.out.println("--- Running Test: "+test);
 
 
 				try {
@@ -310,7 +315,7 @@ public class TestNode {
 
 					// Display result of test
 					if (isPass) {
-						System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
+						if (!IS_BREVITY) System.out.println("*** TEST "+test.index+" PASSED - received reply "+replyString);
 						synchronized (testPassed) {
 							testPassed++;
 						}
