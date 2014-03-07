@@ -115,11 +115,10 @@ public class TestData {
 
 		if (null != value) {
 			byteData = value.array();
-			s.append("] [value=>");
+			s.append("] [value["+byteData.length+"]=>");
 			
-			for (int i=0; i<Command.LEN_TO_STRING_OF_VAL; i++) {
+			for (int i=0; i<Command.LEN_TO_STRING_OF_VAL; i++)
 				s.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
-			}
 
 //			try {
 //				// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
@@ -129,10 +128,18 @@ public class TestData {
 //			}
 		}
 
-		s.append("] [expected reply=>" + replyCode + "]");
+		s.append("] [expected reply=>" + NodeCommands.Reply.values()[replyCode].toString());
 
-		if (NodeCommands.CMD_GET == cmd)
-			s.append(" [expected reply value=>"+NodeCommands.requestByteArrayToString(replyValue.array())+"]");
+		if (NodeCommands.CMD_GET == cmd) {
+			byteData = replyValue.array();
+			s.append("] [expected reply value["+byteData.length+"]=>");
+			
+			for (int i=0; i<Command.LEN_TO_STRING_OF_VAL; i++)
+				s.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+			
+//			s.append(" [expected reply value=>"+NodeCommands.requestByteArrayToString(replyValue.array())+"]");
+		}
+		s.append("]");
 
 		return s.toString();
 	}

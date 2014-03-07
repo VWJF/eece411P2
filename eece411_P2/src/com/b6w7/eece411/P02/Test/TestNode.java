@@ -38,7 +38,7 @@ public class TestNode extends Thread {
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
 	// extra debug output from normal
-	private static boolean IS_VERBOSE = true;
+	private static boolean IS_VERBOSE = false;
 	// reduced debug outut from normal
 	private static boolean IS_BREVITY = false;
 
