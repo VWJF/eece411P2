@@ -11,7 +11,7 @@ public class RemoveCommand extends Command {
 	final byte cmd;
 	final byte[] key;
 
-	byte replyCode;
+	byte replyCode = NodeCommands.CMD_NOT_SET;
 	byte[] replyValue;
 
 	// protocol for Request: remove command <cmd,key>
@@ -38,7 +38,7 @@ public class RemoveCommand extends Command {
 	@Override
 	public void execute() {	
 		replyValue = remove();
-		
+
 		if( replyValue != null ){  
 			this.replyCode = Reply.RPY_SUCCESS.getCode(); 
 		}
@@ -57,7 +57,7 @@ public class RemoveCommand extends Command {
 	public byte[] getReply(){
 
 		ByteBuffer response;
-		
+
 		if(replyValue != null){
 			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
 			response.put(replyCode);
@@ -66,7 +66,7 @@ public class RemoveCommand extends Command {
 			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 			response.put(replyCode);
 		}
-		
+
 		return response.array();
 	}
 
@@ -75,27 +75,13 @@ public class RemoveCommand extends Command {
 	 * returns the value if the key was present in the structure, null otherwise.
 	 */
 	private byte[] remove(){
-		
-		
 		System.out.println("(key.length, get key bytes): ("+key.length+
 				", "+NodeCommands.byteArrayAsString(key) +")" );
-		
+
 		return map.remove(new ByteArrayWrapper(key));
-		
-//		StringBuilder k = new StringBuilder();
-//		try {
-//			k.append(new String(this.key.array(), "UTF-8"));
-//		} catch (UnsupportedEncodingException e) {
-//			k.append(new String(this.key.array()));
-//		}
-//		
-//		String removed = map.remove(k.toString());
-//		//if(removed == null)
-//		//	Command.numElements--;
-//
-//		return removed;
+
 	}
-	
+
 	@Override
 	public String toString(){
 		StringBuilder s = new StringBuilder();
@@ -108,9 +94,11 @@ public class RemoveCommand extends Command {
 
 		s.append("] [replyCode=>");
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
-		s.append("] [replyValue["+replyValue.length+"]=>");
-		for (int i=0; i<replyValue.length; i++)
-			s.append(Integer.toString((replyValue[i] & 0xff) + 0x100, 16).substring(1));
+		if (replyValue != null) {
+			s.append("] [replyValue["+replyValue.length+"]=>");
+			for (int i=0; i<replyValue.length; i++)
+				s.append(Integer.toString((replyValue[i] & 0xff) + 0x100, 16).substring(1));
+		}
 		s.append("]");
 
 		return s.toString();

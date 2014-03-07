@@ -15,6 +15,7 @@ public class NodeCommands {
 	public static final byte CMD_PUT = 0x1;
 	public static final byte CMD_GET = 0x2;
 	public static final byte CMD_REMOVE = 0x3;
+	public static final byte CMD_NOT_SET = 0x4;
 	
 	public static final byte CMD_UNRECOGNIZED = 0xF;
 	
@@ -36,7 +37,8 @@ public class NodeCommands {
 		CMD_UNRECOG((byte)0), 
 		CMD_PUT((byte)1), 
 		CMD_GET((byte)2), 
-		CMD_REMOVE((byte)3);		
+		CMD_REMOVE((byte)3),	
+		CMD_NOT_SET((byte)4);
 		
 		private byte value;
 

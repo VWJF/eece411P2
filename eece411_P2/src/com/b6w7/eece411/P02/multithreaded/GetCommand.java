@@ -11,7 +11,7 @@ public class GetCommand extends Command {
 	final byte cmd;
 	final byte[] key;
 
-	byte replyCode;
+	byte replyCode = NodeCommands.CMD_NOT_SET;
 	byte[] replyValue;
 
 	// protocol for Request: get command <cmd,key>
@@ -50,15 +50,15 @@ public class GetCommand extends Command {
 			execution_completed = true;
 		}
 	}
-	
+
 	/*
 	 * returns the appropriate response to be sent to the client for the requested (command,key,value)
 	 */
 	@Override
 	public byte[] getReply(){
-		
+
 		ByteBuffer response;
-		
+
 		if(replyValue != null){
 			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
 			response.put(replyCode);
@@ -67,28 +67,28 @@ public class GetCommand extends Command {
 			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 			response.put(replyCode);
 		}
-		
+
 		return response.array();
 	}
-	
-	
+
+
 	/*
 	 * returns null if not found, else returns value of key in map
 	 */
 	private byte[] get(){
 
 		byte[] val = map.get( new ByteArrayWrapper(key) );
-		
+
 		System.out.println("(key.length, get key bytes): ("+key.length+
 				", "+NodeCommands.byteArrayAsString(key) +")" );
-		
+
 		if(val != null) {
 			// NONEXISTENT -- we want to debug here
 			System.out.println("GetCommand() ### Not Found " + this.toString());
 		}
 		return val;
 	}
-	
+
 	@Override
 	public String toString(){
 
@@ -102,9 +102,11 @@ public class GetCommand extends Command {
 
 		s.append("] [replyCode=>");
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
-		s.append("] [replyValue["+replyValue.length+"]=>");
-		for (int i=0; i<replyValue.length; i++)
-			s.append(Integer.toString((replyValue[i] & 0xff) + 0x100, 16).substring(1));
+		if (replyValue != null) {
+			s.append("] [replyValue["+replyValue.length+"]=>");
+			for (int i=0; i<replyValue.length; i++)
+				s.append(Integer.toString((replyValue[i] & 0xff) + 0x100, 16).substring(1));
+		}
 		s.append("]");
 
 		return s.toString();

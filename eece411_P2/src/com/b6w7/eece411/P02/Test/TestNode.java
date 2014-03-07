@@ -375,14 +375,14 @@ public class TestNode extends Thread {
 
 
 				} catch (SocketTimeoutException e) {
-					System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
+					System.err.println("### "+ test.toString() + " " + failMessage);
 					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage);
 					synchronized (testFailed) {
 						testFailed++;
 					}
 
 				} catch (IOException e) {
-					System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
+					System.err.println("### "+ test.toString() + " " + failMessage);
 					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - network error");
 					synchronized (testFailed) {
 						testFailed++;

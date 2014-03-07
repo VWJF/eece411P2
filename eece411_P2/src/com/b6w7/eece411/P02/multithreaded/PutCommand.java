@@ -12,7 +12,7 @@ public class PutCommand extends Command {
 	final byte[] key;
 	final byte[] value;
 
-	byte replyCode;
+	byte replyCode = NodeCommands.CMD_NOT_SET;
 
 	// protocol for Request: put command <cmd,key,value>
 	// protocol for Response: <cmd>
