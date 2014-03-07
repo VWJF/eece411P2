@@ -183,22 +183,22 @@ public class WorkerThread extends Thread {
 				switch (cmdByte) {
 				case NodeCommands.CMD_PUT:
 					cmd = new PutCommand(cmdByte, key, value, map);
-					System.out.println("Issuing "+cmd);
+					//System.out.println("Issuing "+cmd);
 					db.post(cmd);
 					break;				
 				case NodeCommands.CMD_GET:
 					cmd = new GetCommand(cmdByte, key, map);
-					System.out.println("Issuing "+cmd);
+					//System.out.println("Issuing:  "+cmd);
 					db.post(cmd);
 					break;				
 				case NodeCommands.CMD_REMOVE:
 					cmd = new RemoveCommand(cmdByte, key, map);
-					System.out.println("Issuing "+cmd);
+					//System.out.println("Issuing:  "+cmd);
 					db.post(cmd);
 					break;		
 				default:
 					cmd = new UnrecognizedCommand();
-					System.out.println("Issuing "+cmd);
+					//System.out.println("Issuing:  "+cmd);
 
 				}
 
@@ -229,13 +229,13 @@ public class WorkerThread extends Thread {
 					outToClient.write(cmd.getReply());
 					
 					byteBufferOut = cmd.getReply();
-					System.out.println(cmd);
+					//System.out.println("Replying: "+cmd);
 					
 //					String p = new String(byteBufferOut, "UTF-8");
 //					String q = NodeCommands.byteArrayAsString(byteBufferOut);
 //					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
 					
-					System.out.println("Total elements in map: "+ map.size());
+					// System.out.println("Total elements in map: "+ map.size());
 					//	System.out.println("Total elements in map: "+ Command.getNumElements());
 					//  System.out.println("All Bytes Written(array): ( "+q.substring(0, 2)+" "+q.substring(2)+")");
 					if (IS_VERBOSE) System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + byteBufferOut.length+ ", " +outToClient.size()+")");
@@ -291,7 +291,7 @@ public class WorkerThread extends Thread {
 				}
 
 				try{	
-					System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
+					System.out.println("Closing socket. Written bytes: "+byteBufferOut.length +"\n");
 					socket.close();
 				} catch (IOException e) {
 					e.printStackTrace();
