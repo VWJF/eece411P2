@@ -12,7 +12,7 @@ import java.util.Map;
  * @author Ishan Sahay
  */
 public class NodeCommands {
-	public static final byte CMD_PUT = 0x1;
+/*public static final byte CMD_PUT = 0x1;
 	public static final byte CMD_GET = 0x2;
 	public static final byte CMD_REMOVE = 0x3;
 	
@@ -25,7 +25,7 @@ public class NodeCommands {
 	public static final byte RPY_INTERNAL_FAILURE = 0x4;
 	public static final byte RPY_UNRECOGNIZED_CMD = 0x5;
 	public static final byte RPY_NOT_SET = 0x6;
-	
+*/	
 	public static final int LEN_CMD_BYTES = 1;
 	public static final int LEN_KEY_BYTES = 32;
 	public static final int LEN_VALUE_BYTES = 1024;

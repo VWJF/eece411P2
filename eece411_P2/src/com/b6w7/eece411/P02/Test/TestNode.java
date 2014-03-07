@@ -107,18 +107,18 @@ public class TestNode extends Thread {
 			}
 			// value.put(valueString.getBytes(StandardCharsets.UTF_8.displayName()));
 			value.put(valueString.getBytes("UTF-8"));
-			//reply = NodeCommands.RPY_SUCCESS;
+			//reply = NodeCommands.Reply.RPY_SUCCESS.getCode();
 
-			if (NodeCommands.CMD_PUT == cmd) {
+			if (NodeCommands.Request.CMD_PUT.getCode() == cmd) {
 				// If we are performing a PUT, then we need to send value
 				tests.add(new TestData(cmd, hashedKey, value, reply, null));
 
-			} else if (NodeCommands.CMD_GET == cmd){
+			} else if (NodeCommands.Request.CMD_GET.getCode() == cmd){
 				// If we are performing a GET, then we do not have to send 'value', 
 				// but we must see the value replied to us
 				tests.add(new TestData(cmd, hashedKey, null, reply, value));
 
-			} else if (NodeCommands.CMD_REMOVE == cmd){
+			} else if (NodeCommands.Request.CMD_REMOVE.getCode() == cmd){
 				// If we are performing a REMOVE, then we do not have to send 'value',
 				// and neither do we have to expect it as a returned value
 				tests.add(new TestData(cmd, hashedKey, null, reply, null));
@@ -143,29 +143,29 @@ public class TestNode extends Thread {
 //		String myCount = Thread.currentThread().toString(); //String does not change with different threads
 //		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
 		
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-//		populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"John", "Smith", NodeCommands.Reply.RPY_OUT.getCode()_OF_SPACE);
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, myCount+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
 	}
 
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
@@ -174,28 +174,28 @@ public class TestNode extends Thread {
 		this.myCount = count.addAndGet(1);
 		System.out.println(myCount);
 		
-//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-/*		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+/*		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 		
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Hazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
 */
-	//	populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+	//	populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"John", "Smith", NodeCommands.Reply.RPY_OUT.getCode()_OF_SPACE);
 		
-	//	populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+	//	populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
 	}
 	
@@ -326,7 +326,7 @@ public class TestNode extends Thread {
 					int bytesRead = 0;
 					int totalBytesRead = 0;
 					// If test was a GET command, then additionally read pipe for reply and verify result
-					if (isPass && NodeCommands.CMD_GET == test.cmd) {
+					if (isPass && NodeCommands.Request.CMD_GET.getCode() == test.cmd) {
 
 						// we expect 1024 bytes of 'value' from this GET command
 						while (bytesRead != -1 && inFromServer.available() > 0) {
@@ -334,7 +334,7 @@ public class TestNode extends Thread {
 							totalBytesRead += bytesRead;
 						}
 
-						if (recvBuffer[0] == NodeCommands.RPY_SUCCESS && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
+						if (recvBuffer[0] == NodeCommands.Reply.RPY_SUCCESS.getCode() && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 							isPass = false;
 							failMessage = "expected value "+test.value +
 									" Number of bytes received: "+totalBytesRead;

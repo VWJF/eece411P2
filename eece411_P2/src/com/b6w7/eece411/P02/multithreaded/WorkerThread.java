@@ -83,7 +83,7 @@ public class WorkerThread extends Thread {
 			if (map == null) {
 				// if map is null then the WorkerThread only needs to reject the client connections
 				// with the rejection code
-				byteBufferOut[0] = NodeCommands.RPY_OVERLOAD;
+				byteBufferOut[0] = NodeCommands.Reply.RPY_OVERLOAD.getCode();
 				outToClient.write(byteBufferOut, 0, 1);
 			} else {
 
@@ -180,18 +180,18 @@ public class WorkerThread extends Thread {
 				// redundant println:
 				//System.out.println("Request Received(cmd,key,value): ("+cmdByte+", "+key+", "+value.toString()+") ");
 
-				switch (cmdByte) {
-				case NodeCommands.CMD_PUT:
+				switch (Request.values()[cmdByte]) {
+				case CMD_PUT:
 					cmd = new PutCommand(cmdByte, key, value, map);
 					//System.out.println("Issuing "+cmd);
 					db.post(cmd);
 					break;				
-				case NodeCommands.CMD_GET:
+				case CMD_GET:
 					cmd = new GetCommand(cmdByte, key, map);
 					//System.out.println("Issuing:  "+cmd);
 					db.post(cmd);
 					break;				
-				case NodeCommands.CMD_REMOVE:
+				case CMD_REMOVE:
 					cmd = new RemoveCommand(cmdByte, key, map);
 					//System.out.println("Issuing:  "+cmd);
 					db.post(cmd);

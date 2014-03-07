@@ -44,7 +44,7 @@ public class TestData {
 		}
 
 
-		if (NodeCommands.CMD_PUT == cmd) {
+		if (NodeCommands.Request.CMD_PUT.getCode() == cmd) {
 			if (null == value || value.limit() != NodeCommands.LEN_VALUE_BYTES) 
 				throw new IllegalArgumentException("value must be 1024 bytes for PUT operation");
 
@@ -53,7 +53,7 @@ public class TestData {
 					+NodeCommands.LEN_KEY_BYTES
 					+NodeCommands.LEN_VALUE_BYTES);
 
-		} else if (NodeCommands.CMD_GET == cmd) {
+		} else if (NodeCommands.Request.CMD_GET.getCode() == cmd) {
 			if (null == replyValue || replyValue.limit() != NodeCommands.LEN_VALUE_BYTES) 
 				throw new IllegalArgumentException("replyValue must be 1024 bytes for GET operation");
 
@@ -61,7 +61,7 @@ public class TestData {
 					NodeCommands.LEN_CMD_BYTES
 					+NodeCommands.LEN_KEY_BYTES);
 
-		} else if (NodeCommands.CMD_REMOVE == cmd) {
+		} else if (NodeCommands.Request.CMD_REMOVE.getCode() == cmd) {
 			buffer = ByteBuffer.allocate(
 					NodeCommands.LEN_CMD_BYTES
 					+NodeCommands.LEN_KEY_BYTES);
@@ -130,7 +130,7 @@ public class TestData {
 
 		s.append("] [expected reply=>" + NodeCommands.Reply.values()[replyCode].toString());
 
-		if (NodeCommands.CMD_GET == cmd) {
+		if (NodeCommands.Request.CMD_GET.getCode() == cmd) {
 			byteData = replyValue.array();
 			s.append("] [expected reply value["+byteData.length+"]=>");
 			
