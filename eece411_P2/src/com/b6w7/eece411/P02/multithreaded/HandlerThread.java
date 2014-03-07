@@ -31,7 +31,10 @@ public class HandlerThread extends Thread implements PostCommand {
 				}
 
 			} else {
+				System.out.println("Issuing:  "+cmd);
 				cmd.execute();
+				System.out.println("Total elements in map: "+ cmd.map.size());
+				System.out.println("Complete: "+cmd);
 			}
 		}
 //		System.out.println("HandlerThread()::run() end");
