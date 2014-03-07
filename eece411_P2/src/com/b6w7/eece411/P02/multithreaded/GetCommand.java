@@ -81,7 +81,7 @@ public class GetCommand extends Command {
 
 		if(val != null) {
 			// NONEXISTENT -- we want to debug here
-			System.out.println("*** GetCommand() Not Found " + this.toString());
+			if (IS_VERBOSE) System.out.println("*** GetCommand() Not Found " + this.toString());
 		}
 		return val;
 	}

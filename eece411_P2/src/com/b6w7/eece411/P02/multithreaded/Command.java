@@ -13,6 +13,8 @@ public abstract class Command {
 	public static final int LEN_TO_STRING_OF_KEY = 5;
 	public static final int LEN_TO_STRING_OF_VAL = 5;
 
+	protected boolean IS_VERBOSE = false;
+
 	public abstract void execute();
 	
 	public abstract byte[] getReply();

@@ -175,7 +175,7 @@ public class WorkerThread extends Thread {
 				value = Arrays.copyOfRange(dataRead.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 
 				String s = NodeCommands.requestByteArrayToString(dataRead.array());
-				System.out.println("Request Received(cmd,key,value): "+s.toString());
+				if (IS_VERBOSE) System.out.println("Request Received(cmd,key,value): "+s.toString());
 				// redundant println:
 				//System.out.println("Request Received(cmd,key,value): ("+cmdByte+", "+key+", "+value.toString()+") ");
 
@@ -268,10 +268,9 @@ public class WorkerThread extends Thread {
 
 			}
 		} catch (IOException e1) {
-			// TODO: remove printStackTrace()
 			// Error in reading and writing to output stream.
-			e1.printStackTrace();
-			System.out.println("Socket exception when reading/sending data.");
+			if (IS_VERBOSE) System.out.println("Socket exception when reading/sending data.");
+			
 		} finally {
 
 			if(socket != null){
@@ -290,7 +289,7 @@ public class WorkerThread extends Thread {
 				}
 
 				try{	
-					System.out.println("Closing socket. Written bytes: "+byteBufferOut.length +"\n");
+					if (IS_VERBOSE) System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
 					socket.close();
 				} catch (IOException e) {
 					e.printStackTrace();

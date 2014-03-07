@@ -7,6 +7,8 @@ public class HandlerThread extends Thread implements PostCommand {
 
 	// TODO make private with accessor
 	public boolean keepRunning = true;
+	
+	private boolean IS_VERBOSE = false;
 
 	public HandlerThread() {
 		System.out.println("HandlerThread() constructor");
@@ -25,16 +27,15 @@ public class HandlerThread extends Thread implements PostCommand {
 			if (null == cmd) {
 				synchronized(inQueue) {
 					try {
-						System.out.println("HandlerThread()::run() waiting on inQueue");
+						if (IS_VERBOSE) System.out.println("HandlerThread()::run() waiting on inQueue");
 						inQueue.wait();
 					} catch (InterruptedException e) {	/* do nothing. */ }
 				}
 
 			} else {
-				System.out.println("Issuing:  "+cmd);
+				if (IS_VERBOSE) System.out.println("Issuing:  "+cmd);
 				cmd.execute();
-				System.out.println("Total elements in map: "+ cmd.map.size());
-				System.out.println("Complete: "+cmd);
+				System.out.println("Complete: "+cmd+ " map.size=="+cmd.map.size());
 			}
 		}
 //		System.out.println("HandlerThread()::run() end");

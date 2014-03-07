@@ -28,6 +28,8 @@ public class Service extends Thread implements JoinThread {
 	private boolean keepRunning = true;
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
+	private static boolean IS_VERBOSE = false;
+	
 	public Service(int servPort) {
 		this.servPort = servPort;
 	}
@@ -92,12 +94,12 @@ public class Service extends Thread implements JoinThread {
 				}
 
 				if (hasExceeded) {
-					System.err.println("*** Exceeded maximum of " + MAX_ACTIVE_TCP_CONNECTIONS + " connections.  Closing incoming socket.");
+					if (IS_VERBOSE) System.err.println("*** Exceeded maximum of " + MAX_ACTIVE_TCP_CONNECTIONS + " connections.  Closing incoming socket.");
 					clientSocket.close();
 					continue;
 				}
 
-				System.err.println("Handling client at " +
+				System.out.println("Handling client at " +
 						clientSocket.getInetAddress().getHostAddress() + " with " + numAvailableThreads + " threads available.");
 
 				if (doServe) {

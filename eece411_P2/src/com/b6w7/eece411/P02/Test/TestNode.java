@@ -28,9 +28,9 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
  */
 public class TestNode extends Thread {
 
-	private static final long TIME_RETRY_MS = 200;
+	private static final long TIME_RETRY_MS = 2000;
 
-	private static int NUM_TEST_THREADS = 5005;
+	private static int NUM_TEST_THREADS = 1000;
 
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
@@ -41,7 +41,7 @@ public class TestNode extends Thread {
 	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;
 	// reduced debug outut from normal
-	private static boolean IS_BREVITY = false;
+	private static boolean IS_BREVITY = true;
 
 	private MessageDigest md;
 
@@ -394,7 +394,7 @@ public class TestNode extends Thread {
 						}
 
 					} catch (IOException e) {
-						System.err.println("*** network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
+						if (IS_VERBOSE) System.err.println("*** network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
 						try {
 							Thread.sleep(TIME_RETRY_MS);
 						} catch (InterruptedException e1) {}
