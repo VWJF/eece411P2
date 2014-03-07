@@ -30,7 +30,8 @@ import com.b6w7.eece411.P02.multithreaded.Service;
  */
 public class TestNode extends Thread {
 
-	private static int NUM_TEST_THREADS = 10;
+	private static int NUM_TEST_THREADS = 100;
+	
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
 	private int myCount;
@@ -172,6 +173,7 @@ public class TestNode extends Thread {
 		
 		this.myCount = count.addAndGet(1);
 		System.out.println(myCount);
+		
 //		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 //		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
