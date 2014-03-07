@@ -15,6 +15,9 @@ import com.b6w7.eece411.P02.NodeCommands.Request;
 
 public class WorkerThread extends Thread {
 
+	// extra debug output from normal
+	private static boolean IS_VERBOSE = false;
+		
 	private final Socket socket;
 	private final PostCommand db;
 	private final Map<ByteArrayWrapper, byte[]> map;
@@ -86,7 +89,7 @@ public class WorkerThread extends Thread {
 
 				long timeStart = new Date().getTime();
 
-				System.out.print("--Parsing Command  ");
+				if (IS_VERBOSE) System.out.print("--Parsing Command  ");
 				// We want to decode the command
 				// We try to get CMDSIZE number of bytes from pipe to decode the command
 				// retrying at 100ms intervals
@@ -107,7 +110,7 @@ public class WorkerThread extends Thread {
 					throw new IOException("Timeout on channel.  TotalBytesRead = " + totalBytesReceived);
 				}
 
-				System.out.print("--Parsing Key  ");
+				if (IS_VERBOSE) System.out.print("--Parsing Key  ");
 				// we have successfully parsed the command
 				// next, we want to decode the key
 				// We try to get KEYSIZE number of bytes from pipe to decode the command
@@ -145,7 +148,7 @@ public class WorkerThread extends Thread {
 				// retrying at 100ms intervals
 				// with a total timeout of 5000ms
 				if( cmdByte == (byte) Request.CMD_PUT.getCode() ){
-					System.out.print("--Parsing Value  ");
+					if (IS_VERBOSE) System.out.print("--Parsing Value  ");
 					do {
 						recvMsgSize = inFromClient.read(byteBufferIn
 								, totalBytesReceived
@@ -163,10 +166,10 @@ public class WorkerThread extends Thread {
 					}
 
 					// we have successfully parsed the command, the key, and the value
-					System.out.println("\nSuccessfully read CMD+KEY+VALUE... "+totalBytesReceived+" bytes");
+					if (IS_VERBOSE) System.out.println("\nSuccessfully read CMD+KEY+VALUE... "+totalBytesReceived+" bytes");
 
 				} else {
-					System.out.println("\nSuccessfully read CMD+KEY... "+totalBytesReceived+" bytes");
+					if (IS_VERBOSE) System.out.println("\nSuccessfully read CMD+KEY... "+totalBytesReceived+" bytes");
 				}
 
 				dataRead = ByteBuffer.wrap(	byteBufferIn );
@@ -179,23 +182,24 @@ public class WorkerThread extends Thread {
 
 				switch (cmdByte) {
 				case NodeCommands.CMD_PUT:
-					System.out.println("Issuing PUT.");
 					cmd = new PutCommand(cmdByte, key, value, map);
+					System.out.println("Issuing "+cmd);
 					db.post(cmd);
 					break;				
 				case NodeCommands.CMD_GET:
-					System.out.println("Issuing GET.");
 					cmd = new GetCommand(cmdByte, key, map);
+					System.out.println("Issuing "+cmd);
 					db.post(cmd);
 					break;				
 				case NodeCommands.CMD_REMOVE:
-					System.out.println("Issuing REMOVE.");
 					cmd = new RemoveCommand(cmdByte, key, map);
+					System.out.println("Issuing "+cmd);
 					db.post(cmd);
 					break;		
 				default:
-					System.out.println("Issuing UNRECOGNIZED.");
 					cmd = new UnrecognizedCommand();
+					System.out.println("Issuing "+cmd);
+
 				}
 
 				//Obtain a connected client and reply to the client with its response.
@@ -220,19 +224,21 @@ public class WorkerThread extends Thread {
 
 				// Send reply to client
 				if( socket != null){
-					System.out.println("Writing Response.");
+					if (IS_VERBOSE) System.out.println("Writing Response.");
 
 					outToClient.write(cmd.getReply());
 					
 					byteBufferOut = cmd.getReply();
+					System.out.println(cmd);
+					
 //					String p = new String(byteBufferOut, "UTF-8");
-					String q = NodeCommands.byteArrayAsString(byteBufferOut);
+//					String q = NodeCommands.byteArrayAsString(byteBufferOut);
 //					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
 					
 					System.out.println("Total elements in map: "+ map.size());
 					//	System.out.println("Total elements in map: "+ Command.getNumElements());
-					System.out.println("All Bytes Written(array): ( "+q.substring(0, 2)+" "+q.substring(2)+")");
-					System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + q.length()+ ", " +outToClient.size()+")");
+					//  System.out.println("All Bytes Written(array): ( "+q.substring(0, 2)+" "+q.substring(2)+")");
+					if (IS_VERBOSE) System.out.println("Expected Bytes in response, Total Bytes written in socket: (" + byteBufferOut.length+ ", " +outToClient.size()+")");
 				} 
 				//System.out.println("Closing socket. Written bytes: "+byteBufferOut.length);
 				//clientToReply.getSocket().close(); // Close the socket.  We are done with this client!
@@ -271,9 +277,9 @@ public class WorkerThread extends Thread {
 
 			if(socket != null){
 				try{	
-					System.out.println("\tAbout socket: "+socket.toString());
+					if (IS_VERBOSE) System.out.println("\tAbout socket: "+socket.toString());
 
-					System.out.println("\tSoTimeout: "+socket.getSoTimeout()+
+					if (IS_VERBOSE) System.out.println("\tSoTimeout: "+socket.getSoTimeout()+
 							", isClosed: "+socket.isClosed()+
 							", isInputShutdown: "+socket.isInputShutdown()+
 							", isOutputShutdown "+socket.isOutputShutdown()+
