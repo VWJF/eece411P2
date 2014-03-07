@@ -98,9 +98,21 @@ public class RemoveCommand extends Command {
 	
 	@Override
 	public String toString(){
+		StringBuilder s = new StringBuilder();
 
-		//String k = new String( key.array() );
-//		String s = NodeCommands.requestByteArrayToString(buffer.array());
-		return Thread.currentThread().getName();
+		s.append("[command=>");
+		s.append(NodeCommands.Request.values()[cmd].toString());
+		s.append("] [key=>");
+		for (int i=0; i<key.length; i++)
+			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
+
+		s.append("] [replyCode=>");
+		s.append(NodeCommands.Reply.values()[replyCode].toString());
+		s.append("] [replyValue=>");
+		for (int i=0; i<replyValue.length; i++)
+			s.append(Integer.toString((replyValue[i] & 0xff) + 0x100, 16).substring(1));
+		s.append("]");
+
+		return s.toString();
 	}
 }
