@@ -14,6 +14,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.NodeCommands;
@@ -25,8 +28,12 @@ import com.b6w7.eece411.P02.multithreaded.Service;
  * @author Ishan Sahay
  * @date 23 Jan 2014
  */
-public class TestNode {
+public class TestNode extends Thread {
 
+	private static int NUM_TEST_THREADS = 10;
+	//private static int count = 0; 
+	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
+	
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
 	// extra debug output from normal
@@ -128,66 +135,55 @@ public class TestNode {
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
-		String thisThread = Thread.currentThread().toString();
+		String myCount = Thread.currentThread().toString(); //String does not change with different threads
+		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
 		
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 
-//		populateOneTest(NodeCommands.CMD_PUT, thisThread+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
+//		populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 
-		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_INEXISTENT);
 
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"localhost", "137.82.52.29", NodeCommands.RPY_INEXISTENT);
 
-		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, thisThread+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
+		populateOneTest(NodeCommands.CMD_UNRECOGNIZED, myCount+"Fake", "Fake", NodeCommands.RPY_UNRECOGNIZED_CMD);
 	}
 
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
-
-		String thisThread = Thread.currentThread().toString();
 		
-//		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
-//		populateOneTest(NodeCommands.CMD_REMOVE, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		int myCount = count.addAndGet(1);
+		System.out.println(myCount);
+//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+//		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
 
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
-/*
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ishan", "60038106", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Vancouver", "British Columbia", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Seattle", "Washington", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Ottawa", "Canada", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Ishan", "Sahay", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+
+	//	populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 		
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Paris", "Texas", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scotsdale", "Arizona", NodeCommands.RPY_SUCCESS);
-
-		populateOneTest(NodeCommands.CMD_PUT, thisThread+"Paris", "Texas", NodeCommands.RPY_SUCCESS);
-		populateOneTest(NodeCommands.CMD_GET, thisThread+"Scotsdale", "Arizona", NodeCommands.RPY_SUCCESS);
-*/
-	
-	//	populateOneTest(NodeCommands.CMD_PUT, thisThread+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
-		
-	//	populateOneTest(NodeCommands.CMD_GET, thisThread+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+	//	populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
 
 	}
 	
@@ -212,7 +208,7 @@ public class TestNode {
 		
 		List<TestNode> list = new LinkedList<TestNode>();
 		
-		for (int i=0; i<1; i++)
+		for (int i=0; i<NUM_TEST_THREADS; i++)
 			list.add(new TestNode(serverURL, serverPort));
 		
 		if (!IS_BREVITY) System.out.println("-------------- Start Running Test --------------");
@@ -226,7 +222,8 @@ public class TestNode {
 		this.port = port;
 	}
 	
-	public void start() {
+	@Override
+	public void run() {
 		Socket clientSocket = null;
 
 		try {
