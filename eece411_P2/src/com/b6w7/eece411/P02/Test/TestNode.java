@@ -31,7 +31,7 @@ import com.b6w7.eece411.P02.multithreaded.Service;
  */
 public class TestNode extends Thread {
 
-	private static int NUM_TEST_THREADS = 100;
+	private static int NUM_TEST_THREADS = 10;
 	
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
