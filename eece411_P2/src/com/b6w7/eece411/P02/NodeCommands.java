@@ -15,7 +15,6 @@ public class NodeCommands {
 	public static final byte CMD_PUT = 0x1;
 	public static final byte CMD_GET = 0x2;
 	public static final byte CMD_REMOVE = 0x3;
-	public static final byte CMD_NOT_SET = 0x4;
 	
 	public static final byte CMD_UNRECOGNIZED = 0xF;
 	
@@ -25,6 +24,7 @@ public class NodeCommands {
 	public static final byte RPY_OVERLOAD = 0x3;
 	public static final byte RPY_INTERNAL_FAILURE = 0x4;
 	public static final byte RPY_UNRECOGNIZED_CMD = 0x5;
+	public static final byte RPY_NOT_SET = 0x6;
 	
 	public static final int LEN_CMD_BYTES = 1;
 	public static final int LEN_KEY_BYTES = 32;
@@ -37,8 +37,7 @@ public class NodeCommands {
 		CMD_UNRECOG((byte)0), 
 		CMD_PUT((byte)1), 
 		CMD_GET((byte)2), 
-		CMD_REMOVE((byte)3),	
-		CMD_NOT_SET((byte)4);
+		CMD_REMOVE((byte)3);	
 		
 		private byte value;
 
@@ -71,7 +70,8 @@ public class NodeCommands {
 		RPY_OUT_OF_SPACE((byte)2),
 		RPY_OVERLOAD((byte)3),
 		RPY_INTERNAL_FAILURE((byte)4),
-		CMD_UNRECOGNIZED((byte)5);
+		CMD_UNRECOGNIZED((byte)5),
+		CMD_NOT_SET((byte)6);
 
 		private byte value;
 

@@ -11,7 +11,7 @@ public class GetCommand extends Command {
 	final byte cmd;
 	final byte[] key;
 
-	byte replyCode = NodeCommands.CMD_NOT_SET;
+	byte replyCode = NodeCommands.Reply.CMD_NOT_SET.getCode();
 	byte[] replyValue;
 
 	// protocol for Request: get command <cmd,key>
@@ -97,14 +97,14 @@ public class GetCommand extends Command {
 		s.append("[command=>");
 		s.append(NodeCommands.Request.values()[cmd].toString());
 		s.append("] [key["+key.length+"]=>");
-		for (int i=0; i<key.length; i++)
+		for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
 			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 
 		s.append("] [replyCode=>");
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
 		if (replyValue != null) {
 			s.append("] [replyValue["+replyValue.length+"]=>");
-			for (int i=0; i<replyValue.length; i++)
+			for (int i=0; i<LEN_TO_STRING_OF_VAL; i++)
 				s.append(Integer.toString((replyValue[i] & 0xff) + 0x100, 16).substring(1));
 		}
 		s.append("]");
