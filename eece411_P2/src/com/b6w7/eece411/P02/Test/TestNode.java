@@ -37,9 +37,9 @@ public class TestNode extends Thread {
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
 	// extra debug output from normal
-	private static boolean IS_VERBOSE = false;
+	private static boolean IS_VERBOSE = true;
 	// reduced debug outut from normal
-	private static boolean IS_BREVITY = true;
+	private static boolean IS_BREVITY = false;
 
 	private MessageDigest md;
 
@@ -129,6 +129,7 @@ public class TestNode extends Thread {
 
 		} catch (BufferOverflowException e) {
 			System.err.println("test skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
+			System.out.println("Thread: "+count.get()+"\ntest skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 	}
 
@@ -181,6 +182,12 @@ public class TestNode extends Thread {
 		populateOneTest(NodeCommands.CMD_GET, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
 		populateOneTest(NodeCommands.CMD_GET, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
 
+/*		populateOneTest(NodeCommands.CMD_REMOVE, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
+		
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.RPY_SUCCESS);
+		populateOneTest(NodeCommands.CMD_PUT, myCount+"Hazlett", "Hazlett", NodeCommands.RPY_SUCCESS);
+*/
 	//	populateOneTest(NodeCommands.CMD_PUT, myCount+"John", "Smith", NodeCommands.RPY_OUT_OF_SPACE);
 		
 	//	populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
@@ -202,6 +209,7 @@ public class TestNode extends Thread {
 			serverPort = Integer.parseInt(args[1]);
 		} catch (NumberFormatException e1) {
 			System.err.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
+			System.out.println("Thread: "+count.get()+" Invalid input.  Server Port and Student ID must be numerical digits only.");
 			printUsage();
 			return;
 		}
@@ -354,6 +362,7 @@ public class TestNode extends Thread {
 						}
 					} else {
 						System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
+						System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - " + failMessage);
 						synchronized (testFailed) {
 							testFailed++;
 						}
@@ -361,11 +370,13 @@ public class TestNode extends Thread {
 
 
 				} catch (SocketTimeoutException e) {
-					System.err.println("### TEST "+test.index+" FAILED - timeout on network operation");
+					System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
+					System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - " + failMessage);
 					testFailed++;
 
 				} catch (IOException e) {
 					System.err.println("### TEST "+test.index+" FAILED - network error");
+					System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - network error");
 					testFailed++;
 					e.printStackTrace();
 
