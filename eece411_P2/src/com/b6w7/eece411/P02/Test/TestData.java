@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 
 import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.NodeCommands;
+import com.b6w7.eece411.P02.multithreaded.Command;
 
 /**
  * Immutable class which contains the data for one iteration of test with {@link Node}
@@ -105,21 +106,27 @@ public class TestData {
 
 		s.append("[test index=>"+index+"] [command=>");
 		s.append(NodeCommands.Request.values()[cmd].toString());
-		s.append("] [key=>");
 
 		byte[] byteData = key.array();
-		for (int i=0; i<byteData.length; i++) {
+		s.append("] [key["+byteData.length+"]=>");
+		for (int i=0; i<Command.LEN_TO_STRING_OF_KEY; i++) {
 			s.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
 		}
 
 		if (null != value) {
+			byteData = value.array();
 			s.append("] [value=>");
-			try {
-				// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
-				s.append(new String(value.array(), "UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				s.append(new String(value.array()));
+			
+			for (int i=0; i<Command.LEN_TO_STRING_OF_VAL; i++) {
+				s.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
 			}
+
+//			try {
+//				// s.append(new String(value.array(), StandardCharsets.UTF_8.displayName()));
+//				s.append(new String(value.array(), "UTF-8"));
+//			} catch (UnsupportedEncodingException e) {
+//				s.append(new String(value.array()));
+//			}
 		}
 
 		s.append("] [expected reply=>" + replyCode + "]");

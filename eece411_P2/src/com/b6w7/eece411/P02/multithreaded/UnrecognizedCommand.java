@@ -5,7 +5,8 @@ import java.nio.ByteBuffer;
 import com.b6w7.eece411.P02.NodeCommands;
 
 public class UnrecognizedCommand extends Command {
-	byte replyCode = NodeCommands.RPY_UNRECOGNIZED_CMD;
+	final byte cmd = NodeCommands.Request.CMD_UNRECOG.getCode();
+	byte replyCode = NodeCommands.Reply.CMD_UNRECOGNIZED.getCode();
 
 	// protocol for Request: get command <cmd,key>
 	// protocol for Response: <cmd,value>
@@ -34,9 +35,13 @@ public class UnrecognizedCommand extends Command {
 	
 	@Override
 	public String toString(){
+		StringBuilder s = new StringBuilder();
 
-		//String k = new String( key.array() );
-//		String s = NodeCommands.requestByteArrayToString(buffer.array());
-		return Thread.currentThread().getName();
-	}
+		s.append("[command=>");
+		s.append(cmd);
+		s.append("] [replyCode=>");
+		s.append(replyCode);
+		s.append("]");
+		
+		return s.toString();	}
 }

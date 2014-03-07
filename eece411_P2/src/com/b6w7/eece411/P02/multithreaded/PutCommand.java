@@ -12,7 +12,7 @@ public class PutCommand extends Command {
 	final byte[] key;
 	final byte[] value;
 
-	byte replyCode = NodeCommands.CMD_NOT_SET;
+	byte replyCode = NodeCommands.Reply.CMD_NOT_SET.getCode();
 
 	// protocol for Request: put command <cmd,key,value>
 	// protocol for Response: <cmd>
@@ -133,11 +133,11 @@ private boolean put(){
 		s.append("[command=>");
 		s.append(NodeCommands.Request.values()[cmd].toString());
 		s.append("] [key=>");
-		for (int i=0; i<key.length; i++)
+		for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
 			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 
 		s.append("] [value["+value.length+"]=>");
-		for (int i=0; i<value.length; i++)
+		for (int i=0; i<LEN_TO_STRING_OF_VAL; i++)
 			s.append(Integer.toString((value[i] & 0xff) + 0x100, 16).substring(1));
 
 		s.append("] [replyCode=>");
