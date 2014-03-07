@@ -104,19 +104,7 @@ public class TestData {
 		StringBuilder s = new StringBuilder();
 
 		s.append("[test index=>"+index+"] [command=>");
-		switch(cmd) {
-		case NodeCommands.CMD_PUT:
-			s.append("PUT");
-			break;
-		case NodeCommands.CMD_GET:
-			s.append("GET");
-			break;
-		case NodeCommands.CMD_REMOVE:
-			s.append("REMOVE");
-			break;
-		default:
-			s.append("UNKNOWN");
-		}
+		s.append(NodeCommands.Request.values()[cmd].toString());
 		s.append("] [key=>");
 
 		byte[] byteData = key.array();
@@ -137,7 +125,7 @@ public class TestData {
 		s.append("] [expected reply=>" + replyCode + "]");
 
 		if (NodeCommands.CMD_GET == cmd)
-			s.append(" [expected reply value=>"+replyValue+"]");
+			s.append(" [expected reply value=>"+NodeCommands.requestByteArrayToString(replyValue.array())+"]");
 
 		return s.toString();
 	}

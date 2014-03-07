@@ -15,8 +15,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
-
 import java.util.concurrent.atomic.AtomicInteger;
+
 
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.NodeCommands;
@@ -34,7 +34,7 @@ public class TestNode extends Thread {
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
 	private int myCount;
-	
+
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 0;
 	// extra debug output from normal
@@ -366,7 +366,7 @@ public class TestNode extends Thread {
 							testPassed++;
 						}
 					} else {
-						System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
+						System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
 						System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage );
 						synchronized (testFailed) {
 							testFailed++;
@@ -375,14 +375,14 @@ public class TestNode extends Thread {
 
 
 				} catch (SocketTimeoutException e) {
-					System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
+					System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
 					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage);
 					synchronized (testFailed) {
 						testFailed++;
 					}
 
 				} catch (IOException e) {
-					System.err.println("### TEST "+test.index+" FAILED - network error");
+					System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
 					System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - network error");
 					synchronized (testFailed) {
 						testFailed++;

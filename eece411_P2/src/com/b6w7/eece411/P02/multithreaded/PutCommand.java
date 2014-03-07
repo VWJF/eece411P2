@@ -128,9 +128,23 @@ private boolean put(){
 	@Override
 	public String toString(){
 
-		//String k = new String( key.array() );
-//		String s = NodeCommands.requestByteArrayToString(buffer.array());
-		return Thread.currentThread().getName();
+		StringBuilder s = new StringBuilder();
+
+		s.append("[command=>");
+		s.append(NodeCommands.Request.values()[cmd].toString());
+		s.append("] [key=>");
+		for (int i=0; i<key.length; i++)
+			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
+
+		s.append("] [value=>");
+		for (int i=0; i<value.length; i++)
+			s.append(Integer.toString((value[i] & 0xff) + 0x100, 16).substring(1));
+
+		s.append("] [replyCode=>");
+		s.append(NodeCommands.Reply.values()[replyCode].toString());
+		s.append("]");
+		
+		return s.toString();
 	}
 
 }
