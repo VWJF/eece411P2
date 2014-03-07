@@ -92,7 +92,7 @@ public class Service extends Thread implements JoinThread {
 				}
 
 				if (hasExceeded) {
-					System.err.println("Exceeded maximum of " + MAX_ACTIVE_TCP_CONNECTIONS + " connections.  Closing incoming socket.");
+					System.err.println("*** Exceeded maximum of " + MAX_ACTIVE_TCP_CONNECTIONS + " connections.  Closing incoming socket.");
 					clientSocket.close();
 					continue;
 				}

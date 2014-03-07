@@ -43,7 +43,6 @@ public class GetCommand extends Command {
 			this.replyCode = Reply.RPY_SUCCESS.getCode(); 
 		else {
 			this.replyCode = Reply.RPY_INEXISTENT.getCode();
-			System.err.println(" ### ");
 		}
 		synchronized(execution_completed){
 			execution_completed = true;
@@ -83,7 +82,7 @@ public class GetCommand extends Command {
 
 		if(val != null) {
 			// NONEXISTENT -- we want to debug here
-			System.out.println("GetCommand() *** Not Found " + this.toString());
+			System.out.println("*** GetCommand() Not Found " + this.toString());
 		}
 		return val;
 	}
