@@ -260,6 +260,7 @@ public class TestNode extends Thread {
 			byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
 			String replyString = null;
 			String expectedReplyString = null;
+			String actualReplyString = null;
 			boolean isPass;
 			String failMessage = null;
 
@@ -308,11 +309,12 @@ public class TestNode extends Thread {
 					}
 					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
 					expectedReplyString = "0x" + Integer.toString((test.replyCode & 0xFF)+0x100, 16).substring(1);
+					actualReplyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
 
 					// Check the received reply against the expected reply and determine success of test
 					if (recvBuffer[0] != test.replyCode) {
 						isPass = false;
-						failMessage = "expected reply "+expectedReplyString;
+						failMessage = "expected reply "+expectedReplyString+" but instead received "+ actualReplyString;
 					}
 
 					if (IS_VERBOSE) System.out.print("-Reading Value of GET.");
@@ -362,7 +364,7 @@ public class TestNode extends Thread {
 						}
 					} else {
 						System.err.println("### TEST "+test.index+" FAILED - " + failMessage);
-						System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - " + failMessage);
+						System.out.println("Thread: "+count.get()+"\n### TEST "+test.index+" FAILED - " + failMessage );
 						synchronized (testFailed) {
 							testFailed++;
 						}
