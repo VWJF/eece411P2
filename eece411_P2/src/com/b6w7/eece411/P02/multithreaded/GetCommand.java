@@ -4,8 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.b6w7.eece411.P02.NodeCommands;
-import com.b6w7.eece411.P02.NodeCommands.Reply;
+import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 
 public class GetCommand extends Command {
 	final byte cmd;

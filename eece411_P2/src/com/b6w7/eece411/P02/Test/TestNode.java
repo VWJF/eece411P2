@@ -19,7 +19,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 //import com.b6w7.eece411.P02.Node;
-import com.b6w7.eece411.P02.NodeCommands;
+
+import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.Service;
 /**
  * A test class for testing {@link Service}
