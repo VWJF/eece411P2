@@ -30,7 +30,7 @@ public class TestNode extends Thread {
 
 	private static final long TIME_RETRY_MS = 2000;
 
-	private static int NUM_TEST_THREADS = 1000;
+	private static int NUM_TEST_THREADS = 5005;
 
 	//private static int count = 0; 
 	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key

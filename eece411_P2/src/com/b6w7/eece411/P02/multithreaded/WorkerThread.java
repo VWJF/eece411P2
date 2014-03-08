@@ -179,6 +179,9 @@ public class WorkerThread extends Thread {
 				// redundant println:
 				//System.out.println("Request Received(cmd,key,value): ("+cmdByte+", "+key+", "+value.toString()+") ");
 
+				if ((int)cmdByte >= Request.values().length)
+					cmdByte = Request.CMD_UNRECOG.getCode();
+
 				switch (Request.values()[cmdByte]) {
 				case CMD_PUT:
 					cmd = new PutCommand(cmdByte, key, value, map);
