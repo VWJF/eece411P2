@@ -7,7 +7,6 @@ import java.util.Map;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 
 public class PutCommand extends Command {
-	final byte cmd;
 	final byte[] key;
 	final byte[] value;
 
@@ -15,7 +14,7 @@ public class PutCommand extends Command {
 
 	// protocol for Request: put command <cmd,key,value>
 	// protocol for Response: <cmd>
-	public PutCommand(byte cmd, byte[] key, byte[] value, Map<ByteArrayWrapper, byte[]> map) {
+	public PutCommand(byte[] key, byte[] value, Map<ByteArrayWrapper, byte[]> map) {
 		// check arguments for correctness
 		if (null == key || key.length != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -30,7 +29,6 @@ public class PutCommand extends Command {
 		// Save parameters, and 
 		// Place {Cmd, Key, Value} into ByteBuffer 
 		// to be ready to be sent down a pipe.  
-		this.cmd = cmd;
 		this.key = Arrays.copyOf(key, key.length);
 		this.value = Arrays.copyOf(value, value.length);;
 	}
@@ -131,7 +129,7 @@ private boolean put(){
 		StringBuilder s = new StringBuilder();
 
 		s.append("[command=>");
-		s.append(NodeCommands.Request.values()[cmd].toString());
+		s.append(NodeCommands.Request.CMD_PUT.toString());
 		s.append("] [key=>");
 		for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
 			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));

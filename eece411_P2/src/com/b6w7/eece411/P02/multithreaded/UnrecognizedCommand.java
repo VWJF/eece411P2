@@ -3,7 +3,6 @@ package com.b6w7.eece411.P02.multithreaded;
 import java.nio.ByteBuffer;
 
 public class UnrecognizedCommand extends Command {
-	final byte cmd = NodeCommands.Request.CMD_UNRECOG.getCode();
 	byte replyCode = NodeCommands.Reply.CMD_UNRECOGNIZED.getCode();
 
 	// protocol for Request: get command <cmd,key>
@@ -36,7 +35,7 @@ public class UnrecognizedCommand extends Command {
 		StringBuilder s = new StringBuilder();
 
 		s.append("[command=>");
-		s.append(cmd);
+		s.append(NodeCommands.Request.CMD_UNRECOG.toString());
 		s.append("] [replyCode=>");
 		s.append(replyCode);
 		s.append("]");

@@ -7,7 +7,6 @@ import java.util.Map;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 
 public class RemoveCommand extends Command {
-	final byte cmd;
 	final byte[] key;
 
 	byte replyCode = NodeCommands.Reply.CMD_NOT_SET.getCode();
@@ -15,7 +14,7 @@ public class RemoveCommand extends Command {
 
 	// protocol for Request: remove command <cmd,key>
 	// protocol for Response: <cmd>
-	public RemoveCommand(byte cmd, byte[] key, Map<ByteArrayWrapper, byte[]> map) {
+	public RemoveCommand(byte[] key, Map<ByteArrayWrapper, byte[]> map) {
 		// check arguments for correctness
 		if (null == key || key.length != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");
@@ -30,7 +29,6 @@ public class RemoveCommand extends Command {
 		// Save parameters, and 
 		// Place {Cmd, Key, Value} into ByteBuffer 
 		// to be ready to be sent down a pipe.  
-		this.cmd = cmd;
 		this.key = Arrays.copyOf(key, key.length);
 	}
 
@@ -86,7 +84,7 @@ public class RemoveCommand extends Command {
 		StringBuilder s = new StringBuilder();
 
 		s.append("[command=>");
-		s.append(NodeCommands.Request.values()[cmd].toString());
+		s.append(NodeCommands.Request.CMD_REMOVE.toString());
 		s.append("] [key["+key.length+"]=>");
 		for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
 			s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
