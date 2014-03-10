@@ -12,7 +12,7 @@ import java.util.Map;
 
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 
-public class WorkerThread extends Thread {
+public class WorkerThread implements Runnable {
 
 	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;

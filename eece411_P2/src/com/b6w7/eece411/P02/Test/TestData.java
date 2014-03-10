@@ -1,6 +1,5 @@
 package com.b6w7.eece411.P02.Test;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 import com.b6w7.eece411.P02.multithreaded.Command;

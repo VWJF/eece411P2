@@ -14,11 +14,14 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.b6w7.eece411.P02.multithreaded.Service;
+
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
+import com.b6w7.eece411.P02.multithreaded.Service;
 /**
  * A test class for testing {@link Service}
  * 
@@ -26,14 +29,22 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
  * @author Ishan Sahay
  * @date 23 Jan 2014
  */
-public class TestNode extends Thread {
+/**
+ * A test class for testing {@link Service}
+ * 
+ * @author Scott Hazlett
+ * @author Ishan Sahay
+ * @date 23 Jan 2014
+ */
+public class TestNode implements Runnable {
 
 	private static final long TIME_RETRY_MS = 2000;
 
-	private static int NUM_TEST_THREADS = 5005;
+	private static final int NUM_THREADS_IN_POOL = 100;
+
+	private static int NUM_TEST_RUNNABLES = 8005;
 
 	//private static int count = 0; 
-	private static AtomicInteger count = new AtomicInteger(); //Used to in identifying unique thread+key
 	private int myCount;
 
 	// set to 0 to disable timeout
@@ -45,6 +56,8 @@ public class TestNode extends Thread {
 
 	private MessageDigest md;
 
+	private static AtomicInteger atomPass = new AtomicInteger(0);
+	private static AtomicInteger atomFail = new AtomicInteger(0);
 	private static Integer testPassed = new Integer(0);
 	private static Integer testFailed = new Integer(0);
 	// list of test cases, each entry representing one test case
@@ -53,6 +66,8 @@ public class TestNode extends Thread {
 	private final String url;
 	private final int port;
 
+	// we are listening, so now allocated a ThreadPool to handle new sockets connections
+	private static Executor executor;
 
 	private static void printUsage() {
 		System.out.println("USAGE:\n"
@@ -135,10 +150,10 @@ public class TestNode extends Thread {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
-		int myCount = count.addAndGet(1);
 		System.out.println(myCount);	
 		//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
 		//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
@@ -171,7 +186,6 @@ public class TestNode extends Thread {
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
-		this.myCount = count.addAndGet(1);
 		System.out.println(myCount);
 
 		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
@@ -219,15 +233,19 @@ public class TestNode extends Thread {
 			return;
 		}
 
-		List<TestNode> list = new LinkedList<TestNode>();
+		List<Runnable> list = new LinkedList<Runnable>();
 
-		for (int i=0; i<NUM_TEST_THREADS; i++)
+		// we are listening, so now allocated a ThreadPool to handle new sockets connections
+		executor = Executors.newFixedThreadPool(NUM_THREADS_IN_POOL);
+
+		for (int i=0; i<NUM_TEST_RUNNABLES; i++)
 			list.add(new TestNode(serverURL, serverPort));
 
 		if (!IS_BREVITY) System.out.println("-------------- Start Running Test --------------");
 
-		while (!list.isEmpty())
-			list.remove(0).start();
+		while (!list.isEmpty()) {
+			executor.execute(list.remove(0));
+		}
 	}
 
 	public TestNode(String url, int port) {
@@ -264,8 +282,6 @@ public class TestNode extends Thread {
 			// Loop through all tests
 			byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
 			String replyString = null;
-			String expectedReplyString = null;
-			String actualReplyString = null;
 			boolean isPass;
 			String failMessage = null;
 
@@ -378,6 +394,7 @@ public class TestNode extends Thread {
 							synchronized (testPassed) {
 								testPassed++;
 							} 
+							atomPass.incrementAndGet();
 
 						} else {
 							System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
@@ -385,6 +402,7 @@ public class TestNode extends Thread {
 							synchronized (testFailed) {
 								testFailed++;
 							}
+							atomFail.incrementAndGet();
 						}
 					} catch (SocketTimeoutException e) {
 						System.err.println("### "+ test.toString() + " " + failMessage);
@@ -392,6 +410,7 @@ public class TestNode extends Thread {
 						synchronized (testFailed) {
 							testFailed++;
 						}
+						atomFail.incrementAndGet();
 
 					} catch (IOException e) {
 						if (IS_VERBOSE) System.err.println("*** network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
@@ -418,8 +437,14 @@ public class TestNode extends Thread {
 
 			if (IS_VERBOSE) System.out.println("-------------- Finished Running Tests --------------");
 
-			System.out.println("-------------- Passed/Fail = "+ testPassed+"/"+testFailed +" ------------------");
+			synchronized(testPassed) {
+				synchronized(testFailed) {
+					System.out.println("-------------- Passed/Fail = "+ testPassed+"/"+testFailed +" ------------------");
+				}
+			}
 
+
+			System.out.println("-------------- ATOM Passed/Fail = "+ atomPass+"/"+atomFail +" ------------------");
 
 			if (clientSocket != null)
 				clientSocket.close();
