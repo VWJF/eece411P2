@@ -179,7 +179,7 @@ public class WorkerThread implements Runnable {
 				// redundant println:
 				//System.out.println("Request Received(cmd,key,value): ("+cmdByte+", "+key+", "+value.toString()+") ");
 
-				if ((int)cmdByte >= Request.values().length)
+				if ((int)cmdByte >= Request.values().length || (int)cmdByte < 0 )
 					cmdByte = Request.CMD_UNRECOG.getCode();
 
 				switch (Request.values()[cmdByte]) {
