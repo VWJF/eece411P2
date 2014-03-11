@@ -14,10 +14,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-
 
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
@@ -40,9 +39,9 @@ public class TestNode implements Runnable {
 
 	private static final long TIME_RETRY_MS = 2000;
 
-	private static final int NUM_THREADS_IN_POOL = 100;
+	private static final int NUM_THREADS_IN_POOL = 50;
 
-	private static int NUM_TEST_RUNNABLES = 8005;
+	private static int NUM_TEST_RUNNABLES = 1;
 
 	//private static int count = 0; 
 	private int myCount;
@@ -56,8 +55,6 @@ public class TestNode implements Runnable {
 
 	private MessageDigest md;
 
-	private static AtomicInteger atomPass = new AtomicInteger(0);
-	private static AtomicInteger atomFail = new AtomicInteger(0);
 	private static Integer testPassed = new Integer(0);
 	private static Integer testFailed = new Integer(0);
 	// list of test cases, each entry representing one test case
@@ -150,13 +147,13 @@ public class TestNode implements Runnable {
 		}
 	}
 
-	@SuppressWarnings("unused")
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
+		myCount = new Random().nextInt(Integer.MAX_VALUE);		
 		System.out.println(myCount);	
 		//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
-		//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
+//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
 
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
@@ -181,11 +178,20 @@ public class TestNode implements Runnable {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
 		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-	}
+
+		populateOneTest((byte)0xFF, myCount+"OutOfBounds0", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x7F, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x80, myCount+"OutOfBounds1", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x88, myCount+"OutOfBounds2", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xC0, myCount+"OutOfBounds3", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xEE, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+
+}
 
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
+		myCount = new Random().nextInt(Integer.MAX_VALUE);		
 		System.out.println(myCount);
 
 		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_INEXISTENT);
@@ -271,8 +277,8 @@ public class TestNode implements Runnable {
 			// Set a timeout on read operation as 3 seconds
 			//			clientSocket = new Socket(serverURL, serverPort);
 
-			//populateTests();
-			populateMemoryTests();
+			populateTests();
+			//populateMemoryTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
@@ -394,7 +400,6 @@ public class TestNode implements Runnable {
 							synchronized (testPassed) {
 								testPassed++;
 							} 
-							atomPass.incrementAndGet();
 
 						} else {
 							System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
@@ -402,7 +407,6 @@ public class TestNode implements Runnable {
 							synchronized (testFailed) {
 								testFailed++;
 							}
-							atomFail.incrementAndGet();
 						}
 					} catch (SocketTimeoutException e) {
 						System.err.println("### "+ test.toString() + " " + failMessage);
@@ -410,7 +414,6 @@ public class TestNode implements Runnable {
 						synchronized (testFailed) {
 							testFailed++;
 						}
-						atomFail.incrementAndGet();
 
 					} catch (IOException e) {
 						if (IS_VERBOSE) System.err.println("*** network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
@@ -442,9 +445,6 @@ public class TestNode implements Runnable {
 					System.out.println("-------------- Passed/Fail = "+ testPassed+"/"+testFailed +" ------------------");
 				}
 			}
-
-
-			System.out.println("-------------- ATOM Passed/Fail = "+ atomPass+"/"+atomFail +" ------------------");
 
 			if (clientSocket != null)
 				clientSocket.close();
