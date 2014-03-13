@@ -7,17 +7,13 @@ public class HandlerThread extends Thread implements PostCommand {
 
 	// TODO make private with accessor
 	public boolean keepRunning = true;
-	
 	private boolean IS_VERBOSE = false;
 
 	public HandlerThread() {
-		System.out.println("HandlerThread() constructor");
 	}
 
 	@Override
 	public void run() {
-//		System.out.println("HandlerThread()::run() start");
-
 		Command cmd = null;
 
 		while (keepRunning) {
@@ -35,7 +31,7 @@ public class HandlerThread extends Thread implements PostCommand {
 			} else {
 				if (IS_VERBOSE) System.out.println("Issuing:  "+cmd);
 				cmd.execute();
-				System.out.println("Complete: "+cmd+ " map.size=="+cmd.map.size());
+				System.out.println("Complete: "+cmd+ " atom =="+Command.atom.incrementAndGet()+"map.size=="+cmd.map.size());
 			}
 		}
 //		System.out.println("HandlerThread()::run() end");

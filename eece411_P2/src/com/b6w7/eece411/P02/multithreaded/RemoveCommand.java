@@ -42,8 +42,9 @@ public class RemoveCommand extends Command {
 		else{
 			this.replyCode = Reply.RPY_INEXISTENT.getCode();
 		}
-		synchronized(execution_completed){
+		synchronized(execution_completed_sem){
 			execution_completed = true;
+			execution_completed_sem.notifyAll();
 		}
 	}
 

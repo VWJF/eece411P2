@@ -38,11 +38,12 @@ public class GetCommand extends Command {
 
 		if( replyValue != null )  
 			this.replyCode = Reply.RPY_SUCCESS.getCode(); 
-		else {
+		else
 			this.replyCode = Reply.RPY_INEXISTENT.getCode();
-		}
-		synchronized(execution_completed){
+		
+		synchronized(execution_completed_sem){
 			execution_completed = true;
+			execution_completed_sem.notifyAll();
 		}
 	}
 

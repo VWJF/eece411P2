@@ -16,11 +16,13 @@ public class WorkerThread implements Runnable {
 
 	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;
-		
+
 	private final Socket socket;
 	private final PostCommand db;
 	private final Map<ByteArrayWrapper, byte[]> map;
 	private final JoinThread parent;
+
+	private static final long TIMEOUT_MS = 25000;
 
 	// number of bytes in protocol field
 	private static final int CMDSIZE = NodeCommands.LEN_CMD_BYTES;		
@@ -102,7 +104,7 @@ public class WorkerThread implements Runnable {
 						try {
 							Thread.sleep(100);
 						} catch (InterruptedException e) { /* do nothing */ }
-				} while (((new Date().getTime() - timeStart) < 5000) && totalBytesReceived < CMDSIZE);
+				} while (((new Date().getTime() - timeStart) < TIMEOUT_MS) && totalBytesReceived < CMDSIZE);
 
 				// if we did not receive the command within the time frame, throw exception.
 				if (totalBytesReceived < CMDSIZE) {
@@ -124,7 +126,7 @@ public class WorkerThread implements Runnable {
 						try {
 							Thread.sleep(100);
 						} catch (InterruptedException e) { /* do nothing */ }
-				} while (((new Date().getTime() - timeStart) < 5000) && totalBytesReceived < CMDSIZE);
+				} while (((new Date().getTime() - timeStart) < TIMEOUT_MS) && totalBytesReceived < CMDSIZE + KEYSIZE);
 
 
 				// if we did not receive the command within the time frame, throw exception.
@@ -157,7 +159,7 @@ public class WorkerThread implements Runnable {
 							try {
 								Thread.sleep(100);
 							} catch (InterruptedException e) { /* do nothing */ }
-					} while (((new Date().getTime() - timeStart) < 5000) && totalBytesReceived < CMDSIZE);
+					} while (((new Date().getTime() - timeStart) < TIMEOUT_MS) && totalBytesReceived < VALUESIZE + KEYSIZE + CMDSIZE);
 
 					// if we did not receive the command within the time frame, throw exception.
 					if (totalBytesReceived < VALUESIZE + KEYSIZE + CMDSIZE) {
@@ -208,20 +210,34 @@ public class WorkerThread implements Runnable {
 				//Command clientToReply =	connected_clients.poll();
 
 				// We have sent the command to be processed,
-				// now we wait for asynchronous reply.
-				// We poll for result, then send it along wire
-				// retrying at 100ms intervals
-				// with a total timeout of 5000ms
+				// now we wait for reply up to a maximum of TIMEOUT_MS miliseconds
 				boolean resultReady = false;
-				do {
-					synchronized (cmd.execution_completed) {
+				long timeoutAbs = timeStart + TIMEOUT_MS;              // absolute time of timeout
+				long timeoutRel = timeoutAbs - new Date().getTime();   // relative time of timeout from now
+
+//				try {
+//					Thread.sleep(2000);
+//				} catch (InterruptedException e1) {
+//					// TODO Auto-generated catch block
+//					e1.printStackTrace();
+//				}
+				
+				synchronized (cmd.execution_completed_sem) {
+					resultReady = cmd.execution_completed;
+
+					while (!resultReady && timeoutRel > 0) {
+						try {
+							cmd.execution_completed_sem.wait(timeoutRel);
+						} catch (InterruptedException e) { /* do nothing */}
+
 						resultReady = cmd.execution_completed;
+						timeoutRel = timeoutAbs - new Date().getTime();
 					}
-				} while (resultReady == false && ((new Date().getTime() - timeStart) < 5000));
+				}
 
 				// if we did not receive the command within the time frame, throw exception.
 				if (!resultReady) {
-					throw new IOException("Timeout on reply from database. TotalBytesRead = " + totalBytesReceived + " ResultReady: "+resultReady);
+					throw new IOException("*** Timeout on reply from database. TotalBytesRead = " + totalBytesReceived + " ResultReady: "+resultReady);
 				}
 
 				// Send reply to client
@@ -229,14 +245,14 @@ public class WorkerThread implements Runnable {
 					if (IS_VERBOSE) System.out.println("Writing Response.");
 
 					outToClient.write(cmd.getReply());
-					
+
 					byteBufferOut = cmd.getReply();
 					//System.out.println("Replying: "+cmd);
-					
-//					String p = new String(byteBufferOut, "UTF-8");
-//					String q = NodeCommands.byteArrayAsString(byteBufferOut);
-//					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
-					
+
+					//					String p = new String(byteBufferOut, "UTF-8");
+					//					String q = NodeCommands.byteArrayAsString(byteBufferOut);
+					//					outToClient.write(byteBufferOut, 0, byteBufferOut.length);
+
 					// System.out.println("Total elements in map: "+ map.size());
 					//	System.out.println("Total elements in map: "+ Command.getNumElements());
 					//  System.out.println("All Bytes Written(array): ( "+q.substring(0, 2)+" "+q.substring(2)+")");
@@ -273,7 +289,7 @@ public class WorkerThread implements Runnable {
 		} catch (IOException e1) {
 			// Error in reading and writing to output stream.
 			if (IS_VERBOSE) System.out.println("Socket exception when reading/sending data.");
-			
+
 		} finally {
 
 			if(socket != null){

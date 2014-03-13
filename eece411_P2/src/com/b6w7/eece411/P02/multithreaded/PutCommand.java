@@ -30,7 +30,7 @@ public class PutCommand extends Command {
 		// Place {Cmd, Key, Value} into ByteBuffer 
 		// to be ready to be sent down a pipe.  
 		this.key = Arrays.copyOf(key, key.length);
-		this.value = Arrays.copyOf(value, value.length);;
+		this.value = Arrays.copyOf(value, value.length);
 	}
 
 	@Override
@@ -41,8 +41,9 @@ public class PutCommand extends Command {
 		else{
 			this.replyCode = (byte) Reply.RPY_OUT_OF_SPACE.getCode(); 
 		}
-		synchronized(execution_completed){
+		synchronized(execution_completed_sem){
 			execution_completed = true;
+			execution_completed_sem.notifyAll();
 		}
 	}
 

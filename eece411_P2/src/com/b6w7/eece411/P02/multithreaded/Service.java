@@ -2,6 +2,7 @@ package com.b6w7.eece411.P02.multithreaded;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -46,11 +47,13 @@ public class Service extends Thread implements JoinThread {
 
 		int numAvailableThreads;
 		
-		System.out.println("Server binding to port " + servPort);
 		try {
-			serverSock = new ServerSocket(servPort, server_backlog, InetAddress.getLocalHost());
-			System.out.println("Listening for connections...");
-			System.out.println("Server binding to port " + servPort + " with address: "+InetAddress.getLocalHost());
+			// serverSock = new ServerSocket(servPort, server_backlog, InetAddress.getLocalHost());
+			serverSock = new ServerSocket();
+			serverSock.setReuseAddress(true);
+			serverSock.bind(new InetSocketAddress(InetAddress.getLocalHost(), servPort), server_backlog);
+			
+			System.out.println("Server listening on port " + servPort + " with address: "+InetAddress.getLocalHost());
 		} catch (IOException e1) {
 			System.out.println("Failed to bind to port " + servPort);
 			return;
