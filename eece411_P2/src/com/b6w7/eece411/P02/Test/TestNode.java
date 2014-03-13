@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 64;  // total placed keys = 100 * 400 = 40000 
+	private static int NUM_TEST_RUNNABLES = 32;  // total placed keys = 100 * 400 = 40000 
 
 	//private static int count = 0; 
 	private int myCount;
@@ -636,7 +636,7 @@ public class TestNode implements Runnable, JoinThread {
 						// if (IS_VERBOSE) System.err.println("### network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
 						
 						System.err.println("### network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
-						e.printStackTrace();
+						//e.printStackTrace();
 						try {
 							Thread.sleep(TIME_RETRY_MS);
 						} catch (InterruptedException e1) {}

@@ -7,7 +7,7 @@ public abstract class Command {
 	
 	protected static final int MAX_MEMORY = 40000;
 
-	public static AtomicInteger atom = new AtomicInteger(0);
+	public static AtomicInteger totalCompleted = new AtomicInteger(0);
 	
 	public Map<ByteArrayWrapper, byte[]> map;// = new HashMap<String, String>();
 
