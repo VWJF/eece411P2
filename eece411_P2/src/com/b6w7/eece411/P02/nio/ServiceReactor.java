@@ -32,7 +32,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private boolean keepRunning = true;
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
-	private static boolean IS_VERBOSE = false;
+	private static boolean IS_VERBOSE = true;
 
 	final Selector selector;
 	final ServerSocketChannel serverSocket;

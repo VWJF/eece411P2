@@ -18,21 +18,22 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
 
 final class Handler extends Command implements Runnable { 
-	final SocketChannel socketRequester;
-	final SelectionKey keyRequester;
-	ByteBuffer input = ByteBuffer.allocate(2048);
-	ByteBuffer output = ByteBuffer.allocate(2048);
-	SocketChannel socketOwner;
-	SelectionKey keyOwner;
+	private final SocketChannel socketRequester;
+	private final SelectionKey keyRequester;
+	private ByteBuffer input = ByteBuffer.allocate(2048);
+	private ByteBuffer output;
+	private SocketChannel socketOwner;
+	private SelectionKey keyOwner;
 
 	private static final int CMDSIZE = NodeCommands.LEN_CMD_BYTES;		
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
 
-	byte replyCode = NodeCommands.Reply.CMD_NOT_SET.getCode();
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
 	byte[] value;
+	byte replyCode = Reply.CMD_NOT_SET.getCode();
+	byte[] replyValue;
 
 	private final PostCommand dbHandler;
 
@@ -43,8 +44,7 @@ final class Handler extends Command implements Runnable {
 
 	// frequently used, so stored here for future use
 	private Request[] requests = Request.values();
-	byte[] replyValue;
-	private ByteBuffer response;
+	private Selector sel;
 
 	// possible states of any command
 	enum State {
@@ -59,6 +59,8 @@ final class Handler extends Command implements Runnable {
 	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, Map<ByteArrayWrapper, byte[]> map) 
 			throws IOException {
 
+		this.sel = sel;
+		
 		if (null == map) 
 			throw new IllegalArgumentException("map cannot be null");
 
@@ -172,9 +174,10 @@ final class Handler extends Command implements Runnable {
 	}
 
 	private void sendRequester() throws IOException {
+		output.flip();
 		socketRequester.write(output);
-
-		if (outputIsComplete()) 
+	
+		if (outputIsComplete())
 			keyRequester.cancel();
 	}
 
@@ -198,6 +201,7 @@ final class Handler extends Command implements Runnable {
 
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
 				break;
 
 			case CMD_REMOVE:
@@ -211,6 +215,7 @@ final class Handler extends Command implements Runnable {
 
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
 				break;
 
 			case CMD_GET:
@@ -224,6 +229,7 @@ final class Handler extends Command implements Runnable {
 
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
 				break;
 
 			case CMD_NOT_SET:
@@ -266,7 +272,7 @@ final class Handler extends Command implements Runnable {
 				// Overwriting -- we take note
 				System.out.println("*** PutCommand() Replacing Key " + this.toString());
 			}
-
+			
 			return true;
 		}
 	}
@@ -286,7 +292,7 @@ final class Handler extends Command implements Runnable {
 
 		//		System.out.println("(key.length, get key bytes): ("+key.length+
 		//				", "+NodeCommands.byteArrayAsString(key) +")" );
-		if(val != null) {
+		if(val == null) {
 			// NONEXISTENT -- we want to debug here
 			if (IS_VERBOSE) System.out.println("*** GetCommand() Not Found " + this.toString());
 		}
@@ -295,36 +301,36 @@ final class Handler extends Command implements Runnable {
 
 
 	public byte[] generatePutReply(){
-		response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
-		response.put(replyCode);
+		output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+		output.put(replyCode);
 
-		return response.array();
+		return output.array();
 	}
 
 	public byte[] generateGetReply(){
 		if(replyValue != null){
-			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
-			response.put(replyCode);
-			response.put(replyValue);
+			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
+			output.put(replyCode);
+			output.put(replyValue);
 		} else {
-			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
-			response.put(replyCode);
+			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+			output.put(replyCode);
 		}
 
-		return response.array();
+		return output.array();
 	}
 
 	public byte[] generateRemoveReply(){
 		if(replyValue != null){
-			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
-			response.put(replyCode);
-			response.put(replyValue);
+			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
+			output.put(replyCode);
+			output.put(replyValue);
 		} else {
-			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
-			response.put(replyCode);
+			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+			output.put(replyCode);
 		}
 
-		return response.array();
+		return output.array();
 	}
 
 	@Override
@@ -338,7 +344,7 @@ final class Handler extends Command implements Runnable {
 		StringBuilder s = new StringBuilder();
 
 		s.append("[command=>");
-		s.append(NodeCommands.Request.CMD_PUT.toString());
+		s.append(requests[(int)cmd]);
 		s.append("] [key=>");
 		if (null != key) {
 			for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
@@ -346,7 +352,7 @@ final class Handler extends Command implements Runnable {
 		} else {
 			s.append("null");
 		}
-		if (null != key) {
+		if (null != value) {
 			s.append("] [value["+value.length+"]=>");
 			for (int i=0; i<LEN_TO_STRING_OF_VAL; i++)
 				s.append(Integer.toString((value[i] & 0xff) + 0x100, 16).substring(1));
