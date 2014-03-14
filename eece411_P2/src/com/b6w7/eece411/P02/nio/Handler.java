@@ -45,6 +45,7 @@ final class Handler extends Command implements Runnable {
 	// frequently used, so stored here for future use
 	private Request[] requests = Request.values();
 	private Selector sel;
+	private Process process;
 
 	// possible states of any command
 	enum State {
@@ -60,7 +61,7 @@ final class Handler extends Command implements Runnable {
 			throws IOException {
 
 		this.sel = sel;
-		
+
 		if (null == map) 
 			throw new IllegalArgumentException("map cannot be null");
 
@@ -95,18 +96,30 @@ final class Handler extends Command implements Runnable {
 
 		switch (requests[cmd]) {
 		case CMD_GET:
-			return (input.position() >= CMDSIZE + KEYSIZE);
+			if (input.position() >= CMDSIZE + KEYSIZE) {
+				process = new GetProcess();
+				return true;
+			}
+			return false;
 
 		case CMD_PUT:
-			return (input.position() >= CMDSIZE + KEYSIZE + VALUESIZE);
+			if (input.position() >= CMDSIZE + KEYSIZE + VALUESIZE) {
+				process = new PutProcess();
+				return true;
+			}
+			return false;
 
 		case CMD_REMOVE:
-			return (input.position() >= CMDSIZE + KEYSIZE);
+			if (input.position() >= CMDSIZE + KEYSIZE) {
+				process = new RemoveProcess();
+				return true;
+			}
+			return false;
 
 		case CMD_NOT_SET:
-			// waterfall deliberately
 		case CMD_UNRECOG:
 		default:
+			process = new UnrecogProcess();
 			// bad command received on wire
 			// nothing to do
 			return true;
@@ -176,9 +189,162 @@ final class Handler extends Command implements Runnable {
 	private void sendRequester() throws IOException {
 		output.flip();
 		socketRequester.write(output);
-	
+
 		if (outputIsComplete())
 			keyRequester.cancel();
+	}
+
+	class PutProcess implements Process {
+
+		@Override
+		public void process() {
+			if( put() )
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
+
+			generateReply();
+
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+		}
+
+		@Override
+		public void generateReply() {
+			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+			output.put(replyCode);
+		}
+
+		private boolean put(){
+			//		System.out.println(" --- put(): input.position()==" + input.position());
+			//		System.out.println(" --- put(): input.limit()==" + input.limit());
+			//		System.out.println(" --- put(): input.capacity()==" + input.capacity());
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+
+			if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
+				//System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
+				//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
+				return false;
+
+			} else {
+				value = new byte[VALUESIZE];
+				value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
+				byte[] result = map.put(new ByteArrayWrapper(key), value);
+
+				if(result != null) {
+					// Overwriting -- we take note
+					System.out.println("*** PutCommand() Replacing Key " + this.toString());
+				}
+
+				return true;
+			}
+		}
+	}
+	
+	class GetProcess implements Process {
+
+		@Override
+		public void process() {
+			replyValue = get();
+			if( replyValue != null )  
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_INEXISTENT.getCode();
+
+			generateReply();
+
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+		}
+
+		@Override
+		public void generateReply() {
+			if(replyValue != null){
+				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
+				output.put(replyCode);
+				output.put(replyValue);
+			} else {
+				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+				output.put(replyCode);
+			}
+		}
+
+		private byte[] get(){
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			byte[] val = map.get( new ByteArrayWrapper(key) );
+
+			//		System.out.println("(key.length, get key bytes): ("+key.length+
+			//				", "+NodeCommands.byteArrayAsString(key) +")" );
+			if(val == null) {
+				// NONEXISTENT -- we want to debug here
+				if (IS_VERBOSE) System.out.println("*** GetCommand() Not Found " + this.toString());
+			}
+			return val;
+		}
+	}
+
+	class RemoveProcess implements Process {
+	
+		@Override
+		public void process() {
+			replyValue = remove();
+			if( replyValue != null ) 
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_INEXISTENT.getCode();
+	
+			generateReply();
+	
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+		}
+	
+		@Override
+		public void generateReply() {
+			if(replyValue != null){
+				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
+				output.put(replyCode);
+				output.put(replyValue);
+			} else {
+				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+				output.put(replyCode);
+			}
+		}
+		
+		private byte[] remove(){
+			//		System.out.println("(key.length, get key bytes): ("+key.length+
+			//				", "+NodeCommands.byteArrayAsString(key) +")" );
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			return map.remove(new ByteArrayWrapper(key));
+		}
+	
+	}
+	
+	class UnrecogProcess implements Process {
+
+		@Override
+		public void process() {
+			replyCode = NodeCommands.Reply.CMD_UNRECOGNIZED.getCode();
+			generateReply();
+			
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+		}
+		
+
+		@Override
+		public void generateReply() {
+			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+			output.put(replyCode);
+		}
+		
 	}
 
 	@Override
@@ -189,55 +355,7 @@ final class Handler extends Command implements Runnable {
 
 		case CHECKING_LOCAL:
 			if (IS_VERBOSE) System.out.println(" --- execute(): CHECKING_LOCAL");
-
-			switch (requests[(int)cmd]) {
-			case CMD_PUT:
-				if( put() )
-					this.replyCode = Reply.RPY_SUCCESS.getCode(); 
-				else
-					this.replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
-
-				generatePutReply();
-
-				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
-				sel.wakeup();
-				break;
-
-			case CMD_REMOVE:
-				replyValue = remove();
-				if( replyValue != null ) 
-					this.replyCode = Reply.RPY_SUCCESS.getCode(); 
-				else
-					this.replyCode = Reply.RPY_INEXISTENT.getCode();
-
-				generateRemoveReply();
-
-				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
-				sel.wakeup();
-				break;
-
-			case CMD_GET:
-				this.replyValue = get();
-				if( replyValue != null )  
-					this.replyCode = Reply.RPY_SUCCESS.getCode(); 
-				else
-					this.replyCode = Reply.RPY_INEXISTENT.getCode();
-
-				generateGetReply();
-
-				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
-				sel.wakeup();
-				break;
-
-			case CMD_NOT_SET:
-				throw new IllegalStateException("CMD_NOT_SET should not arrive in execute()");
-
-			case CMD_UNRECOG:
-				throw new IllegalStateException("CMD_UNRECOG should not arrive in execute()");
-			}
+			process.process();
 			break;
 
 		case SEND_OWNER:
@@ -272,66 +390,12 @@ final class Handler extends Command implements Runnable {
 				// Overwriting -- we take note
 				System.out.println("*** PutCommand() Replacing Key " + this.toString());
 			}
-			
+
 			return true;
 		}
 	}
 
-	private byte[] remove(){
-		//		System.out.println("(key.length, get key bytes): ("+key.length+
-		//				", "+NodeCommands.byteArrayAsString(key) +")" );
-		key = new byte[KEYSIZE];
-		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-		return map.remove(new ByteArrayWrapper(key));
-	}
 
-	private byte[] get(){
-		key = new byte[KEYSIZE];
-		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-		byte[] val = map.get( new ByteArrayWrapper(key) );
-
-		//		System.out.println("(key.length, get key bytes): ("+key.length+
-		//				", "+NodeCommands.byteArrayAsString(key) +")" );
-		if(val == null) {
-			// NONEXISTENT -- we want to debug here
-			if (IS_VERBOSE) System.out.println("*** GetCommand() Not Found " + this.toString());
-		}
-		return val;
-	}
-
-
-	public byte[] generatePutReply(){
-		output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
-		output.put(replyCode);
-
-		return output.array();
-	}
-
-	public byte[] generateGetReply(){
-		if(replyValue != null){
-			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
-			output.put(replyCode);
-			output.put(replyValue);
-		} else {
-			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
-			output.put(replyCode);
-		}
-
-		return output.array();
-	}
-
-	public byte[] generateRemoveReply(){
-		if(replyValue != null){
-			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
-			output.put(replyCode);
-			output.put(replyValue);
-		} else {
-			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
-			output.put(replyCode);
-		}
-
-		return output.array();
-	}
 
 	@Override
 	public byte[] getReply() {

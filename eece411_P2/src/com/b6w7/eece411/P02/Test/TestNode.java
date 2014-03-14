@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 400;  // total placed keys = 100 * 400 = 40000 
+	private static int NUM_TEST_RUNNABLES = 1;  // total placed keys = 100 * 400 = 40000 
 
 	//private static int count = 0; 
 	private int myCount;

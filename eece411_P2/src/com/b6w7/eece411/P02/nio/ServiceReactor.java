@@ -3,6 +3,7 @@ package com.b6w7.eece411.P02.nio;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -43,6 +44,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 		inetaddress = InetAddress.getLocalHost();
 		selector = Selector.open();
 		serverSocket = ServerSocketChannel.open();
+		
+		System.out.println("Java version is " + System.getProperty("java.version"));
+		if (System.getProperty("java.version").startsWith("1.7"))
+			serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+		
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
