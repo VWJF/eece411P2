@@ -133,6 +133,11 @@ final class Handler extends Command implements Runnable {
 			case SEND_REQUESTER:
 				if (IS_VERBOSE) System.out.println(" --- run(): SEND_REQUESTER " +this);
 				sendRequester();
+				break;
+				
+			case ABORT:
+				// TODO fill in
+				break;
 			}
 		} catch (IOException ex) { /* ... */ }
 	} 
@@ -378,6 +383,7 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			value = new byte[VALUESIZE];
 			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
+			input.position(0);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
@@ -426,11 +432,14 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void generateRequesterReply() {
 			if (input.position() != 0) {
+				System.out.println("*** PutProcess::input.position()=="+input.position()+ " != 0 so not preparing input");
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
 				// do nothing.
+				return;
 			}
 			
+			System.out.println("*** PutProcess::input.position()=="+input.position()+ " == 0 so ARE preparing input");
 			// We performed a local look up.  So we fill in input with 
 			// the appropriate reply to requester.
 			input.put(replyCode);
@@ -488,11 +497,9 @@ final class Handler extends Command implements Runnable {
 				return false;
 
 			if (input.position() != RPYSIZE)
-				System.out.println("*** GetProcess::recvOwnerIsComplete() position == " + input.position());
+				System.out.println("*** PutProcess::recvOwnerIsComplete() position == " + input.position());
 
-			output = input;
-			output.flip();
-			replyCode = output.get(0);
+			replyCode = input.get(0);
 
 			return true;
 		}
@@ -527,36 +534,40 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + this);
+			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			input.position(0);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
 			if (useRemote) {
-				System.out.println("--- checkLocal() Using remote");
+				// OK, we decided that the location of key is at a remote node
+				// we can transition to CONNECT_OWNER and connect to remote node
+				System.out.println("--- GetProcess::checkLocal() Using remote");
 				state = State.CONNECT_OWNER;
 
 				try {
+					// prepare the output buffer, and signal for opening a socket to remote
 					generateOwnerQuery();
 
 					socketOwner = SocketChannel.open();
 					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT);
 					sel.wakeup();
 
 				} catch (IOException e) {
-					// reinsert this item into queue to be tried again
-					System.out.println("*** Network error in connecting to remote node. "+ e.getMessage());
-					e.printStackTrace();
-					try {
-						if (null != socketOwner) socketOwner.close();
-					} catch (IOException e2) {}
-					if (null != keyOwner) keyOwner.cancel();
-					state = State.CHECKING_LOCAL;
-					processRecvRequester();
+					retryAtStateCheckingLocal(e);
 				}
 
 			} else {
+				// OK, we decided that the location of key is at local node
+				// perform appropriate action with database
+				// we can transition to SEND_REQUESTER
+				
+				// set replyCode as appropriate and prepare output buffer
 				replyValue = get();
 				if( replyValue != null )  
 					replyCode = Reply.RPY_SUCCESS.getCode(); 
@@ -573,7 +584,17 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			output.position(0);
+			if (input.position() != 0) {
+				System.out.println("*** GetProcess::input.position()=="+input.position()+ " != 0 so not preparing input");
+				// This means that input received the contents of a
+				// RECV_OWNER and can be directly forwarded to requester
+				// do nothing.
+				return;
+			}
+
+			System.out.println("*** GetProcess::input.position()=="+input.position()+ " == 0 so ARE preparing input");
+			// We performed a local look up.  So we fill in input with 
+			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.put(replyValue);
 			output.flip();
@@ -592,28 +613,26 @@ final class Handler extends Command implements Runnable {
 			// read from the socket
 			try {
 				socketOwner.read(input);
+				if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwner() input.position()=="+input.position());
+
+				if (recvOwnerIsComplete()) {
+					if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete(): " +this);
+					generateRequesterReply();
+					
+					state = State.SEND_REQUESTER;
+					keyRequester.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
+				}
 
 			} catch (IOException e) {
-				System.out.println("*** recvOwner() Network error. " + e.getMessage());
-				e.printStackTrace();
-				try {
-					if (null != socketOwner)
-						socketOwner.close();
-				} catch (IOException e1) {}
-				if (null != keyOwner) keyOwner.cancel();
-				state = State.CHECKING_LOCAL;
-				processRecvRequester();
-			}
-
-			if (recvOwnerIsComplete()) {
-				generateRequesterReply();
-				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
-				sel.wakeup();
+				retryAtStateCheckingLocal(e);
 			}
 		}
 
 		private boolean recvOwnerIsComplete() {
+			if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete() testing for recvOwnerIsComplete()... " +this);
+			
+			if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete() input.position()=="+input.position());
 			// if the position is at 0 then we have nothing to read
 			// may not be a needed check since we are non-blocking I/O
 			if (input.position() < RPYSIZE + VALUESIZE)
@@ -623,9 +642,7 @@ final class Handler extends Command implements Runnable {
 				System.out.println("*** GetProcess::recvOwnerIsComplete() position != RPYSIZE + VALUESIZE");
 
 			// we can reuse the buffer for output now
-			output = input;
-			output.flip();
-			replyCode = output.get(0);
+			replyCode = input.get(0);
 
 			return true;
 		}
@@ -647,34 +664,41 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::checkLocal(): " + this);
+			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			input.position(0);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 
 			if (useRemote) {
+				// OK, we decided that the location of key is at a remote node
+				// we can transition to CONNECT_OWNER and connect to remote node
+				System.out.println("--- RemoveProcess::checkLocal() Using remote");
+				state = State.CONNECT_OWNER;
+
 				try {
+					// prepare the output buffer, and signal for opening a socket to remote
 					generateOwnerQuery();
 
 					socketOwner = SocketChannel.open();
 					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT);
 					sel.wakeup();
 
 				} catch (IOException e) {
-					// reinsert this item into queue to be tried again
-					System.out.println("*** Network error in connecting to remote node. "+ e.getMessage());
-					e.printStackTrace();
-					try {
-						if (null != socketOwner) socketOwner.close();
-					} catch (IOException e2) {}
-					if (null != keyOwner) keyOwner.cancel();
-					state = State.CHECKING_LOCAL;
-					processRecvRequester();
+					retryAtStateCheckingLocal(e);
 				}
 
 
 			} else {
+				// OK, we decided that the location of key is at local node
+				// perform appropriate action with database
+				// we can transition to SEND_REQUESTER
+				
+				// set replyCode as appropriate and prepare output buffer
 				replyValue = remove();
 				if( replyValue != null ) 
 					replyCode = Reply.RPY_SUCCESS.getCode(); 
@@ -691,8 +715,19 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+			if (input.position() != 0) {
+				System.out.println("*** RemoveProcess::input.position()=="+input.position()+ " != 0 so not preparing input");
+				// This means that input received the contents of a
+				// RECV_OWNER and can be directly forwarded to requester
+				// do nothing.
+				return;
+			}
+
+			System.out.println("*** RemoveProcess::input.position()=="+input.position()+ " == 0 so ARE preparing input");
+			// We performed a local look up.  So we fill in input with 
+			// the appropriate reply to requester.
 			output.put(replyCode);
+			output.flip();
 		}
 
 		@Override
@@ -708,28 +743,25 @@ final class Handler extends Command implements Runnable {
 			// read from the socket
 			try {
 				socketOwner.read(input);
+				if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwner() input.position()=="+input.position());
 
+				if (recvOwnerIsComplete()) {
+					if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete(): " +this);
+					generateRequesterReply();
+					
+					state = State.SEND_REQUESTER;
+					keyRequester.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
+				}
 			} catch (IOException e) {
-				System.out.println("*** recvOwner() Network error. " + e.getMessage());
-				e.printStackTrace();
-				try {
-					if (null != socketOwner)
-						socketOwner.close();
-				} catch (IOException e1) {}
-				if (null != keyOwner) keyOwner.cancel();
-				state = State.CHECKING_LOCAL;
-				processRecvRequester();
-			}
-
-			if (recvOwnerIsComplete()) {
-				generateRequesterReply();
-				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
-				sel.wakeup();
+				retryAtStateCheckingLocal(e);
 			}
 		}
 
 		private boolean recvOwnerIsComplete() {
+			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete() testing for recvOwnerIsComplete()... " +this);
+			
+			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete() input.position()=="+input.position());
 			// if the position is at 0 then we have nothing to read
 			// may not be a needed check since we are non-blocking I/O
 			if (input.position() < RPYSIZE)
@@ -739,9 +771,7 @@ final class Handler extends Command implements Runnable {
 				System.out.println("*** RemoveProcess::recvOwnerIsComplete() position != RPYSIZE");
 
 			// we can reuse the buffer for output now
-			output = input;
-			output.flip();
-			replyCode = output.get(0);
+			replyCode = input.get(0);
 
 			return true;
 		}
@@ -822,6 +852,14 @@ final class Handler extends Command implements Runnable {
 
 		s.append("] [replyCode=>");
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
+		if (null != input) {
+			s.append("] [input.remaining()=>");
+			s.append(input.remaining());
+		}
+		if (null != output) {
+			s.append("] [output.remaining()=>");
+			s.append(output.remaining());
+		}
 		s.append("]");
 
 		return s.toString();

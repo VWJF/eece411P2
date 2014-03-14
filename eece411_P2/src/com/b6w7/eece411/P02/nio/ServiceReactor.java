@@ -60,8 +60,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 		sk.attach(new Acceptor());
 		
-		// debug
-		
 		// TODO remove hack for debugging
 		if (servPort == 11111) {
 			System.out.println("Using Remote");
@@ -158,7 +156,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		int servPort = Integer.parseInt(args[0]);
 
-		servPort = 11112;
+		servPort = 11111;
 		
 		ServiceReactor service;
 		try {
