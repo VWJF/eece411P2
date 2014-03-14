@@ -124,6 +124,7 @@ final class Handler extends Command implements Runnable {
 		try { 
 			switch (state) {
 			case RECV_REQUESTER:
+				if (IS_VERBOSE) System.out.println(" --- run(): RECV_REQUESTER");
 				recvRequester();
 				break;
 
@@ -131,14 +132,17 @@ final class Handler extends Command implements Runnable {
 				throw new IllegalStateException("CHECKING_LOCAL should not be called in run()");
 
 			case SEND_OWNER:
+				if (IS_VERBOSE) System.out.println(" --- run(): SEND_OWNER");
 				sendOwner();
 				break;
 
 			case RECV_OWNER:
+				if (IS_VERBOSE) System.out.println(" --- run(): RECV_OWNER");
 				recvOwner();
 				break;
 
 			case SEND_REQUESTER:
+				if (IS_VERBOSE) System.out.println(" --- run(): SEND_REQUESTER");
 				sendRequester();
 			}
 		} catch (IOException ex) { /* ... */ }
@@ -169,7 +173,7 @@ final class Handler extends Command implements Runnable {
 
 	private void sendRequester() throws IOException {
 		socketRequester.write(output);
-		
+
 		if (outputIsComplete()) 
 			keyRequester.cancel();
 	}
@@ -181,6 +185,8 @@ final class Handler extends Command implements Runnable {
 			throw new IllegalStateException("RECV_REQUESTER should not be called in execute()");
 
 		case CHECKING_LOCAL:
+			if (IS_VERBOSE) System.out.println(" --- execute(): CHECKING_LOCAL");
+
 			switch (requests[(int)cmd]) {
 			case CMD_PUT:
 				if( put() )
@@ -189,7 +195,7 @@ final class Handler extends Command implements Runnable {
 					this.replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
 
 				generatePutReply();
-				
+
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				break;
@@ -202,7 +208,7 @@ final class Handler extends Command implements Runnable {
 					this.replyCode = Reply.RPY_INEXISTENT.getCode();
 
 				generateRemoveReply();
-				
+
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				break;
@@ -215,7 +221,7 @@ final class Handler extends Command implements Runnable {
 					this.replyCode = Reply.RPY_INEXISTENT.getCode();
 
 				generateGetReply();
-				
+
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				break;
@@ -227,7 +233,7 @@ final class Handler extends Command implements Runnable {
 				throw new IllegalStateException("CMD_UNRECOG should not arrive in execute()");
 			}
 			break;
-			
+
 		case SEND_OWNER:
 			throw new IllegalStateException("SEND_OWNER should not be called in execute()");
 
@@ -240,9 +246,9 @@ final class Handler extends Command implements Runnable {
 	}
 
 	private boolean put(){
-		System.out.println(" --- put(): input.position()==" + input.position());
-		System.out.println(" --- put(): input.limit()==" + input.limit());
-		System.out.println(" --- put(): input.capacity()==" + input.capacity());
+		//		System.out.println(" --- put(): input.position()==" + input.position());
+		//		System.out.println(" --- put(): input.limit()==" + input.limit());
+		//		System.out.println(" --- put(): input.capacity()==" + input.capacity());
 		key = new byte[KEYSIZE];
 		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 
@@ -264,10 +270,10 @@ final class Handler extends Command implements Runnable {
 			return true;
 		}
 	}
-	
+
 	private byte[] remove(){
-//		System.out.println("(key.length, get key bytes): ("+key.length+
-//				", "+NodeCommands.byteArrayAsString(key) +")" );
+		//		System.out.println("(key.length, get key bytes): ("+key.length+
+		//				", "+NodeCommands.byteArrayAsString(key) +")" );
 		key = new byte[KEYSIZE];
 		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 		return map.remove(new ByteArrayWrapper(key));
@@ -278,8 +284,8 @@ final class Handler extends Command implements Runnable {
 		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 		byte[] val = map.get( new ByteArrayWrapper(key) );
 
-//		System.out.println("(key.length, get key bytes): ("+key.length+
-//				", "+NodeCommands.byteArrayAsString(key) +")" );
+		//		System.out.println("(key.length, get key bytes): ("+key.length+
+		//				", "+NodeCommands.byteArrayAsString(key) +")" );
 		if(val != null) {
 			// NONEXISTENT -- we want to debug here
 			if (IS_VERBOSE) System.out.println("*** GetCommand() Not Found " + this.toString());
@@ -307,7 +313,7 @@ final class Handler extends Command implements Runnable {
 
 		return response.array();
 	}
-	
+
 	public byte[] generateRemoveReply(){
 		if(replyValue != null){
 			response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
@@ -325,4 +331,34 @@ final class Handler extends Command implements Runnable {
 	public byte[] getReply() {
 		throw new UnsupportedOperationException("To be removed from Commmand interface");
 	}
+
+	@Override
+	public String toString(){
+
+		StringBuilder s = new StringBuilder();
+
+		s.append("[command=>");
+		s.append(NodeCommands.Request.CMD_PUT.toString());
+		s.append("] [key=>");
+		if (null != key) {
+			for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
+				s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
+		} else {
+			s.append("null");
+		}
+		if (null != key) {
+			s.append("] [value["+value.length+"]=>");
+			for (int i=0; i<LEN_TO_STRING_OF_VAL; i++)
+				s.append(Integer.toString((value[i] & 0xff) + 0x100, 16).substring(1));
+		} else {
+			s.append("] [value[-]=>null");
+		}
+
+		s.append("] [replyCode=>");
+		s.append(NodeCommands.Reply.values()[replyCode].toString());
+		s.append("]");
+
+		return s.toString();
+	}
+
 }
