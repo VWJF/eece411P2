@@ -11,6 +11,7 @@ import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
@@ -35,9 +36,14 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 	private static boolean IS_VERBOSE = true;
 
+	private final ConcurrentLinkedQueue<SocketRegisterData> registrations 
+	= new ConcurrentLinkedQueue<SocketRegisterData>();
+
 	final Selector selector;
 	final ServerSocketChannel serverSocket;
 	final InetAddress inetaddress;
+	// debugging flag
+	public final boolean USE_REMOTE;
 
 	public ServiceReactor(int servPort) throws IOException {
 		serverPort = servPort;
@@ -52,7 +58,21 @@ public class ServiceReactor implements Runnable, JoinThread {
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-		sk.attach(new Acceptor()); 
+		sk.attach(new Acceptor());
+		
+		// debug
+		
+		// TODO remove hack for debugging
+		if (servPort == 11111) {
+			System.out.println("Using Remote");
+			USE_REMOTE = true; 
+
+		} else {
+			System.out.println("Using Local");
+			USE_REMOTE = false;
+			servPort = 11112; 
+		}
+
 	}
 
 	// code for ExecutorService obtained and modified from 
@@ -81,6 +101,16 @@ public class ServiceReactor implements Runnable, JoinThread {
 				// clear the key set in preparation for next invocation of .select()
 				keySet.clear(); 
 				
+				SocketRegisterData data;
+				while (registrations.size() > 0) {
+					System.out.println("--- Found registration to connect to 11112");
+					data = registrations.poll();
+					data.key = data.sc.register(selector, data.ops, data.cmd);
+
+					data.sc.connect(new InetSocketAddress(11112));
+					System.out.println("--- checkLocal() woke up selector");
+				}
+				
 			} catch (IOException ex) { /* ... */ }
 		}
 
@@ -104,9 +134,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 	class Acceptor implements Runnable { // inner
 		public void run() {
 			try {
+				System.out.println("*** Acceptor::Accepting Connection");
+				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)
-					new Handler(selector, c, dbHandler, dht);
+					new Handler(selector, c, dbHandler, dht, registrations, USE_REMOTE);
 				
 			} catch(IOException ex) { /* ... */ }
 		} 
@@ -125,6 +157,9 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		int servPort = Integer.parseInt(args[0]);
+
+		servPort = 11111;
+		
 		ServiceReactor service;
 		try {
 			service = new ServiceReactor(servPort);

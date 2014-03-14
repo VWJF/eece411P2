@@ -1,8 +1,6 @@
 package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -10,6 +8,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Queue;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
@@ -40,10 +39,6 @@ final class Handler extends Command implements Runnable {
 
 	private final PostCommand dbHandler;
 
-	// debugging flag
-	private static final boolean USE_REMOTE = false;
-
-
 	/**
 	 * The state of this {@link Command} used as a FSM
 	 */
@@ -53,6 +48,11 @@ final class Handler extends Command implements Runnable {
 	private Request[] requests = Request.values();
 	private Selector sel;
 	private Process process;
+	private Queue<SocketRegisterData> queue;
+	private SocketRegisterData remote;
+	
+	// debug 
+	private boolean useRemote;
 
 	// possible states of any command
 	enum State {
@@ -65,9 +65,11 @@ final class Handler extends Command implements Runnable {
 	}
 
 
-	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, Map<ByteArrayWrapper, byte[]> map) 
+	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, Map<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, boolean useRemote) 
 			throws IOException {
 
+		
+		this.queue = queue;
 		this.sel = sel;
 
 		if (null == map) 
@@ -82,6 +84,9 @@ final class Handler extends Command implements Runnable {
 		keyRequester.attach(this);
 		keyRequester.interestOps(SelectionKey.OP_READ);
 		sel.wakeup();
+		
+		// debug
+		this.useRemote = useRemote;
 	}
 
 	boolean requesterInputIsComplete() {
@@ -147,7 +152,7 @@ final class Handler extends Command implements Runnable {
 		try { 
 			switch (state) {
 			case RECV_REQUESTER:
-				if (IS_VERBOSE) System.out.println(" --- run(): RECV_REQUESTER");
+				if (IS_VERBOSE) System.out.println(" --- run(): RECV_REQUESTER " +this);
 				recvRequester();
 				break;
 
@@ -155,22 +160,22 @@ final class Handler extends Command implements Runnable {
 				throw new IllegalStateException("CHECKING_LOCAL should not be called in run()");
 
 			case CONNECT_OWNER:
-				if (IS_VERBOSE) System.out.println(" --- run(): CONNECT_OWNER");
+				if (IS_VERBOSE) System.out.println(" --- run(): CONNECT_OWNER " +this);
 				connectOwner();
 				break;
 
 			case SEND_OWNER:
-				if (IS_VERBOSE) System.out.println(" --- run(): SEND_OWNER");
+				if (IS_VERBOSE) System.out.println(" --- run(): SEND_OWNER " +this);
 				sendOwner();
 				break;
 
 			case RECV_OWNER:
-				if (IS_VERBOSE) System.out.println(" --- run(): RECV_OWNER");
+				if (IS_VERBOSE) System.out.println(" --- run(): RECV_OWNER " +this);
 				recvOwner();
 				break;
 
 			case SEND_REQUESTER:
-				if (IS_VERBOSE) System.out.println(" --- run(): SEND_REQUESTER");
+				if (IS_VERBOSE) System.out.println(" --- run(): SEND_REQUESTER " +this);
 				sendRequester();
 			}
 		} catch (IOException ex) { /* ... */ }
@@ -191,25 +196,31 @@ final class Handler extends Command implements Runnable {
 
 	private void connectOwner() {
 		try {
-			if (!socketOwner.isConnected()) {
-				socketOwner.connect(new InetSocketAddress(InetAddress.getLocalHost(), 11112));
-
-			} else if (socketOwner.finishConnect()) {
-				state = State.SEND_OWNER;
-				keyOwner.interestOps(SelectionKey.OP_WRITE);
-				sel.wakeup();
+			System.out.println("Waiting for connectOwner to complete");
+			if (socketOwner.finishConnect())  { // {System.out.print("a");}
+				keyOwner = remote.key;
+				if (keyOwner == null) {
+					System.out.println("*** key is null");
+					sel.wakeup();
+					
+				} else {
+					state = State.SEND_OWNER;
+					keyOwner.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
+				}
 			}
 
 		} catch (UnknownHostException e) {
 			System.out.println("*** Unknown Host. "+e.getMessage());
 		} catch (IOException e) {
 			System.out.println("*** connectOwner() Network error. " + e.getMessage());
-			state = State.CHECKING_LOCAL;
+			e.printStackTrace();
 			try {
-				if (null != socketOwner)
-					socketOwner.close();
-				keyOwner.cancel();
+				if (null != socketOwner) socketOwner.close();
 			} catch (IOException e1) {}
+			if (null != keyOwner) keyOwner.cancel();
+			state = State.CHECKING_LOCAL;
+			processRecvRequester();
 		}
 	}
 
@@ -218,19 +229,22 @@ final class Handler extends Command implements Runnable {
 			socketOwner.write(output);
 		} catch (IOException e) {
 			System.out.println("*** sendOwner() Network error. " + e.getMessage());
-			state = State.CHECKING_LOCAL;
+			e.printStackTrace();
 			try {
-				if (null != socketOwner)
-					socketOwner.close();
-				keyOwner.cancel();
+				if (null != socketOwner) socketOwner.close();
 			} catch (IOException e1) {}
+			if (null != keyOwner) keyOwner.cancel();
+			state = State.CHECKING_LOCAL;
+			processRecvRequester();
 		}
 
 		if (outputIsComplete()) {
 			state = State.RECV_OWNER;
 			keyOwner.interestOps(SelectionKey.OP_READ);
 			if (input.position() != CMDSIZE+KEYSIZE)
-				System.out.println("*** sendOwner : input.position() not at 33 for reading");
+				System.out.println("*** sendOwner : input.position() == "+input.position());
+			input.position(0);
+			
 			sel.wakeup();
 		}
 	}
@@ -243,19 +257,29 @@ final class Handler extends Command implements Runnable {
 		output.flip();
 		socketRequester.write(output);
 
-		if (outputIsComplete())
-			keyRequester.cancel();
+		if (outputIsComplete()) {
+			if (null != keyRequester) keyRequester.cancel();
+			if (null != keyOwner) keyOwner.cancel();
+			if (null != socketRequester) socketRequester.close();
+			if (null != socketOwner) socketOwner.close();
+		}
 	}
 
 	class PutProcess implements Process {
 
 		@Override
 		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- PutProcess::checkLocal(): " + this);
+
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			value = new byte[VALUESIZE];
+			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 			hashedKey = new ByteArrayWrapper(key);
-
-			if (USE_REMOTE) {
+			output = ByteBuffer.allocate(2048);
+			
+			if (useRemote) {
+				System.out.println("--- checkLocal() Using remote");
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -263,27 +287,23 @@ final class Handler extends Command implements Runnable {
 
 					socketOwner = SocketChannel.open();
 					socketOwner.configureBlocking(false);
-					socketOwner.bind(new InetSocketAddress(11112));
-
-					keyOwner = socketOwner.register(sel, SelectionKey.OP_CONNECT);
-					keyOwner.attach(this);
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT);
 					sel.wakeup();
 
 				} catch (IOException e) {
 					// reinsert this item into queue to be tried again
 					System.out.println("*** Network error in connecting to remote node. "+ e.getMessage());
+					e.printStackTrace();
 					try {
 						if (null != socketOwner) socketOwner.close();
 					} catch (IOException e2) {}
-					keyOwner.cancel();
+					if (null != keyOwner) keyOwner.cancel();
 					state = State.CHECKING_LOCAL;
 					processRecvRequester();
 				}
 
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
-				sel.wakeup();
-
 			} else {
+				System.out.println("--- checkLocal() Using Local");
 				if( put() )
 					replyCode = Reply.RPY_SUCCESS.getCode(); 
 				else
@@ -320,16 +340,20 @@ final class Handler extends Command implements Runnable {
 
 			} catch (IOException e) {
 				System.out.println("*** recvOwner() Network error. " + e.getMessage());
-				state = State.CHECKING_LOCAL;
+				e.printStackTrace();
 				try {
 					if (null != socketOwner)
 						socketOwner.close();
-					keyOwner.cancel();
 				} catch (IOException e1) {}
+				if (null != keyOwner) keyOwner.cancel();
+				state = State.CHECKING_LOCAL;
+				processRecvRequester();
 			}
 
 			if (recvOwnerIsComplete()) {
+				if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwnerIsComplete(): " +this);
 				generateRequesterReply();
+				
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
@@ -344,10 +368,11 @@ final class Handler extends Command implements Runnable {
 				return false;
 
 			if (input.position() != RPYSIZE)
-				System.out.println("*** GetProcess::recvOwnerIsComplete() position != RPYSIZE");
+				System.out.println("*** GetProcess::recvOwnerIsComplete() position == " + input.position());
 
 			output = input;
 			output.flip();
+			replyCode = output.get(0);
 
 			return true;
 		}
@@ -381,11 +406,12 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + this);
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 
-			if (USE_REMOTE) {
+			if (useRemote) {
 				state = State.SEND_OWNER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
@@ -433,12 +459,14 @@ final class Handler extends Command implements Runnable {
 
 			} catch (IOException e) {
 				System.out.println("*** recvOwner() Network error. " + e.getMessage());
-				state = State.CHECKING_LOCAL;
+				e.printStackTrace();
 				try {
 					if (null != socketOwner)
 						socketOwner.close();
-					keyOwner.cancel();
 				} catch (IOException e1) {}
+				if (null != keyOwner) keyOwner.cancel();
+				state = State.CHECKING_LOCAL;
+				processRecvRequester();
 			}
 
 			if (recvOwnerIsComplete()) {
@@ -461,6 +489,7 @@ final class Handler extends Command implements Runnable {
 			// we can reuse the buffer for output now
 			output = input;
 			output.flip();
+			replyCode = output.get(0);
 
 			return true;
 		}
@@ -481,11 +510,12 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::checkLocal(): " + this);
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 
-			if (USE_REMOTE) {
+			if (useRemote) {
 				state = State.SEND_OWNER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
@@ -533,12 +563,14 @@ final class Handler extends Command implements Runnable {
 
 			} catch (IOException e) {
 				System.out.println("*** recvOwner() Network error. " + e.getMessage());
-				state = State.CHECKING_LOCAL;
+				e.printStackTrace();
 				try {
 					if (null != socketOwner)
 						socketOwner.close();
-					keyOwner.cancel();
 				} catch (IOException e1) {}
+				if (null != keyOwner) keyOwner.cancel();
+				state = State.CHECKING_LOCAL;
+				processRecvRequester();
 			}
 
 			if (recvOwnerIsComplete()) {
@@ -561,6 +593,7 @@ final class Handler extends Command implements Runnable {
 			// we can reuse the buffer for output now
 			output = input;
 			output.flip();
+			replyCode = output.get(0);
 
 			return true;
 		}
@@ -608,7 +641,7 @@ final class Handler extends Command implements Runnable {
 			throw new IllegalStateException("RECV_REQUESTER should not be called in execute()");
 
 		case CHECKING_LOCAL:
-			if (IS_VERBOSE) System.out.println(" --- execute(): CHECKING_LOCAL");
+			if (IS_VERBOSE) System.out.println(" --- execute(): CHECKING_LOCAL " + this);
 			process.checkLocal();
 			break;
 
@@ -626,6 +659,13 @@ final class Handler extends Command implements Runnable {
 		default:
 			break;
 		}
+	}
+
+	public void registerData(SelectionKey keyOwner2,
+			SocketChannel socketOwner2, int opConnect) {
+		remote = new SocketRegisterData(keyOwner2, socketOwner2, opConnect, this);
+		queue.add(remote);
+
 	}
 
 	@Override
