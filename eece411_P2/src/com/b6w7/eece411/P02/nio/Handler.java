@@ -38,6 +38,10 @@ final class Handler extends Command implements Runnable {
 
 	private final PostCommand dbHandler;
 
+	// debugging flag
+	private static final boolean USE_REMOTE = false;
+
+
 	/**
 	 * The state of this {@link Command} used as a FSM
 	 */
@@ -52,9 +56,10 @@ final class Handler extends Command implements Runnable {
 	enum State {
 		RECV_REQUESTER,
 		CHECKING_LOCAL,
+		CONNECT_OWNER,
 		SEND_OWNER,
 		RECV_OWNER,
-		SEND_REQUESTER,
+		SEND_REQUESTER, 
 	}
 
 
@@ -147,6 +152,10 @@ final class Handler extends Command implements Runnable {
 			case CHECKING_LOCAL:
 				throw new IllegalStateException("CHECKING_LOCAL should not be called in run()");
 
+			case CONNECT_OWNER:
+				connectOwner();
+				break;
+				
 			case SEND_OWNER:
 				if (IS_VERBOSE) System.out.println(" --- run(): SEND_OWNER");
 				sendOwner();
@@ -171,16 +180,16 @@ final class Handler extends Command implements Runnable {
 		socketRequester.read(input);
 
 		if (inputIsComplete()) {
-			// TODO shortcircuit FSM by checking Hash(key) to know if it is locally
-			// stored or remotely stored.  For now, always check local first.
 			state = State.CHECKING_LOCAL;
 			keyRequester.interestOps(0);
 			processRecvRequester(); 
 		}
 	}
 
+	private void connectOwner() {
+		
+	}
 	private void sendOwner() {
-		throw new NotImplementedException();
 	}
 
 	private void recvOwner() {
@@ -195,9 +204,6 @@ final class Handler extends Command implements Runnable {
 			keyRequester.cancel();
 	}
 
-	private static final boolean USE_REMOTE = false;
-
-
 	class PutProcess implements Process {
 
 		@Override
@@ -207,7 +213,29 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 
 			if (USE_REMOTE) {
-				state = State.SEND_OWNER;
+				state = State.CONNECT_OWNER;
+				
+				try {
+					generateOwnerQuery();
+					
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					keyOwner = socketOwner.register(sel, SelectionKey.OP_WRITE);
+					keyOwner.attach(this);
+					keyOwner.interestOps(SelectionKey.OP_CONNECT);
+					sel.wakeup();
+					
+				} catch (IOException e) {
+					// reinsert this item into queue to be tried again
+					System.out.println("*** Network error in connecting to remote node. "+ e.getMessage());
+					try {
+						if (null != socketOwner) socketOwner.close();
+					} catch (IOException e2) {}
+					keyOwner.cancel();
+					state = State.CHECKING_LOCAL;
+					processRecvRequester();
+				}
+				
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
 
@@ -217,7 +245,7 @@ final class Handler extends Command implements Runnable {
 				else
 					replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
 
-				generateReply();
+				generateRequesterReply();
 
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
@@ -226,9 +254,18 @@ final class Handler extends Command implements Runnable {
 		}
 
 		@Override
-		public void generateReply() {
+		public void generateRequesterReply() {
 			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 			output.put(replyCode);
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			output.position(0);
+			output.put(cmd);
+			output.put(key);
+			output.put(value);
+			output.flip();
 		}
 
 		private boolean put(){
@@ -276,7 +313,7 @@ final class Handler extends Command implements Runnable {
 				else
 					replyCode = Reply.RPY_INEXISTENT.getCode();
 
-				generateReply();
+				generateRequesterReply();
 
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
@@ -285,7 +322,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		@Override
-		public void generateReply() {
+		public void generateRequesterReply() {
 			if(replyValue != null){
 				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
 				output.put(replyCode);
@@ -294,6 +331,14 @@ final class Handler extends Command implements Runnable {
 				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 				output.put(replyCode);
 			}
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			output.position(0);
+			output.put(cmd);
+			output.put(key);
+			output.flip();
 		}
 
 		private byte[] get(){
@@ -328,7 +373,7 @@ final class Handler extends Command implements Runnable {
 				else
 					replyCode = Reply.RPY_INEXISTENT.getCode();
 
-				generateReply();
+				generateRequesterReply();
 
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
@@ -337,7 +382,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		@Override
-		public void generateReply() {
+		public void generateRequesterReply() {
 			if(replyValue != null){
 				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES + NodeCommands.LEN_VALUE_BYTES);
 				output.put(replyCode);
@@ -346,6 +391,14 @@ final class Handler extends Command implements Runnable {
 				output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 				output.put(replyCode);
 			}
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			output.position(0);
+			output.put(cmd);
+			output.put(key);
+			output.flip();
 		}
 
 		private byte[] remove(){
@@ -360,7 +413,7 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void process() {
 			replyCode = NodeCommands.Reply.CMD_UNRECOGNIZED.getCode();
-			generateReply();
+			generateRequesterReply();
 
 			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
@@ -368,9 +421,14 @@ final class Handler extends Command implements Runnable {
 		}
 
 		@Override
-		public void generateReply() {
+		public void generateRequesterReply() {
 			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 			output.put(replyCode);
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			throw new UnsupportedOperationException("Should not call UnrecogProcess::generateOwnerQuery()");
 		}
 	}
 
