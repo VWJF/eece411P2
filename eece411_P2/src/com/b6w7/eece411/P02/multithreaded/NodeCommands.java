@@ -20,7 +20,8 @@ public class NodeCommands {
 		CMD_UNRECOG((byte)0), 
 		CMD_PUT((byte)1), 
 		CMD_GET((byte)2), 
-		CMD_REMOVE((byte)3);	
+		CMD_REMOVE((byte)3), 
+		CMD_NOT_SET((byte)4);	
 		
 		private byte value;
 

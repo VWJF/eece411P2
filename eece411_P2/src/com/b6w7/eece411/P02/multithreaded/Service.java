@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * A node in a Distributed Hash Table
+ */
 public class Service extends Thread implements JoinThread {
 
 	// 50 max on planetlab

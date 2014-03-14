@@ -107,5 +107,4 @@ public class GetCommand extends Command {
 
 		return s.toString();
 	}
-
 }

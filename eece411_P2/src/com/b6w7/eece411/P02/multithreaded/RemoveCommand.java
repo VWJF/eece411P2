@@ -11,7 +11,7 @@ public class RemoveCommand extends Command {
 
 	byte replyCode = NodeCommands.Reply.CMD_NOT_SET.getCode();
 	byte[] replyValue;
-
+	
 	// protocol for Request: remove command <cmd,key>
 	// protocol for Response: <cmd>
 	public RemoveCommand(byte[] key, Map<ByteArrayWrapper, byte[]> map) {

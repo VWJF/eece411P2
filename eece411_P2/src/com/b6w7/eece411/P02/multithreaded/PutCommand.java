@@ -57,71 +57,26 @@ public class PutCommand extends Command {
 
 		response = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 		response.put(replyCode);
-		
+
 		return response.array();
 	}
-private boolean put(){
-		//		StringBuilder s = new StringBuilder();
-		//		StringBuilder k = new StringBuilder();
-		//
-		//		try {
-		//			s.append(new String(this.value.array(), "UTF-8"));
-		//		} catch (UnsupportedEncodingException e) {
-		//			s.append(new String(this.value.array()));
-		//		}
-		//
-		//		try {
-		//			k.append(new String(this.key.array(), "UTF-8"));
-		//		} catch (UnsupportedEncodingException e) {
-		//			k.append(new String(this.key.array()));
-		//		}
-		//		
-		//
-		//		System.out.println("put (key,value): ("+k.toString()+", "+s.toString()+")");
-		//		System.out.println("put key bytes: "+NodeCommands.byteArrayAsString(key.array()) );
-		//		System.out.println("put value bytes: "+NodeCommands.byteArrayAsString((s.toString().getBytes())) );
-		//
-				if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
-					//System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
-					//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
-					return false;
-				} else {
+	private boolean put(){
 
-//					byte[] val = map.get( key );
-					
-//					System.out.println("(key.length, get key bytes): ("+key.length+
-//							", "+NodeCommands.byteArrayAsString(key) +")" );
+		if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
+			//System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
+			//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
+			return false;
 			
-					byte[] result = map.put(new ByteArrayWrapper(key), value);
+		} else {
+			byte[] result = map.put(new ByteArrayWrapper(key), value);
 
-					if(result != null) {
-						// NONEXISTENT -- we want to debug here
-						System.out.println("*** PutCommand() Replacing Key " + this.toString());
-					}
-	
-					
-					//System.out.println("TESTING POST PUT COMMAND");
-//					byte[] test = map.get(key);
-//					
-//					System.out.println("test bytes: "+NodeCommands.byteArrayAsString(test) );
-//					System.out.println("test.length: "+test.length);
-					return true;
-				}
-		//		System.out.println("key.length: "+k.length() +
-		//							" this.key.array.length: "+this.key.array().length);
-		//		System.out.println("value.length: "+s.length() +
-		//						" this.value.array.length: "+this.value.array().length);
-		//		
-		//		if (k.length() != 32 || s.length() != 1024){
-		//			System.out.println("****");
-		//		}
-		//		
-		//		map.put(k.toString(),s.toString() );
-		//		//	Command.numElements++;
-		//
-		//		return true;
-		//		//replyCode = NodeCommands.RPY_SUCCESS;
-		//		//reply.replyCommand(this);
+			if(result != null) {
+				// Overwriting -- we take note
+				System.out.println("*** PutCommand() Replacing Key " + this.toString());
+			}
+
+			return true;
+		}
 	}
 
 	@Override
@@ -142,8 +97,7 @@ private boolean put(){
 		s.append("] [replyCode=>");
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
 		s.append("]");
-		
+
 		return s.toString();
 	}
-
 }
