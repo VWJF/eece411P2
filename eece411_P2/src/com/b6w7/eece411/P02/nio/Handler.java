@@ -20,7 +20,7 @@ import com.b6w7.eece411.P02.multithreaded.PostCommand;
 final class Handler extends Command implements Runnable { 
 	final SocketChannel socketRequester;
 	final SelectionKey keyRequester;
-	ByteBuffer input = ByteBuffer.allocateDirect(2048);
+	ByteBuffer input = ByteBuffer.allocate(2048);
 	ByteBuffer output = ByteBuffer.allocate(2048);
 	SocketChannel socketOwner;
 	SelectionKey keyOwner;
@@ -226,6 +226,8 @@ final class Handler extends Command implements Runnable {
 			case CMD_UNRECOG:
 				throw new IllegalStateException("CMD_UNRECOG should not arrive in execute()");
 			}
+			break;
+			
 		case SEND_OWNER:
 			throw new IllegalStateException("SEND_OWNER should not be called in execute()");
 
@@ -238,14 +240,19 @@ final class Handler extends Command implements Runnable {
 	}
 
 	private boolean put(){
+		System.out.println(" --- put(): input.position()==" + input.position());
+		System.out.println(" --- put(): input.limit()==" + input.limit());
+		System.out.println(" --- put(): input.capacity()==" + input.capacity());
+		key = new byte[KEYSIZE];
 		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-		
+
 		if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
 			//System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
 			//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
 			return false;
 
 		} else {
+			value = new byte[VALUESIZE];
 			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 			byte[] result = map.put(new ByteArrayWrapper(key), value);
 
@@ -261,11 +268,13 @@ final class Handler extends Command implements Runnable {
 	private byte[] remove(){
 //		System.out.println("(key.length, get key bytes): ("+key.length+
 //				", "+NodeCommands.byteArrayAsString(key) +")" );
+		key = new byte[KEYSIZE];
 		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 		return map.remove(new ByteArrayWrapper(key));
 	}
 
 	private byte[] get(){
+		key = new byte[KEYSIZE];
 		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 		byte[] val = map.get( new ByteArrayWrapper(key) );
 

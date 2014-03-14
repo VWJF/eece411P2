@@ -151,6 +151,9 @@ public class TestNode implements Runnable, JoinThread {
 		}
 	}
 
+	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+	}
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
@@ -499,7 +502,8 @@ public class TestNode implements Runnable, JoinThread {
 			//			clientSocket = new Socket(serverURL, serverPort);
 
 			//populateTests();
-			populateMemoryTests();
+			//populateMemoryTests();
+			populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
