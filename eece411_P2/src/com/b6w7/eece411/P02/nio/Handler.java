@@ -31,6 +31,7 @@ final class Handler extends Command implements Runnable {
 
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
+	ByteArrayWrapper hashedKey;
 	byte[] value;
 	byte replyCode = Reply.CMD_NOT_SET.getCode();
 	byte[] replyValue;
@@ -194,20 +195,34 @@ final class Handler extends Command implements Runnable {
 			keyRequester.cancel();
 	}
 
+	private static final boolean USE_REMOTE = false;
+
+
 	class PutProcess implements Process {
 
 		@Override
 		public void process() {
-			if( put() )
-				replyCode = Reply.RPY_SUCCESS.getCode(); 
-			else
-				replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			hashedKey = new ByteArrayWrapper(key);
 
-			generateReply();
+			if (USE_REMOTE) {
+				state = State.SEND_OWNER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
 
-			state = State.SEND_REQUESTER;
-			keyRequester.interestOps(SelectionKey.OP_WRITE);
-			sel.wakeup();
+			} else {
+				if( put() )
+					replyCode = Reply.RPY_SUCCESS.getCode(); 
+				else
+					replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
+
+				generateReply();
+
+				state = State.SEND_REQUESTER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
+			}
 		}
 
 		@Override
@@ -220,10 +235,8 @@ final class Handler extends Command implements Runnable {
 			//		System.out.println(" --- put(): input.position()==" + input.position());
 			//		System.out.println(" --- put(): input.limit()==" + input.limit());
 			//		System.out.println(" --- put(): input.capacity()==" + input.capacity());
-			key = new byte[KEYSIZE];
-			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 
-			if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
+			if(map.size() == MAX_MEMORY && map.containsKey(hashedKey) == false ){
 				//System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
 				//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
 				return false;
@@ -231,7 +244,7 @@ final class Handler extends Command implements Runnable {
 			} else {
 				value = new byte[VALUESIZE];
 				value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-				byte[] result = map.put(new ByteArrayWrapper(key), value);
+				byte[] result = map.put(hashedKey, value);
 
 				if(result != null) {
 					// Overwriting -- we take note
@@ -242,22 +255,33 @@ final class Handler extends Command implements Runnable {
 			}
 		}
 	}
-	
+
 	class GetProcess implements Process {
 
 		@Override
 		public void process() {
-			replyValue = get();
-			if( replyValue != null )  
-				replyCode = Reply.RPY_SUCCESS.getCode(); 
-			else
-				replyCode = Reply.RPY_INEXISTENT.getCode();
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			hashedKey = new ByteArrayWrapper(key);
 
-			generateReply();
+			if (USE_REMOTE) {
+				state = State.SEND_OWNER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
 
-			state = State.SEND_REQUESTER;
-			keyRequester.interestOps(SelectionKey.OP_WRITE);
-			sel.wakeup();
+			} else {
+				replyValue = get();
+				if( replyValue != null )  
+					replyCode = Reply.RPY_SUCCESS.getCode(); 
+				else
+					replyCode = Reply.RPY_INEXISTENT.getCode();
+
+				generateReply();
+
+				state = State.SEND_REQUESTER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
+			}
 		}
 
 		@Override
@@ -273,10 +297,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private byte[] get(){
-			key = new byte[KEYSIZE];
-			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			byte[] val = map.get( new ByteArrayWrapper(key) );
-
+			byte[] val = map.get( hashedKey );
 			//		System.out.println("(key.length, get key bytes): ("+key.length+
 			//				", "+NodeCommands.byteArrayAsString(key) +")" );
 			if(val == null) {
@@ -288,22 +309,33 @@ final class Handler extends Command implements Runnable {
 	}
 
 	class RemoveProcess implements Process {
-	
+
 		@Override
 		public void process() {
-			replyValue = remove();
-			if( replyValue != null ) 
-				replyCode = Reply.RPY_SUCCESS.getCode(); 
-			else
-				replyCode = Reply.RPY_INEXISTENT.getCode();
-	
-			generateReply();
-	
-			state = State.SEND_REQUESTER;
-			keyRequester.interestOps(SelectionKey.OP_WRITE);
-			sel.wakeup();
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			hashedKey = new ByteArrayWrapper(key);
+
+			if (USE_REMOTE) {
+				state = State.SEND_OWNER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
+
+			} else {
+				replyValue = remove();
+				if( replyValue != null ) 
+					replyCode = Reply.RPY_SUCCESS.getCode(); 
+				else
+					replyCode = Reply.RPY_INEXISTENT.getCode();
+
+				generateReply();
+
+				state = State.SEND_REQUESTER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
+			}
 		}
-	
+
 		@Override
 		public void generateReply() {
 			if(replyValue != null){
@@ -315,36 +347,31 @@ final class Handler extends Command implements Runnable {
 				output.put(replyCode);
 			}
 		}
-		
+
 		private byte[] remove(){
 			//		System.out.println("(key.length, get key bytes): ("+key.length+
 			//				", "+NodeCommands.byteArrayAsString(key) +")" );
-			key = new byte[KEYSIZE];
-			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			return map.remove(new ByteArrayWrapper(key));
+			return map.remove(hashedKey);
 		}
-	
 	}
-	
+
 	class UnrecogProcess implements Process {
 
 		@Override
 		public void process() {
 			replyCode = NodeCommands.Reply.CMD_UNRECOGNIZED.getCode();
 			generateReply();
-			
+
 			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
 			sel.wakeup();
 		}
-		
 
 		@Override
 		public void generateReply() {
 			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 			output.put(replyCode);
 		}
-		
 	}
 
 	@Override
@@ -368,34 +395,6 @@ final class Handler extends Command implements Runnable {
 			throw new IllegalStateException("SEND_REQUESTER should not be called in execute()");
 		}
 	}
-
-	private boolean put(){
-		//		System.out.println(" --- put(): input.position()==" + input.position());
-		//		System.out.println(" --- put(): input.limit()==" + input.limit());
-		//		System.out.println(" --- put(): input.capacity()==" + input.capacity());
-		key = new byte[KEYSIZE];
-		key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-
-		if(map.size() == MAX_MEMORY && map.containsKey(key) == false ){
-			//System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
-			//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
-			return false;
-
-		} else {
-			value = new byte[VALUESIZE];
-			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-			byte[] result = map.put(new ByteArrayWrapper(key), value);
-
-			if(result != null) {
-				// Overwriting -- we take note
-				System.out.println("*** PutCommand() Replacing Key " + this.toString());
-			}
-
-			return true;
-		}
-	}
-
-
 
 	@Override
 	public byte[] getReply() {
