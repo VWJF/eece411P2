@@ -34,7 +34,7 @@ final class Handler extends Command implements Runnable {
 	byte[] key;
 	ByteArrayWrapper hashedKey;
 	byte[] value;
-	byte replyCode = Reply.CMD_NOT_SET.getCode();
+	byte replyCode = Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
 
 	private final PostCommand dbHandler;
@@ -45,7 +45,8 @@ final class Handler extends Command implements Runnable {
 	protected State state = State.RECV_REQUESTER;
 
 	// frequently used, so stored here for future use
-	private Request[] requests = Request.values();
+	private final Request[] requests = Request.values();
+	private final Reply[] replies = Reply.values();
 	private Selector sel;
 	private Process process;
 	private Queue<SocketRegisterData> queue;
@@ -190,15 +191,7 @@ final class Handler extends Command implements Runnable {
 	private boolean requesterInputIsComplete() {
 		int cmdInt;
 
-		// if the position is at 0 then we have nothing to read
-		// may not be a needed check since we are non-blocking I/O
-		if (input.position() < CMDSIZE)
-			return false;
-
-		// We need to know what operation this is
-		if (Request.CMD_NOT_SET.getCode() == cmd) {
-			cmd = input.get(0);
-		}
+		cmd = input.get(0);
 
 		// Now we know what operation, now we need to know how many bytes that we expect
 		cmdInt = (int)cmd;
@@ -269,7 +262,6 @@ final class Handler extends Command implements Runnable {
 			abort(e);
 			
 		} catch (IOException e) {
-			// TODO add a counter to prevent infinite retries?
 			retryAtStateCheckingLocal(e);
 		}
 	}
@@ -281,7 +273,7 @@ final class Handler extends Command implements Runnable {
 	 * up to output.limit.  If not all bytes are written, this method may be 
 	 * called again repeatedly until output.position = output.limit.
 	 * When this happens, transitions to state RECV_OWNER and set interestOps
-	 * to ready to read.  Also resets input.position to 0.
+	 * to ready to read.  Also resets output.position to 0 for RECV_OWNER.
 	 * If network error occurs, then deallocate all network resources and
 	 * retry at CHECKING_LOCAL state.
 	 */
@@ -295,10 +287,7 @@ final class Handler extends Command implements Runnable {
 		if (outputIsComplete()) {
 			state = State.RECV_OWNER;
 			keyOwner.interestOps(SelectionKey.OP_READ);
-			if (input.position() != CMDSIZE+KEYSIZE)
-				System.out.println("*** sendOwner : input.position() == "+input.position());
-			input.position(0);
-			
+			output.position(0); // need to set to zero before entering RECV_OWNER!
 			sel.wakeup();
 		}
 	}
@@ -323,7 +312,10 @@ final class Handler extends Command implements Runnable {
 				System.out.println("### sendRequest() socketRequester is still non-null or open");
 				return;
 			}
+
+			if (IS_VERBOSE) System.out.println(" --- Common::sendRequester() BEFORE output.position()=="+output.position());
 			socketRequester.write(output);
+			if (IS_VERBOSE) System.out.println(" --- Common::sendRequester() AFTER output.position()=="+output.position());
 
 			if (outputIsComplete()) {
 				if (null != keyRequester) {keyRequester.interestOps(0); keyRequester.cancel();}
@@ -383,7 +375,6 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			value = new byte[VALUESIZE];
 			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-			input.position(0);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
@@ -431,19 +422,20 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (input.position() != 0) {
-				System.out.println("*** PutProcess::input.position()=="+input.position()+ " != 0 so not preparing input");
+			if (output.position() != 0) {
+				if (output.position() != RPYSIZE)
+					System.out.println("### PutProcess::output.position()=="+output.position()+ " != 1");
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
-				// do nothing.
+				output.flip();
 				return;
 			}
 			
-			System.out.println("*** PutProcess::input.position()=="+input.position()+ " == 0 so ARE preparing input");
 			// We performed a local look up.  So we fill in input with 
 			// the appropriate reply to requester.
 			input.put(replyCode);
 			input.flip();
+			if (IS_VERBOSE) System.out.println("*** PutProcess::input.capacity()=="+input.capacity());
 		}
 
 		@Override
@@ -459,8 +451,9 @@ final class Handler extends Command implements Runnable {
 		public void recvOwner() {
 			// read from the socket
 			try {
-				socketOwner.read(input);
-				if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwner() input.position()=="+input.position());
+				if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwner() BEFORE output.capacity()=="+output.capacity());
+				socketOwner.read(output);
+				if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwner() AFTER  output.capacity()=="+output.capacity());
 
 				if (recvOwnerIsComplete()) {
 					if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwnerIsComplete(): " +this);
@@ -488,18 +481,15 @@ final class Handler extends Command implements Runnable {
 		 * @return true if enough bytes read; false otherwise.
 		 */
 		private boolean recvOwnerIsComplete() {
-			if (IS_VERBOSE) System.out.println(" --- PutProcess::testing for recvOwnerIsComplete()... " +this);
+			if (IS_VERBOSE) System.out.println(" --- PutProcess::output.position()=="+output.position());
+
+			replyCode = output.get(0);
+			output.flip();
 			
-			if (IS_VERBOSE) System.out.println(" --- PutProcess::input.position()=="+input.position());
-			// if the position is at 0 then we have nothing to read
-			// may not be a needed check since we are non-blocking I/O
-			if (input.position() < RPYSIZE)
-				return false;
 
-			if (input.position() != RPYSIZE)
-				System.out.println("*** PutProcess::recvOwnerIsComplete() position == " + input.position());
+			if (output.capacity() != RPYSIZE)
+				System.out.println("### PutProcess::recvOwnerIsComplete() output.capacity()== " + output.capacity());
 
-			replyCode = input.get(0);
 
 			return true;
 		}
@@ -537,7 +527,6 @@ final class Handler extends Command implements Runnable {
 			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			input.position(0);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
@@ -584,20 +573,21 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (input.position() != 0) {
-				System.out.println("*** GetProcess::input.position()=="+input.position()+ " != 0 so not preparing input");
+			if (output.position() != 0) {
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
-				// do nothing.
+				output.flip();
+				System.out.println("*** GetProcess::generateRequesterReply() output.capacity()=="+output.capacity());
 				return;
 			}
 
-			System.out.println("*** GetProcess::input.position()=="+input.position()+ " == 0 so ARE preparing input");
 			// We performed a local look up.  So we fill in input with 
 			// the appropriate reply to requester.
 			output.put(replyCode);
-			output.put(replyValue);
+			if (replyValue != null)
+				output.put(replyValue);
 			output.flip();
+			System.out.println("--- GetProcess::generateRequesterReply() output.capacity()=="+output.capacity());
 		}
 
 		@Override
@@ -612,8 +602,8 @@ final class Handler extends Command implements Runnable {
 		public void recvOwner() {
 			// read from the socket
 			try {
-				socketOwner.read(input);
-				if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwner() input.position()=="+input.position());
+				socketOwner.read(output);
+				if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwner() output.position()=="+output.position());
 
 				if (recvOwnerIsComplete()) {
 					if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete(): " +this);
@@ -631,19 +621,16 @@ final class Handler extends Command implements Runnable {
 
 		private boolean recvOwnerIsComplete() {
 			if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete() testing for recvOwnerIsComplete()... " +this);
+			if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete() output.position()=="+output.position());
+
+			replyCode = output.get(0);
 			
-			if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete() input.position()=="+input.position());
-			// if the position is at 0 then we have nothing to read
-			// may not be a needed check since we are non-blocking I/O
-			if (input.position() < RPYSIZE + VALUESIZE)
+			if (Reply.RPY_SUCCESS.getCode() == replyCode)
+				return (output.position() >= RPYSIZE + VALUESIZE);
+
+			if (output.position() < RPYSIZE + VALUESIZE)
 				return false;
 			
-			if (input.position() != RPYSIZE + VALUESIZE)
-				System.out.println("*** GetProcess::recvOwnerIsComplete() position != RPYSIZE + VALUESIZE");
-
-			// we can reuse the buffer for output now
-			replyCode = input.get(0);
-
 			return true;
 		}
 
@@ -667,7 +654,6 @@ final class Handler extends Command implements Runnable {
 			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			input.position(0);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 
@@ -715,11 +701,11 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (input.position() != 0) {
+			if (output.position() != 0) {
 				System.out.println("*** RemoveProcess::input.position()=="+input.position()+ " != 0 so not preparing input");
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
-				// do nothing.
+				output.flip();
 				return;
 			}
 
@@ -742,7 +728,7 @@ final class Handler extends Command implements Runnable {
 		public void recvOwner() {
 			// read from the socket
 			try {
-				socketOwner.read(input);
+				socketOwner.read(output);
 				if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwner() input.position()=="+input.position());
 
 				if (recvOwnerIsComplete()) {
@@ -760,19 +746,9 @@ final class Handler extends Command implements Runnable {
 
 		private boolean recvOwnerIsComplete() {
 			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete() testing for recvOwnerIsComplete()... " +this);
-			
-			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete() input.position()=="+input.position());
-			// if the position is at 0 then we have nothing to read
-			// may not be a needed check since we are non-blocking I/O
-			if (input.position() < RPYSIZE)
-				return false;
-			
-			if (input.position() != RPYSIZE)
-				System.out.println("*** RemoveProcess::recvOwnerIsComplete() position != RPYSIZE");
+			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete() output.position()=="+output.position());
 
-			// we can reuse the buffer for output now
-			replyCode = input.get(0);
-
+			replyCode = output.get(0);
 			return true;
 		}
 
@@ -787,11 +763,11 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void checkLocal() {
-			replyCode = NodeCommands.Reply.CMD_UNRECOGNIZED.getCode();
+			replyCode = NodeCommands.Reply.RPY_UNRECOGNIZED.getCode();
 			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
 
 			generateRequesterReply();
-
+			
 			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
 			sel.wakeup();

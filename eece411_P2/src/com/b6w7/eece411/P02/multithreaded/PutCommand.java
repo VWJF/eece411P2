@@ -10,7 +10,7 @@ public class PutCommand extends Command {
 	final byte[] key;
 	final byte[] value;
 
-	byte replyCode = NodeCommands.Reply.CMD_NOT_SET.getCode();
+	byte replyCode = NodeCommands.Reply.RPY_NOT_SET.getCode();
 
 	// protocol for Request: put command <cmd,key,value>
 	// protocol for Response: <cmd>

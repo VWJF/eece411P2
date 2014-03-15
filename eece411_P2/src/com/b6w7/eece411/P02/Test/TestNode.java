@@ -197,14 +197,14 @@ public class TestNode implements Runnable, JoinThread {
 
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
 
-		populateOneTest((byte)0xFF, myCount+"OutOfBounds0", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0x7F, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0x80, myCount+"OutOfBounds1", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0x88, myCount+"OutOfBounds2", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0xC0, myCount+"OutOfBounds3", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0xEE, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xFF, myCount+"OutOfBounds0", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x7F, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x80, myCount+"OutOfBounds1", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x88, myCount+"OutOfBounds2", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xC0, myCount+"OutOfBounds3", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xEE, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
 
 	}
 

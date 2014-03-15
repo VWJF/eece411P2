@@ -54,8 +54,8 @@ public class NodeCommands {
 		RPY_OUT_OF_SPACE((byte)2),
 		RPY_OVERLOAD((byte)3),
 		RPY_INTERNAL_FAILURE((byte)4),
-		CMD_UNRECOGNIZED((byte)5),
-		CMD_NOT_SET((byte)6);
+		RPY_UNRECOGNIZED((byte)5),
+		RPY_NOT_SET((byte)6);
 
 		private byte value;
 
