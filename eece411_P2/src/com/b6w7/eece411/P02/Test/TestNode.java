@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 32;  // total placed keys = 100 * 400 = 40000 
+	private static int NUM_TEST_RUNNABLES = 10;  // total placed keys = 100 * 400 = 40000 
 
 	//private static int count = 0; 
 	private int myCount;
@@ -49,7 +49,7 @@ public class TestNode implements Runnable, JoinThread {
 	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;
 	// reduced debug outut from normal
-	private static boolean IS_BREVITY = true;
+	private static boolean IS_BREVITY = false;
 
 	private MessageDigest md;
 
@@ -151,6 +151,15 @@ public class TestNode implements Runnable, JoinThread {
 		}
 	}
 
+	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+	}
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
@@ -188,14 +197,14 @@ public class TestNode implements Runnable, JoinThread {
 
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
 
-		populateOneTest((byte)0xFF, myCount+"OutOfBounds0", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0x7F, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0x80, myCount+"OutOfBounds1", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0x88, myCount+"OutOfBounds2", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0xC0, myCount+"OutOfBounds3", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
-		populateOneTest((byte)0xEE, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.CMD_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xFF, myCount+"OutOfBounds0", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x7F, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x80, myCount+"OutOfBounds1", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0x88, myCount+"OutOfBounds2", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xC0, myCount+"OutOfBounds3", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
+		populateOneTest((byte)0xEE, myCount+"OutOfBounds4", "OutOfBounds", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
 
 	}
 
@@ -446,6 +455,10 @@ public class TestNode implements Runnable, JoinThread {
 			return;
 		}
 
+		
+		//hack to debug
+		serverPort = 11112;
+		
 		List<Runnable> list = new LinkedList<Runnable>();
 
 		// we are listening, so now allocated a ThreadPool to handle new sockets connections
@@ -498,8 +511,9 @@ public class TestNode implements Runnable, JoinThread {
 			// Set a timeout on read operation as 3 seconds
 			//			clientSocket = new Socket(serverURL, serverPort);
 
-			//populateTests();
+			populateTests();
 			populateMemoryTests();
+			//populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
