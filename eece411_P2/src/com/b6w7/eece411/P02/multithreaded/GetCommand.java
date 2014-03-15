@@ -9,7 +9,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 public class GetCommand extends Command {
 	final byte[] key;
 
-	byte replyCode = NodeCommands.Reply.CMD_NOT_SET.getCode();
+	byte replyCode = NodeCommands.Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
 
 	// protocol for Request: get command <cmd,key>
@@ -107,5 +107,4 @@ public class GetCommand extends Command {
 
 		return s.toString();
 	}
-
 }
