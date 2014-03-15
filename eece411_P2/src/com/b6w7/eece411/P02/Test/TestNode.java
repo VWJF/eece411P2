@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 1;  // total placed keys = 100 * 400 = 40000 
+	private static int NUM_TEST_RUNNABLES = 10;  // total placed keys = 100 * 400 = 40000 
 
 	//private static int count = 0; 
 	private int myCount;
@@ -457,7 +457,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		
 		//hack to debug
-		//serverPort = 11112;
+		serverPort = 11112;
 		
 		List<Runnable> list = new LinkedList<Runnable>();
 
@@ -512,8 +512,8 @@ public class TestNode implements Runnable, JoinThread {
 			//			clientSocket = new Socket(serverURL, serverPort);
 
 			//populateTests();
-			//populateMemoryTests();
-			populateOneTest();
+			populateMemoryTests();
+			//populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

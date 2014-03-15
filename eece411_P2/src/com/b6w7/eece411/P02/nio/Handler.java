@@ -175,9 +175,12 @@ final class Handler extends Command implements Runnable {
 	// operation.  This can be called multiple times until enough bytes are received.
 	private void recvRequester() throws IOException {
 		// read from the socket
+		if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvRequester() BEFORE input.position()=="+input.position()+" input.limit()=="+input.limit());
 		socketRequester.read(input);
+		if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvRequester() AFTER input.position()=="+input.position()+" input.limit()=="+input.limit());
 
 		if (requesterInputIsComplete()) {
+			if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvRequester() COMPLETE input.position()=="+input.position()+" input.limit()=="+input.limit());
 			state = State.CHECKING_LOCAL;
 			keyRequester.interestOps(0);
 			processRecvRequester(); 
@@ -190,7 +193,7 @@ final class Handler extends Command implements Runnable {
 	// sets process to the corresponding Process subtype
 	private boolean requesterInputIsComplete() {
 		int cmdInt;
-
+		int position = input.position();
 		cmd = input.get(0);
 
 		// Now we know what operation, now we need to know how many bytes that we expect
@@ -200,22 +203,28 @@ final class Handler extends Command implements Runnable {
 
 		switch (requests[cmd]) {
 		case CMD_GET:
-			if (input.position() >= CMDSIZE + KEYSIZE) {
+			if (position >= CMDSIZE + KEYSIZE) {
 				process = new GetProcess();
+				input.position(CMDSIZE + KEYSIZE);
+				input.flip();
 				return true;
 			}
 			return false;
 
 		case CMD_PUT:
-			if (input.position() >= CMDSIZE + KEYSIZE + VALUESIZE) {
+			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
 				process = new PutProcess();
+				input.position(CMDSIZE + KEYSIZE + VALUESIZE);
+				input.flip();
 				return true;
 			}
 			return false;
 
 		case CMD_REMOVE:
-			if (input.position() >= CMDSIZE + KEYSIZE) {
+			if (position >= CMDSIZE + KEYSIZE) {
 				process = new RemoveProcess();
+				input.position(CMDSIZE + KEYSIZE);
+				input.flip();
 				return true;
 			}
 			return false;
@@ -226,6 +235,8 @@ final class Handler extends Command implements Runnable {
 			process = new UnrecogProcess();
 			// bad command received on wire
 			// nothing to do
+			input.position(CMDSIZE);
+			input.flip();
 			return true;
 		}
 	}
@@ -313,11 +324,12 @@ final class Handler extends Command implements Runnable {
 				return;
 			}
 
-			if (IS_VERBOSE) System.out.println(" --- Common::sendRequester() BEFORE output.position()=="+output.position());
+			if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 			socketRequester.write(output);
-			if (IS_VERBOSE) System.out.println(" --- Common::sendRequester() AFTER output.position()=="+output.position());
+			if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 			if (outputIsComplete()) {
+				if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() COMPLETED output.position()=="+output.position()+" output.limit()=="+output.limit());
 				if (null != keyRequester) {keyRequester.interestOps(0); keyRequester.cancel();}
 				if (null != keyOwner) keyOwner.cancel();
 				if (null != socketRequester) socketRequester.close();
@@ -428,14 +440,15 @@ final class Handler extends Command implements Runnable {
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
 				output.flip();
+				if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETED CASE ONE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				return;
 			}
 			
 			// We performed a local look up.  So we fill in input with 
 			// the appropriate reply to requester.
-			input.put(replyCode);
-			input.flip();
-			if (IS_VERBOSE) System.out.println("*** PutProcess::input.capacity()=="+input.capacity());
+			output.put(replyCode);
+			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETED CASE TWO output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 
 		@Override
@@ -451,12 +464,12 @@ final class Handler extends Command implements Runnable {
 		public void recvOwner() {
 			// read from the socket
 			try {
-				if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwner() BEFORE output.capacity()=="+output.capacity());
+				if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				socketOwner.read(output);
-				if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwner() AFTER  output.capacity()=="+output.capacity());
+				if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" --- PutProcess::recvOwnerIsComplete(): " +this);
+					if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() COMPLETE output.position()=="+output.position()+" output.limit()=="+output.limit());
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -484,12 +497,11 @@ final class Handler extends Command implements Runnable {
 			if (IS_VERBOSE) System.out.println(" --- PutProcess::output.position()=="+output.position());
 
 			replyCode = output.get(0);
+			output.position(1);
 			output.flip();
 			
-
 			if (output.capacity() != RPYSIZE)
 				System.out.println("### PutProcess::recvOwnerIsComplete() output.capacity()== " + output.capacity());
-
 
 			return true;
 		}
@@ -577,7 +589,7 @@ final class Handler extends Command implements Runnable {
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
 				output.flip();
-				System.out.println("*** GetProcess::generateRequesterReply() output.capacity()=="+output.capacity());
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED CASE ONE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				return;
 			}
 
@@ -587,7 +599,7 @@ final class Handler extends Command implements Runnable {
 			if (replyValue != null)
 				output.put(replyValue);
 			output.flip();
-			System.out.println("--- GetProcess::generateRequesterReply() output.capacity()=="+output.capacity());
+			if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED CASE TWO output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 
 		@Override
@@ -602,11 +614,12 @@ final class Handler extends Command implements Runnable {
 		public void recvOwner() {
 			// read from the socket
 			try {
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				socketOwner.read(output);
-				if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwner() output.position()=="+output.position());
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete(): " +this);
+					if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() COMPLETED output.position()=="+output.position()+" output.limit()=="+output.limit());
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -702,18 +715,18 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void generateRequesterReply() {
 			if (output.position() != 0) {
-				System.out.println("*** RemoveProcess::input.position()=="+input.position()+ " != 0 so not preparing input");
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
 				output.flip();
+				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED CASE ONE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				return;
 			}
 
-			System.out.println("*** RemoveProcess::input.position()=="+input.position()+ " == 0 so ARE preparing input");
 			// We performed a local look up.  So we fill in input with 
 			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED CASE TWO output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 
 		@Override
@@ -728,11 +741,12 @@ final class Handler extends Command implements Runnable {
 		public void recvOwner() {
 			// read from the socket
 			try {
+				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				socketOwner.read(output);
-				if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwner() input.position()=="+input.position());
+				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete(): " +this);
+					if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() COMPLETED output.position()=="+output.position()+" output.limit()=="+output.limit());
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -778,6 +792,7 @@ final class Handler extends Command implements Runnable {
 			output.position(0);
 			output.put(replyCode);
 			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ UnrecogProcess::generateRequesterReply() COMPLETED CASE ALL output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 
 		@Override
