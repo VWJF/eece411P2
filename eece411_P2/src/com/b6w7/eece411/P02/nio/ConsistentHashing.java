@@ -6,10 +6,13 @@ import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -18,7 +21,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
 // Based from code:
 // https://weblogs.java.net/blog/tomwhite/archive/2007/11/consistent_hash.html
-public class ConsistentHashing {
+public class ConsistentHashing implements Map{
 
 	public static boolean IS_DEBUG = false;
 	public static boolean IS_VERBOSE = false;
@@ -29,16 +32,16 @@ public class ConsistentHashing {
 	 * The structure used to maintain the view of the pairs (key,value) & participating nodes. 
 	 */
 	private final SortedMap<ByteArrayWrapper, byte[]> circle;// = new TreeMap<ByteArrayWrapper, byte[]>();
-
-//	private final SortedMap<ByteArrayWrapper, byte[]> circleOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
-//	private List<Entry<ByteArrayWrapper,byte[]>> listOfNodes;
 	/**
 	 * The structure used to maintain the view of the participating nodes. 
 	 */
 	private final SortedMap<ByteArrayWrapper, byte[]> mapOfNodes;// = new TreeMap<ByteArrayWrapper, byte[]>();
 
-	private static MessageDigest md;
+//	private final SortedMap<ByteArrayWrapper, byte[]> circleOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
+//	private List<Entry<ByteArrayWrapper,byte[]>> listOfNodes;
+
 	//private ByteArrayWrapper key;
+	private static MessageDigest md;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		//this.key = baw;
@@ -48,6 +51,8 @@ public class ConsistentHashing {
 //			add(node);
 //		}
 		
+		//TODO: Ideally, the map(circle) has been initialized to store Commands.MAX_MEMORY (40,000) entries
+		// so that resizing does not need to occur.
 		this.circle = Collections.synchronizedSortedMap(new TreeMap<ByteArrayWrapper, byte[]>());
 		this.mapOfNodes = Collections.synchronizedSortedMap(new TreeMap<ByteArrayWrapper, byte[]>());
 		this.md = MessageDigest.getInstance("SHA-1");
@@ -57,7 +62,7 @@ public class ConsistentHashing {
 		
 		int i = 0;
 		for (String node : nodes){	
-			if(IS_DEBUG) if(IS_DEBUG) System.out.println(i +"."+ node);
+			if(IS_DEBUG) System.out.println(i +"."+ node);
 			byte[] digest = md.digest(node.getBytes());
 			
 			if(IS_DEBUG) System.out.println("digest: "+NodeCommands.byteArrayAsString(digest));
@@ -65,13 +70,13 @@ public class ConsistentHashing {
 			ByteArrayWrapper key = hashKey(node);
 			if(IS_DEBUG) System.out.println("hashKey: "+key);
 
-			addEntry(key, node.getBytes()); //circle.put(key, node.getBytes());			
-			String err_msg = (null == getValue(hashKey(node))) ? "****Fail to get" : "Success returned get(): "+
-					NodeCommands.byteArrayAsString(getValue(hashKey(node)));
+			put(key, node.getBytes()); //circle.put(key, node.getBytes());			
+			String err_msg = (null == get(hashKey(node))) ? "****Fail to get" : "Success returned get(): "+
+					NodeCommands.byteArrayAsString(get(hashKey(node)));
 			
 			if(IS_DEBUG) System.out.println(err_msg);
 			if(IS_DEBUG) System.out.println("Circle Size: "+circle.size());
-			if(IS_DEBUG) System.out.println(i +"."+ hashKey(node)+" "+new String(getValue(key)));
+			if(IS_DEBUG) System.out.println(i +"."+ hashKey(node)+" "+new String(get(key)));
 			if(IS_DEBUG) System.out.println();
 			i++;
 		}
@@ -96,12 +101,11 @@ public class ConsistentHashing {
 	}
 	
 
-	public byte[] addEntry(ByteArrayWrapper key, byte[] value) {
+	public byte[] put(ByteArrayWrapper key, byte[] value) {
 		//   for (int i = 0; i < numberOfReplicas; i++) {
 		//     circle.put(key.hash(node.toString() + i), node);
 		//   }
 		
-		//TODO: Ideally, the map(circle) has been initialized to store Commands.MAX_MEMORY (40,000) entries
 		
 		// Additional Checking unnecessary since the thread 
 		// using the Map should impose additional restrictions.
@@ -109,7 +113,7 @@ public class ConsistentHashing {
 		return circle.put(key, value);
 	}
 
-	public byte[] removeEntry(ByteArrayWrapper key) {
+	public byte[] remove(ByteArrayWrapper key) {
 		//   for (int i = 0; i < numberOfReplicas; i++) {
 		//     circle.remove(key.hash(node.toString() + i));
 		//   }
@@ -117,7 +121,7 @@ public class ConsistentHashing {
 	}
 
 	
-	public byte[] getValue(ByteArrayWrapper key) {
+	public byte[] get(ByteArrayWrapper key) {
 		if (circle.isEmpty()) {
 			return null;
 		}
@@ -174,14 +178,25 @@ public class ConsistentHashing {
 		return null;
 	}
 	
+	/**
+	 * Accessor for data structure with view of the nodes in the Key-Value Store.
+	 * @return
+	 */
 	public SortedMap<ByteArrayWrapper, byte[]> getMapOfNodes() {
-		System.out.println("Size of circle @Accessor: "+circle.size());
 		System.out.println("Size of node map @Accessor: "+mapOfNodes.size());
 
 		return mapOfNodes;
-		//return circle;
 	}
 	
+	/**
+	 * Accessor for data structure with view of all pairs in the Key-Value Store.
+	 * @return
+	 */
+	public SortedMap<ByteArrayWrapper, byte[]> getCircle() {
+		System.out.println("Size of circle @Accessor: "+circle.size());
+		
+		return circle;
+	}
 	/**
 	 * Method used to create the hashed ByteArrayWrapper of a given node 
 	 * that is to be inserted in the Key-Value Store
@@ -281,6 +296,107 @@ public class ConsistentHashing {
 		catch(Exception e){
 			e.printStackTrace();
 		}
+	}
+
+
+	@Override
+	public void clear() {
+		circle.clear();		
+	}
+
+
+	@Override
+	public boolean containsKey(Object key) {
+		return circle.containsKey(key);
+	}
+
+
+	@Override
+	public boolean containsValue(Object value) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+
+	@Override
+	public Set<Entry<ByteArrayWrapper, byte[]>> entrySet() {
+		return circle.entrySet();
+	}
+
+
+	@Override
+	public Object get(Object key) {
+		byte[] fromGet = null;
+		try{
+			fromGet = get((ByteArrayWrapper) key);
+		}catch(ClassCastException cce){
+			cce.printStackTrace();
+		}
+		return fromGet;
+		
+	}
+
+
+	@Override
+	public boolean isEmpty() {
+		
+		return circle.isEmpty();
+	}
+
+
+	@Override
+	public Set<ByteArrayWrapper> keySet() {
+		return circle.keySet();
+	}
+
+
+	@Override
+	public Object put(Object key, Object value) {
+		
+		byte[] fromPut = null;
+		try{
+			fromPut = put((ByteArrayWrapper) key, (byte[]) value);
+		}catch(ClassCastException cce){
+			cce.printStackTrace();
+		}
+		return fromPut;
+	}
+
+
+	@Override
+	public void putAll(Map m) {
+		// TODO Auto-generated method stub
+		try{
+			circle.putAll(m);
+		}catch(ClassCastException cce){
+			cce.printStackTrace();
+		}
+	}
+
+
+	@Override
+	public Object remove(Object key) {
+		// TODO Auto-generated method stub
+		byte[] fromRemove = null;
+		try{
+			fromRemove = remove((ByteArrayWrapper) key);
+		}catch(ClassCastException cce){
+			cce.printStackTrace();
+		}
+		return fromRemove;
+	}
+
+
+	@Override
+	public int size() {
+		// TODO Auto-generated method stub
+		return circle.size();
+	}
+
+
+	@Override
+	public Collection<byte[]> values() {
+		return circle.values();
 	}
 	
 }

@@ -7,9 +7,14 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.security.NoSuchAlgorithmException;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
+import java.util.SortedMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
@@ -17,6 +22,7 @@ import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.HandlerThread;
 import com.b6w7.eece411.P02.multithreaded.JoinThread;
+import com.b6w7.eece411.P02.nio.ConsistentHashing;
 
 // Code for Reactor pattern obtained and modified from 
 // http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf
@@ -26,7 +32,11 @@ import com.b6w7.eece411.P02.multithreaded.JoinThread;
  */
 public class ServiceReactor implements Runnable, JoinThread {
 	private static final int MAX_ACTIVE_TCP_CONNECTIONS = 512;
+	/** ... 
 	private final Map<ByteArrayWrapper, byte[]> dht = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2));
+	... */
+	private final ConsistentHashing dht;
+
 	private final HandlerThread dbHandler = new HandlerThread();
 
 	private int serverPort;
@@ -45,7 +55,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 	// debugging flag
 	public final boolean USE_REMOTE;
 
-	public ServiceReactor(int servPort) throws IOException {
+	public ServiceReactor(int servPort) throws IOException, NoSuchAlgorithmException {
+		this.dht = new ConsistentHashing(nodes);
 		serverPort = servPort;
 		inetaddress = InetAddress.getLocalHost();
 		selector = Selector.open();
@@ -110,13 +121,21 @@ public class ServiceReactor implements Runnable, JoinThread {
 				}
 				
 			} catch (IOException ex) { /* ... */ }
+			finally{
+				//TODO: Show contents of DHT when complete.
+				if (false)
+					sampleDHT();
+			}
 		}
+		
+		//TODO: Not Reached ......??	
+
+		System.out.println("Waiting for handler thread to stop");
 
 //		System.out.println("Waiting worker threads to stop");
 //		executor.shutdown();
 //		while (!executor.isTerminated()) { 		}
 
-		System.out.println("Waiting for handler thread to stop");
 		if (null != dbHandler) {
 			dbHandler.keepRunning = false;
 			do {
@@ -125,7 +144,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 				} catch (InterruptedException e) { /* do nothing */ }
 			} while (dbHandler.isAlive());
 		}
-
+		//TODO: Not Reached ......??
 		System.out.println("All threads completed");
 	}
 
@@ -164,6 +183,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 			new Thread(service).start();
 		} catch (IOException e) {
 			System.out.println("Could not start service. " + e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			System.out.println("Could not start hashing service. " + e.getMessage());
 		}
 	}
 
@@ -185,4 +206,33 @@ public class ServiceReactor implements Runnable, JoinThread {
 			threadSem ++;
 		}
 	}
+	
+	private void sampleDHT(){
+		try{
+			System.out.println("Getting nodes...");
+			
+			SortedMap<ByteArrayWrapper, byte[]> mn = this.dht.getCircle();
+			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
+			
+			//Testing: Retrieval of nodes in the map.
+			System.out.println("Got nodes... "+mn.size());
+			synchronized(mn){
+				while(is.hasNext()){
+					Entry<ByteArrayWrapper, byte[]> e = is.next();
+					System.out.println("(Key,Value): "+e.getKey() +" "+ new String(e.getValue()) );
+				}
+			}
+		}catch(ConcurrentModificationException cme){
+			// synchronized(){......} should occur before using the iterator for ConsistentHashing.java
+			cme.printStackTrace();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+	private String[] nodes = {"planetlab2.cs.ubc.ca",
+			"cs-planetlab4.cs.surrey.sfu.ca",
+			"planetlab03.cs.washington.edu",
+			"pl1.csl.utoronto.ca",
+			"pl2.rcc.uottawa.ca"};
 }
