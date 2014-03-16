@@ -79,16 +79,16 @@ public class ConsistentHashing {
 		System.out.println("Size at Constructor: "+circle.size());
 
 		// circle has been initialized with the pairs of (Node, IP address).
-		// Create a new view containing only the nodes present.
+		// Create a new view containing only the existing nodes.
 		mapOfNodes.putAll( circle.tailMap(circle.firstKey()) );
 
-//		Storing nodes in a List with Iterator:
+//		Storing view of nodes in a List with Iterator:
 //		Iterator<Entry<ByteArrayWrapper,byte[]>> is = circle.entrySet().iterator();
 //		while (is.hasNext()){
 //			listOfNodes.add(is.next());
 //		}
 		
-//		Storing nodes in a List
+//		Storing view of nodes in a List with Loop
 //		Set<Entry<ByteArrayWrapper,byte[]>> nodes1 = circle.entrySet();	
 //		for(Entry<ByteArrayWrapper,byte[]> node : nodes1){
 //			listOfNodes.add(node);
@@ -100,6 +100,8 @@ public class ConsistentHashing {
 		//   for (int i = 0; i < numberOfReplicas; i++) {
 		//     circle.put(key.hash(node.toString() + i), node);
 		//   }
+		
+		//TODO: Ideally, the map(circle) has been initialized to store Commands.MAX_MEMORY (40,000) entries
 		
 		// Additional Checking unnecessary since the thread 
 		// using the Map should impose additional restrictions.
@@ -122,6 +124,13 @@ public class ConsistentHashing {
 		return circle.get(key);
 	}
 	
+	/**
+	 * Obtains the closest node(IP address) on the Key-Value Store circle 
+	 * that is subsequent to the given key.
+	 * key can be a key for a node or data.
+	 * @param key
+	 * @return
+	 */
 	public InetAddress getClosestNodeTo(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
 			System.out.println("Map Of Nodes Empty.");
@@ -145,7 +154,6 @@ public class ConsistentHashing {
 				}
 			}
 			
-	
 			
 			String nextHost = new String(mapOfNodes.get(nextKey));
 			String nextOfValue = "(key,value) does not exist in circle";
@@ -161,6 +169,7 @@ public class ConsistentHashing {
 			} catch (UnknownHostException e) {
 				// TODO Auto-generated catch block
 				System.out.println("## getNext node in circle exception. " + e.getLocalizedMessage());
+				e.printStackTrace();
 			}
 		return null;
 	}
@@ -173,6 +182,12 @@ public class ConsistentHashing {
 		//return circle;
 	}
 	
+	/**
+	 * Method used to create the hashed ByteArrayWrapper of a given node 
+	 * that is to be inserted in the Key-Value Store
+	 * @param node
+	 * @return
+	 */
 	public static ByteArrayWrapper hashKey(String node){
 		ByteArrayWrapper key;
 		byte[] digest;
