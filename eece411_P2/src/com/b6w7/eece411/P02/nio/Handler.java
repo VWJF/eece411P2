@@ -255,11 +255,11 @@ final class Handler extends Command implements Runnable {
 	 */
 	private void connectOwner() {
 		try {
-			System.out.println("Waiting for connectOwner to complete");
+			if(IS_SHORT) System.out.println("Waiting for connectOwner to complete");
 			if (socketOwner.finishConnect())  { // {System.out.print("a");}
 				keyOwner = remote.key;
 				if (keyOwner == null) {
-					System.out.println("*** key is null");
+					if(IS_SHORT) System.out.println("*** key is null");
 					sel.wakeup();
 					
 				} else {
@@ -393,7 +393,7 @@ final class Handler extends Command implements Runnable {
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
-				System.out.println("--- checkLocal() Using remote");
+				if(IS_SHORT) System.out.println("--- checkLocal() Using remote");
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -417,7 +417,7 @@ final class Handler extends Command implements Runnable {
 				// we can transition to SEND_REQUESTER
 				
 				// set replyCode as appropriate and prepare output buffer
-				System.out.println("--- checkLocal() Using Local");
+				if(IS_SHORT) System.out.println("--- checkLocal() Using Local");
 				if( put() )
 					replyCode = Reply.RPY_SUCCESS.getCode(); 
 				else

@@ -7,7 +7,7 @@ public class HandlerThread extends Thread implements PostCommand {
 
 	// TODO make private with accessor
 	public boolean keepRunning = true;
-	private boolean IS_VERBOSE = true;
+	private boolean IS_VERBOSE = Command.IS_VERBOSE;
 
 	public HandlerThread() {
 	}

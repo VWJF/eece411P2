@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 
 import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
+import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 
 /**
  * Immutable class which contains the data for one iteration of test with {@link Node}
@@ -103,8 +104,15 @@ public class TestData {
 		StringBuilder s = new StringBuilder();
 
 		s.append("[test index=>"+index+"] [command=>");
-		s.append(NodeCommands.Request.values()[cmd].toString());
-
+		if(cmd == Request.CMD_GET.getCode() ||
+			cmd == Request.CMD_PUT.getCode() ||
+			cmd == Request.CMD_REMOVE.getCode() ||
+			cmd == Request.CMD_UNRECOG.getCode())	{
+			s.append(NodeCommands.Request.values()[cmd].toString());
+		}else{
+			s.append(NodeCommands.Request.CMD_UNRECOG.toString());
+		}
+		
 		byte[] byteData = key.array();
 		s.append("] [key["+byteData.length+"]=>");
 		for (int i=0; i<Command.LEN_TO_STRING_OF_KEY; i++) {

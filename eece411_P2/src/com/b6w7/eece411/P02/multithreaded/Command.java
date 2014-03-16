@@ -12,7 +12,12 @@ public abstract class Command {
 	/**
 	 * The upper bound on the maximum number of entries in the Distributed Hash Table
 	 */
-	protected static final int MAX_MEMORY = 40000;
+	public static final int MAX_MEMORY = 40000;
+
+	/**
+	 * The upper bound on the maximum number of nodes in the Distributed Hash Table
+	 */
+	public static final int MAX_NODES = 50;
 
 	/**
 	 * A reference to the local (sub)portion of the Distributed Hash Table
@@ -25,7 +30,8 @@ public abstract class Command {
 
 	// debug variables
 	public static AtomicInteger totalCompleted = new AtomicInteger(0);
-	protected boolean IS_VERBOSE = true;
+	public static boolean IS_VERBOSE = false;
+	public static boolean IS_SHORT = false;
 	
 	// abstact class methods to be overriden
 	public abstract void execute();

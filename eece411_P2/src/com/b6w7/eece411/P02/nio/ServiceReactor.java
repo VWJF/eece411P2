@@ -3,7 +3,6 @@ package com.b6w7.eece411.P02.nio;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.StandardSocketOptions;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -15,6 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
+import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.HandlerThread;
 import com.b6w7.eece411.P02.multithreaded.JoinThread;
 
@@ -34,7 +34,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private boolean keepRunning = true;
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
-	private static boolean IS_VERBOSE = true;
+	private static boolean IS_VERBOSE = Command.IS_VERBOSE;	private static boolean IS_SHORT = Command.IS_SHORT;
 
 	private final ConcurrentLinkedQueue<SocketRegisterData> registrations 
 	= new ConcurrentLinkedQueue<SocketRegisterData>();
@@ -50,10 +50,10 @@ public class ServiceReactor implements Runnable, JoinThread {
 		inetaddress = InetAddress.getLocalHost();
 		selector = Selector.open();
 		serverSocket = ServerSocketChannel.open();
-		
+
 		System.out.println("Java version is " + System.getProperty("java.version"));
-		if (System.getProperty("java.version").startsWith("1.7"))
-			serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+//		if (System.getProperty("java.version").startsWith("1.7"))
+//			serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 		
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
@@ -101,12 +101,12 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				SocketRegisterData data;
 				while (registrations.size() > 0) {
-					System.out.println("--- Found registration to connect to 11112");
+					if(IS_SHORT) System.out.println("--- Found registration to connect to 11112");
 					data = registrations.poll();
 					data.key = data.sc.register(selector, data.ops, data.cmd);
 
 					data.sc.connect(new InetSocketAddress(11112));
-					System.out.println("--- checkLocal() woke up selector");
+					if(IS_SHORT) System.out.println("--- checkLocal() woke up selector");
 				}
 				
 			} catch (IOException ex) { /* ... */ }
@@ -132,7 +132,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	class Acceptor implements Runnable { // inner
 		public void run() {
 			try {
-				System.out.println("*** Acceptor::Accepting Connection");
+				if(IS_SHORT) System.out.println("*** Acceptor::Accepting Connection");
 				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)
@@ -156,7 +156,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		int servPort = Integer.parseInt(args[0]);
 
-		servPort = 11112;
+		//servPort = 11112;
 		
 		ServiceReactor service;
 		try {
