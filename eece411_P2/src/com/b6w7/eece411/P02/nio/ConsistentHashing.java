@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -28,17 +29,16 @@ public class ConsistentHashing implements Map{
 
 //	private final HashFunction hashFunction;
 //	private final int numberOfReplicas;
+	
 	/**
-	 * The structure used to maintain the view of the pairs (key,value) & participating nodes. 
+	 * The structure used to maintain the view of the pairs (key,value) & participating nodes.
+	 * TODO: The data structure for circle should be changed. Propose: linked-list of Entry<ByteWrapper, byte[]>. 
 	 */
-	private final SortedMap<ByteArrayWrapper, byte[]> circle;// = new TreeMap<ByteArrayWrapper, byte[]>();
+	private final SortedMap<ByteArrayWrapper, byte[]> circle; // = new TreeMap<ByteArrayWrapper, byte[]>();
 	/**
 	 * The structure used to maintain the view of the participating nodes. 
 	 */
-	private final SortedMap<ByteArrayWrapper, byte[]> mapOfNodes;// = new TreeMap<ByteArrayWrapper, byte[]>();
-
-//	private final SortedMap<ByteArrayWrapper, byte[]> circleOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
-//	private List<Entry<ByteArrayWrapper,byte[]>> listOfNodes;
+	private final SortedMap<ByteArrayWrapper, byte[]> mapOfNodes; // = new TreeMap<ByteArrayWrapper, byte[]>();
 
 	//private ByteArrayWrapper key;
 	private static MessageDigest md;
@@ -107,8 +107,8 @@ public class ConsistentHashing implements Map{
 		//   }
 		
 		
-		// Additional Checking unnecessary since the thread 
-		// using the Map should impose additional restrictions.
+		// Additional Checking unnecessary since the thread that
+		// uses the Map should impose additional restrictions.
 		//if(circle.size() == Command.MAX_MEMORY && circle.containsKey(key)){
 		return circle.put(key, value);
 	}
@@ -141,7 +141,7 @@ public class ConsistentHashing implements Map{
 			return null;
 		}
 		
-			ByteArrayWrapper nextKey; // = key.hash(key);
+			ByteArrayWrapper nextKey;
 			SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(key);
 			nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 			
@@ -221,84 +221,6 @@ public class ConsistentHashing implements Map{
 		return key;
 	}
 
-
-	
-	public static void main(String[] args) {
-
-		System.out.println("Starting...");
-
-		String[] nodes = {"planetlab2.cs.ubc.ca",
-				"cs-planetlab4.cs.surrey.sfu.ca",
-				"planetlab03.cs.washington.edu",
-				"pl1.csl.utoronto.ca",
-				"pl2.rcc.uottawa.ca"};
-		
-		System.out.println();
-		
-		ConsistentHashing ch = null;
-		
-		try {
-			 ch = new ConsistentHashing(nodes);
-			 if(IS_DEBUG) System.out.println();
-			 if(IS_DEBUG) System.out.println();
-			 System.out.println("Consistent Hash created of node map size: "+ch.getMapOfNodes().size());
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		System.out.println();
-
-		
-		try{
-			System.out.println("Getting nodes...");
-			
-			SortedMap<ByteArrayWrapper, byte[]> mn = ch.getMapOfNodes();
-			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
-			
-			//Testing: Retrieval of nodes in the map.
-			System.out.println("Got nodes... "+mn.size());
-			synchronized(ch){
-				while(is.hasNext()){
-					Entry<ByteArrayWrapper, byte[]> e = is.next();
-					System.out.println("(Key,Value): "+e.getKey() +" "+ new String(e.getValue()) );
-				}
-			}
-			// Testing: given a provided key, locate the subsequent("next") key.
-			String looking_for_next_of = "cs-planetlab4.cs.surrey.sfu.ca";
-										//"pl1.csl.utoronto.ca";
-										//"planetlab03.cs.washington.edu";
-			
-			System.out.println();
-			System.out.println("Locating a \"Next\" key in the map.");
-
-			synchronized(ch){
-				is = mn.entrySet().iterator();
-				while(is.hasNext()){
-					System.out.println("Locating the Next IP address of a given key. " 
-							+ looking_for_next_of
-							+ " " + hashKey(looking_for_next_of)+"]"
-							);
-					Entry<ByteArrayWrapper, byte[]> e = is.next();
-					if( hashKey(looking_for_next_of).equals(e.getKey()) ) 
-						System.out.println("Current Key & NextOfTarget key are the same.");
-					System.out.println("From node (Key,Value): "+e.getKey() +" [value->"+ new String(e.getValue()) +"]");
-					System.out.println("Next:"+ch.getClosestNodeTo( hashKey(looking_for_next_of) ) );
-					System.out.println();
-				}
-			}
-		}
-		catch(ConcurrentModificationException cme){
-			// synchronized(){......} should occur before using the iterator.
-			cme.printStackTrace();
-		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
-	}
-
-
 	@Override
 	public void clear() {
 		circle.clear();		
@@ -307,14 +229,26 @@ public class ConsistentHashing implements Map{
 
 	@Override
 	public boolean containsKey(Object key) {
-		return circle.containsKey(key);
+		boolean contain = false;
+		try{
+			contain = circle.containsKey(key);
+		}catch(ClassCastException cce){
+			cce.printStackTrace();
+		}
+		return contain;
 	}
 
 
 	@Override
 	public boolean containsValue(Object value) {
-		// TODO Auto-generated method stub
-		return false;
+		boolean contain = false; 
+		try{
+			circle.containsValue(value);
+		}catch(ClassCastException cce){
+			cce.printStackTrace();
+		}
+		
+		return contain;
 	}
 
 
@@ -389,7 +323,6 @@ public class ConsistentHashing implements Map{
 
 	@Override
 	public int size() {
-		// TODO Auto-generated method stub
 		return circle.size();
 	}
 
@@ -399,4 +332,141 @@ public class ConsistentHashing implements Map{
 		return circle.values();
 	}
 	
+	
+	public static void main(String[] args) {
+		//Testing: ConsistentHashing class.
+		
+		System.out.println("Testing ConsistentHashing.\nStarting...");
+
+		String[] nodes = {"planetlab2.cs.ubc.ca",
+				"cs-planetlab4.cs.surrey.sfu.ca",
+				"planetlab03.cs.washington.edu",
+				"pl1.csl.utoronto.ca",
+				"pl2.rcc.uottawa.ca"};
+		
+		Membership.Num_Nodes = nodes.length;
+		
+		System.out.println();
+		
+		ConsistentHashing ch = null;
+		
+		try {
+			 ch = new ConsistentHashing(nodes);
+			 if(IS_DEBUG) System.out.println();
+			 if(IS_DEBUG) System.out.println();
+			 System.out.println("Consistent Hash created of node map size: "+ch.getMapOfNodes().size());
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		System.out.println();
+
+		
+		try{
+			System.out.println("Getting nodes...");
+			
+			SortedMap<ByteArrayWrapper, byte[]> mn = ch.getMapOfNodes();
+			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
+			
+			//Testing: Retrieval of nodes in the map.
+			System.out.println("Got nodes... "+mn.size());
+			synchronized(ch){
+				while(is.hasNext()){
+					Entry<ByteArrayWrapper, byte[]> e = is.next();
+					System.out.println("(Key,Value): "+e.getKey() +" "+ new String(e.getValue()) );
+				}
+			}
+			// Testing: given a provided key, locate the subsequent("next") key.
+			String looking_for_next_of = "cs-planetlab4.cs.surrey.sfu.ca";
+										//"pl1.csl.utoronto.ca";
+										//"planetlab03.cs.washington.edu";
+			
+			System.out.println();
+			System.out.println("Locating a \"Next\" key in the map.");
+
+			synchronized(ch){
+				is = mn.entrySet().iterator();
+				while(is.hasNext()){
+					System.out.println("Locating the Next IP address of a given key. " 
+							+ looking_for_next_of
+							+ " " + hashKey(looking_for_next_of)+"]"
+							);
+					Entry<ByteArrayWrapper, byte[]> e = is.next();
+					if( hashKey(looking_for_next_of).equals(e.getKey()) ) 
+						System.out.println("Current Key & NextOfTarget key are the same.");
+					System.out.println("From node (Key,Value): "+e.getKey() +" [value->"+ new String(e.getValue()) +"]");
+					System.out.println("Next:"+ch.getClosestNodeTo( hashKey(looking_for_next_of) ) );
+					System.out.println();
+				}
+			}
+			
+			//Membership.Current_Node = ch.getClosestNodeTo( hashKey(InetAddress.getLocalHost()) );
+
+		}
+		catch(ConcurrentModificationException cme){
+			// synchronized(){......} should occur before using the iterator.
+			cme.printStackTrace();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+
+		
+	}
+	
+
+	static class Membership{
+		/**
+		 * The Membership class can have a run() & execute().
+		 * run() would be used to send the local vectortimestamp to a remote node [currently method sendVector()]
+		 * execute() would be used to update the local vectortimestamp with 
+		 * 		the vector received from a remote node [currently method receiveVector()]
+		 */
+		//TODO: Obtain total number of nodes in the Key-Value Store.
+		public static int Num_Nodes;
+		//TODO: Obtain index of the current node from the representation in the MapOfNodes
+		public static int Current_Node = 0;
+		public static int[] localTimestampVector = new int[Num_Nodes];
+
+		private long waittime = 10000;  
+		
+		/**
+		 * Update the local timestamp vector based on the received vector timestamp 
+		 * @param receivedVector
+		 */
+		public void receiveVector(int[] receivedVector){
+			//behavior on receiving a vectorTimestamp at each node 
+			int local = localTimestampVector[Current_Node];
+			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
+			//if (success){
+			int i;
+			for(i = 0; i < localTimestampVector.length && i < receivedVector.length; i++){
+				localTimestampVector[i] = Math.max(receivedVector[i], localTimestampVector[i]); 
+			}
+			if ( localTimestampVector.length > receivedVector.length ){
+				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.length-1);
+				System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
+			}
+			//else if (i == receivedOnWire.length && i < localTimestampVector.length)
+				
+			localTimestampVector[Current_Node] = local;
+			//					wait(waittime);
+			//			}
+			//			while(true);
+		}
+
+		/**
+		 * Preparing the Vector Timestamp to be sent to a remote node.
+		 * @return
+		 */
+		public int[] sendVector(){
+			
+			localTimestampVector[Current_Node]++;
+			
+			return localTimestampVector;
+		}
+	}
+
 }
