@@ -3,17 +3,16 @@ package com.b6w7.eece411.P02.nio;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
 import java.util.ConcurrentModificationException;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -22,7 +21,6 @@ import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.HandlerThread;
 import com.b6w7.eece411.P02.multithreaded.JoinThread;
-import com.b6w7.eece411.P02.nio.ConsistentHashing;
 
 // Code for Reactor pattern obtained and modified from 
 // http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf
@@ -51,14 +49,21 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 	final Selector selector;
 	final ServerSocketChannel serverSocket;
-	final InetAddress inetaddress;
+	final InetAddress inetAddress;
 	// debugging flag
 	public final boolean USE_REMOTE;
 
 	public ServiceReactor(int servPort) throws IOException, NoSuchAlgorithmException {
 		this.dht = new ConsistentHashing(nodes);
 		serverPort = servPort;
-		inetaddress = InetAddress.getLocalHost();
+		InetAddress tempInetAddress;
+		try {
+			tempInetAddress = InetAddress.getLocalHost();
+		} catch (UnknownHostException e) {
+			tempInetAddress = InetAddress.getByName("localhost");
+		}
+		inetAddress = tempInetAddress;
+		
 		selector = Selector.open();
 		serverSocket = ServerSocketChannel.open();
 
@@ -89,7 +94,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 	@Override
 	public void run() {
-		System.out.println("Server listening on port " + serverPort + " with address: "+inetaddress);
+		System.out.println("Server listening on port " + serverPort + " with address: "+inetAddress);
 
 		// start handler thread
 		dbHandler.start();
