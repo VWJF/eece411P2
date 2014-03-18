@@ -211,7 +211,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		try{
 			System.out.println("Getting nodes...");
 			
-			SortedMap<ByteArrayWrapper, byte[]> mn = this.dht.getCircle();
+			Map<ByteArrayWrapper, byte[]> mn = this.dht.getCircle();
 			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
 			
 			//Testing: Retrieval of nodes in the map.
