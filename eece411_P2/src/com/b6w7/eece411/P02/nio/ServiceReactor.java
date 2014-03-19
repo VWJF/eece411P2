@@ -11,9 +11,9 @@ import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 

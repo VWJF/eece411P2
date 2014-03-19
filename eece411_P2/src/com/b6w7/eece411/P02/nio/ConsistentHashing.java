@@ -216,13 +216,8 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 			SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(key);
 			nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 			
-<<<<<<< HEAD
-			if (tailMap.firstKey() == key) {
-				if(IS_VERBOSE) System.out.println("** Key exists in circle. "+NodeCommands.byteArrayAsString(nextKey.getData()));
-=======
 			if (tailMap.containsKey(key) ==  true) {
 				if(IS_VERBOSE) System.out.println("** Key exists in circle. "+NodeCommands.byteArrayAsString(nextKey.key) ) ;
->>>>>>> branch 'master' of https://github.com/VWJF/eece411P2.git
 				//if(tailMap.isEmpty() == false){
 				synchronized(mapOfNodes){
 					Iterator<Entry<ByteArrayWrapper,byte[]>> is = tailMap.entrySet().iterator();
