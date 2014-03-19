@@ -22,8 +22,11 @@ public class NodeCommands {
 		CMD_PUT((byte)1), 
 		CMD_GET((byte)2), 
 		CMD_REMOVE((byte)3), 
-		CMD_NOT_SET((byte)4), 
-		CMD_TIMESTAMP((byte)0x20);	
+		CMD_ANNOUNCEDEATH((byte)4), 
+		CMD_NOT_SET((byte)0x20), 
+		CMD_TS_PUT((byte)0x21),
+		CMD_TS_GET((byte)0x22),
+		CMD_TS_REMOVE((byte)0x23);	
 		
 		private byte value;
 
@@ -49,7 +52,7 @@ public class NodeCommands {
 			return (Request) lookup.get(code);
 		}*/
 	};
-		
+
 	static public enum Reply{
 		RPY_SUCCESS((byte)0),
 		RPY_INEXISTENT((byte)1),
@@ -85,6 +88,9 @@ public class NodeCommands {
 		} 
 		 */
 	};   
+
+	private Request[] requests = Request.values();
+	private Reply[] replies = Reply.values();
 
 	/*
 	 * Given a byte array with the "Request fields" received
@@ -147,5 +153,16 @@ public class NodeCommands {
 		}
 		
 		return s.toString();
+	}
+
+	public static byte sanitizeCmd(byte cmd) {
+		if ( cmd <= Request.CMD_TS_REMOVE.getCode() && cmd >= Request.CMD_UNRECOG.getCode() )
+			// so far so good, make sure not an unknown cmd in the middle
+			if (cmd <= Request.CMD_ANNOUNCEDEATH.getCode() || cmd >= Request.CMD_NOT_SET.getCode() )
+				// cmd is valid
+				return cmd;
+
+		// command is not valid
+		return Request.CMD_UNRECOG.getCode();
 	}
 }

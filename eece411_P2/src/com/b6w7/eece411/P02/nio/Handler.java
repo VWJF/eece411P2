@@ -17,6 +17,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
+import com.b6w7.eece411.P02.nio.ConsistentHashing.Membership;
 
 final class Handler extends Command implements Runnable { 
 	private final SocketChannel socketRequester;
@@ -30,7 +31,7 @@ final class Handler extends Command implements Runnable {
 	private static final int RPYSIZE = NodeCommands.LEN_CMD_BYTES;		
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
-	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
+	private static final int TSVECTOR = NodeCommands.LEN_TIMESTAMP_BYTES;
 
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
@@ -39,6 +40,7 @@ final class Handler extends Command implements Runnable {
 	byte replyCode = Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
 
+	private final Membership membership = new Membership();
 	private final PostCommand dbHandler;
 
 	/**
@@ -199,9 +201,7 @@ final class Handler extends Command implements Runnable {
 		cmd = input.get(0);
 
 		// Now we know what operation, now we need to know how many bytes that we expect
-		cmdInt = (int)cmd;
-		if (cmdInt >= requests.length || cmdInt < 0 )
-			cmd = Request.CMD_UNRECOG.getCode();
+		cmd = NodeCommands.sanitizeCmd(cmd);
 
 		switch (requests[cmd]) {
 		case CMD_GET:
@@ -231,9 +231,10 @@ final class Handler extends Command implements Runnable {
 			}
 			return false;
 
-		case CMD_TIMESTAMP:
-			if (position >= CMDSIZE + TIMESTAMPSIZE);
-			input.position(CMDSIZE + TIMESTAMPSIZE);
+		case CMD_TS_GET:
+			if (position >= CMDSIZE + KEYSIZE + TSVECTOR);
+			process = new TSGetProcess();
+			input.position(CMDSIZE + KEYSIZE + TSVECTOR);
 			input.flip();
 			return true;
 			
@@ -546,6 +547,9 @@ final class Handler extends Command implements Runnable {
 			}
 		}
 	}
+	
+	class TSGetProcess extends GetProcess {
+	}
 
 	class GetProcess implements Process {
 
@@ -686,7 +690,7 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
-
+			
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node

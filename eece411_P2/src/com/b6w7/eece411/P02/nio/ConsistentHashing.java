@@ -503,7 +503,7 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 		 * Update the local timestamp vector based on the received vector timestamp 
 		 * @param receivedVector
 		 */
-		public void receiveVector(int[] receivedVector){
+		public void mergeVector(int[] receivedVector){
 			//behavior on receiving a vectorTimestamp at each node 
 			int local = localTimestampVector[Current_Node];
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
