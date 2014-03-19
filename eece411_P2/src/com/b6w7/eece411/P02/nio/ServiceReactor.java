@@ -60,6 +60,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		try {
 			tempInetAddress = InetAddress.getLocalHost();
 		} catch (UnknownHostException e) {
+			// if DNS lookup fails ...
 			tempInetAddress = InetAddress.getByName("localhost");
 		}
 		inetAddress = tempInetAddress;

@@ -145,7 +145,7 @@ public class ConsistentHashing implements Map{
 			SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(key);
 			nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 			
-			if (tailMap.containsKey(key) ==  true) {
+			if (tailMap.firstKey() == key) {
 				if(IS_VERBOSE) System.out.println("** Key exists in circle. "+NodeCommands.byteArrayAsString(nextKey.getData()));
 				//if(tailMap.isEmpty() == false){
 				synchronized(mapOfNodes){

@@ -1,18 +1,15 @@
 package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
-import java.util.SortedMap;
-import java.util.Map.Entry;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
@@ -33,6 +30,7 @@ final class Handler extends Command implements Runnable {
 	private static final int RPYSIZE = NodeCommands.LEN_CMD_BYTES;		
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
+	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
 
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
@@ -233,6 +231,12 @@ final class Handler extends Command implements Runnable {
 			}
 			return false;
 
+		case CMD_TIMESTAMP:
+			if (position >= CMDSIZE + TIMESTAMPSIZE);
+			input.position(CMDSIZE + TIMESTAMPSIZE);
+			input.flip();
+			return true;
+			
 		case CMD_NOT_SET:
 		case CMD_UNRECOG:
 		default:
@@ -260,22 +264,31 @@ final class Handler extends Command implements Runnable {
 	private void connectOwner() {
 		try {
 			if(IS_SHORT) System.out.println("Waiting for connectOwner to complete");
-			if (socketOwner.finishConnect())  { // {System.out.print("a");}
-				keyOwner = remote.key;
-				if (keyOwner == null) {
-					if(IS_SHORT) System.out.println("*** key is null");
-					sel.wakeup();
-					
-				} else {
-					state = State.SEND_OWNER;
-					keyOwner.interestOps(SelectionKey.OP_WRITE);
-					sel.wakeup();
+			try {
+				if (socketOwner.finishConnect())  { // {System.out.print("a");}
+					keyOwner = remote.key;
+					if (keyOwner == null) {
+						if(IS_SHORT) System.out.println("*** key is null");
+						sel.wakeup();
+
+					} else {
+						state = State.SEND_OWNER;
+						keyOwner.interestOps(SelectionKey.OP_WRITE);
+						sel.wakeup();
+					}
 				}
+
+			} catch (ConnectException e1) {
+				// We could not contact the owner node, so reply that internal error occurred
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+				process.generateRequesterReply();
+				state = State.SEND_REQUESTER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
 			}
 
 		} catch (UnknownHostException e) {
 			abort(e);
-			
+
 		} catch (IOException e) {
 			retryAtStateCheckingLocal(e);
 		}
@@ -328,19 +341,23 @@ final class Handler extends Command implements Runnable {
 				return;
 			}
 
-//			if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 			socketRequester.write(output);
-//			if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 			if (outputIsComplete()) {
 				if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() COMPLETED output.position()=="+output.position()+" output.limit()=="+output.limit());
-				if (null != keyRequester) {keyRequester.interestOps(0); keyRequester.cancel();}
-				if (null != keyOwner) keyOwner.cancel();
+				if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
+				if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
 				if (null != socketRequester) socketRequester.close();
 				if (null != socketOwner) socketOwner.close();
 			}
 		} catch (IOException e) {
-			retryAtStateCheckingLocal(e);
+			// dont retry
+			// retryAtStateCheckingLocal(e);
+		} finally {
+			if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
+			if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
 		}
 	}
 	
@@ -498,15 +515,10 @@ final class Handler extends Command implements Runnable {
 		 * @return true if enough bytes read; false otherwise.
 		 */
 		private boolean recvOwnerIsComplete() {
-			if (IS_VERBOSE) System.out.println(" --- PutProcess::output.position()=="+output.position());
-
 			replyCode = output.get(0);
-			output.position(1);
+			output.position(RPYSIZE);
 			output.flip();
 			
-			if (output.capacity() != RPYSIZE)
-				System.out.println("### PutProcess::recvOwnerIsComplete() output.capacity()== " + output.capacity());
-
 			return true;
 		}
 
@@ -637,17 +649,18 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
-			if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete() testing for recvOwnerIsComplete()... " +this);
-			if (IS_VERBOSE) System.out.println(" --- GetProcess::recvOwnerIsComplete() output.position()=="+output.position());
-
 			replyCode = output.get(0);
 			
-			if (Reply.RPY_SUCCESS.getCode() == replyCode)
-				return (output.position() >= RPYSIZE + VALUESIZE);
+			if (Reply.RPY_SUCCESS.getCode() == replyCode) {
+				if (output.position() >= RPYSIZE + VALUESIZE) {
+					output.position(RPYSIZE + VALUESIZE);
+					output.flip();
+					return true;
+				}
+			}
 
-			if (output.position() < RPYSIZE + VALUESIZE)
-				return false;
-			
+			output.position(RPYSIZE);
+			output.flip();
 			return true;
 		}
 
@@ -763,10 +776,9 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
-			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete() testing for recvOwnerIsComplete()... " +this);
-			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::recvOwnerIsComplete() output.position()=="+output.position());
-
 			replyCode = output.get(0);
+			output.position(RPYSIZE);
+			output.flip();
 			return true;
 		}
 

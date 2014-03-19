@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 10;  // total placed keys = 100 * 400 = 40000 
+	private static int NUM_TEST_RUNNABLES = 1;  // total placed keys = 100 * 400 = 40000 
 
 	//private static int count = 0; 
 	private int myCount;
@@ -152,7 +152,7 @@ public class TestNode implements Runnable, JoinThread {
 	}
 
 	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -511,9 +511,9 @@ public class TestNode implements Runnable, JoinThread {
 			// Set a timeout on read operation as 3 seconds
 			//			clientSocket = new Socket(serverURL, serverPort);
 
-			populateTests();
-			populateMemoryTests();
-			//populateOneTest();
+			//populateTests();
+			//populateMemoryTests();
+			populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
@@ -645,6 +645,7 @@ public class TestNode implements Runnable, JoinThread {
 						System.err.println("### "+ test.toString() + " " + failMessage);
 						System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage);
 						thisTestFailed++;
+						tryAgain = false;
 
 					} catch (IOException e) {
 						// if (IS_VERBOSE) System.err.println("### network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
