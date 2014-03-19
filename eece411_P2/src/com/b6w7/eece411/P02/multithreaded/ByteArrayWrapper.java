@@ -7,7 +7,9 @@ import java.util.Arrays;
 // http://stackoverflow.com/questions/1058149/using-a-byte-array-as-hashmap-key-java
 public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
 {
-    private final byte[] data;
+    public final byte[] key;
+    public final ByteBuffer keyBuffer;
+
 
 	public ByteArrayWrapper(byte[] data)
     {
@@ -15,7 +17,8 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
         {
             throw new NullPointerException();
         }
-        this.data = data;
+        this.key = data;
+        this.keyBuffer = ByteBuffer.wrap(data);
     }
 
     @Override
@@ -25,36 +28,26 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
         {
             return false;
         }
-        return Arrays.equals(data, ((ByteArrayWrapper)other).data);
+        return Arrays.equals(key, ((ByteArrayWrapper)other).key);
     }
 
     @Override
     public int hashCode()
     {
-        return Arrays.hashCode(data);
+        return Arrays.hashCode(key);
     }
 
-    public byte[] getData() {
-		return data;
-	}
+//    public byte[] getData() {
+//		return key;
+//	}
+//	public ByteBuffer getKeyBuffer() {
+//		return keyBuffer;
+//	}
 
 	@Override
 	public int compareTo(ByteArrayWrapper arg0) {
 		// TODO Auto-generated method stub
-//		System.out.println("arg0: "+arg0.getData().length);
-//		System.out.println("arg0: "+NodeCommands.byteArrayAsString(arg0.getData()));
-//		System.out.println("this: "+data.length);
-//		System.out.println("this: "+NodeCommands.byteArrayAsString(data));
-//
-//		if (Arrays.equals(arg0.getData(), data)){
-//			System.out.println("Return 0");
-//			return 0;
-//		}
-//		System.out.println("*Return "+(arg0.getData().length - this.data.length));
-//
-//		return arg0.getData().length - this.data.length;
-		return ByteBuffer.wrap(data).compareTo(ByteBuffer.wrap(arg0.getData()));
-
+		return keyBuffer.compareTo(arg0.keyBuffer);
 	}
 	@Override
 	public String toString(){
@@ -63,9 +56,9 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
 
 		//Show as Bytes
 		s.append("[key=>");
-		if (null != data) {
-			for (int i=0; i<data.length; i++)
-				s.append(Integer.toString((data[i] & 0xff) + 0x100, 16).substring(1));
+		if (null != key) {
+			for (int i=0; i<key.length; i++)
+				s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 		} else {
 			s.append("null");
 		}
