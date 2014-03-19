@@ -196,15 +196,12 @@ final class Handler extends Command implements Runnable {
 	// sets cmd appropriately, 
 	// sets process to the corresponding Process subtype
 	private boolean requesterInputIsComplete() {
-		int cmdInt;
 		int position = input.position();
 		cmd = input.get(0);
-
-		// Now we know what operation, now we need to know how many bytes that we expect
 		cmd = NodeCommands.sanitizeCmd(cmd);
 
-		switch (requests[cmd]) {
-		case CMD_GET:
+		// Now we know what operation, now we need to know how many bytes that we expect
+		if (Request.CMD_GET.getCode() == cmd){
 			if (position >= CMDSIZE + KEYSIZE) {
 				process = new GetProcess();
 				input.position(CMDSIZE + KEYSIZE);
@@ -212,8 +209,8 @@ final class Handler extends Command implements Runnable {
 				return true;
 			}
 			return false;
-
-		case CMD_PUT:
+			
+		} else if (Request.CMD_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
 				process = new PutProcess();
 				input.position(CMDSIZE + KEYSIZE + VALUESIZE);
@@ -221,8 +218,8 @@ final class Handler extends Command implements Runnable {
 				return true;
 			}
 			return false;
-
-		case CMD_REMOVE:
+			
+		} else if (Request.CMD_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE) {
 				process = new RemoveProcess();
 				input.position(CMDSIZE + KEYSIZE);
@@ -231,16 +228,14 @@ final class Handler extends Command implements Runnable {
 			}
 			return false;
 
-		case CMD_TS_GET:
+		} else if (Request.CMD_TS_GET.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TSVECTOR);
 			process = new TSGetProcess();
 			input.position(CMDSIZE + KEYSIZE + TSVECTOR);
 			input.flip();
 			return true;
 			
-		case CMD_NOT_SET:
-		case CMD_UNRECOG:
-		default:
+		} else {
 			process = new UnrecogProcess();
 			// bad command received on wire
 			// nothing to do
