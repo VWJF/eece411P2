@@ -92,7 +92,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			i++;
 		}
 		
-		System.out.println("Size at Constructor: "+mapOfNodes.size());
+		System.out.println("Map of Nodes Size at Constructor: "+mapOfNodes.size());
 		
 		//listOfNodes = Collections.synchronizedList(new ArrayList<Entry<ByteArrayWrapper,byte[]>>(Command.MAX_NODES));
 		//TODO: does list need synchronization...Collections.synchronizedList() ??

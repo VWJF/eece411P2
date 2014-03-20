@@ -13,6 +13,8 @@ public class MembershipProtocol {
 	private int current_node;
 	private int[] localTimestampVector;
 	
+	public static boolean IS_DEBUG = true;
+
 
 	public MembershipProtocol(int current_node, int total_nodes) {
 		this.current_node = current_node;
@@ -41,6 +43,8 @@ public class MembershipProtocol {
 			
 		localTimestampVector[current_node] = local;
 		//	wait(waittime);
+		
+		if(IS_DEBUG) System.out.println("=== mergeVector() after merging: "+Arrays.toString(localTimestampVector));
 	}
 
 	/**
@@ -50,6 +54,7 @@ public class MembershipProtocol {
 	public int[] updateSendVector(){
 		
 		localTimestampVector[current_node]++;
+		if(IS_DEBUG) System.out.println("updateSendVector() after update: "+Arrays.toString(localTimestampVector));
 		
 		return localTimestampVector;
 	}

@@ -34,8 +34,11 @@ final class Handler extends Command implements Runnable {
 	private static final int RPYSIZE = NodeCommands.LEN_CMD_BYTES;		
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
-	private static final int TSVECTOR = NodeCommands.LEN_TIMESTAMP_BYTES;
+	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
+	
+	private static final int INTSIZE = 4;
 
+	
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
 	ByteArrayWrapper hashedKey;
@@ -240,14 +243,11 @@ final class Handler extends Command implements Runnable {
 			return false;
 
 		} else if (Request.CMD_TS_GET.getCode() == cmd) {
-			if (position >= CMDSIZE + KEYSIZE + TSVECTOR);
-			process = new TSGetProcess();
-			input.position(CMDSIZE + KEYSIZE + TSVECTOR);
-		} else if (Request.CMD_TS_GET.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			process = new TSGetProcess();
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
+			System.out.println("+-+-TS_GET.");
 			return true;
 			
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
@@ -271,6 +271,7 @@ final class Handler extends Command implements Runnable {
 			input.position(CMDSIZE);
 			input.flip();
 			return true;
+			//TODO: Tried debugging here: return false;
 		}
 	}
 
@@ -372,6 +373,7 @@ final class Handler extends Command implements Runnable {
 
 			if (outputIsComplete()) {
 				if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() COMPLETED output.position()=="+output.position()+" output.limit()=="+output.limit());
+				if (IS_VERBOSE) System.out.println(this);
 				if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
 				if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
 				if (null != socketRequester) socketRequester.close();
@@ -590,29 +592,28 @@ final class Handler extends Command implements Runnable {
 						ByteBuffer.wrap(messageTimestamp)
 						.order(ByteOrder.BIG_ENDIAN)
 						.asIntBuffer().array());
+				//TODO: Note:: array() will return the int[] that backs the IntBuffer. 
+				//..Changing the backing array modifies the IntBuffer()
 			}
 			super.checkLocal();
+		
+			int[] updateTSVector = membership.updateSendVector();
+			
+			ByteBuffer byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
+			byteBufferTSVector.asIntBuffer().put(updateTSVector);
+	
+			output.put(byteBufferTSVector.array());
 		}
 	}
 
 	class GetProcess implements Process {
 
 		@Override
-		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + this);
-			
+		public void checkLocal() {			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
-			
-			//TODO: Steps can be moved to execute() state: CHECKING_LOCAL ??
-			// Seems like they cannot be moves since the state:CHECKING_LOCAL may occur several times.
-			if(mergeComplete == false){
-				//TODO: mergeVector();
-				membership.mergeVector(receivedVector);
-				mergeComplete = true;
-			}
 			
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
