@@ -617,8 +617,8 @@ public class TestNode implements Runnable, JoinThread {
 			//populateTests();
 			//populateMemoryTests();
 			//populatePutTests(); //For the node that has stored the Key-Values 11112
-			populateGetTests();	//For a node that did not store the Key-Values 11111
-			//populateOneTest();
+			//populateGetTests();	//For a node that did not store the Key-Values 11111
+			populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

@@ -134,7 +134,10 @@ public class ServiceReactor implements Runnable, JoinThread {
 			}
 		}
 		
-		//TODO: Not Reached ......??	
+		//TODO: Not Reached ......??
+		// Nope! :)  For now it's an infinite loop.
+		// But for the announceShutdown operation, we can flip the keepRunning flag, and then
+		// this code would be reached
 
 		System.out.println("Waiting for handler thread to stop");
 
@@ -181,7 +184,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		int servPort = Integer.parseInt(args[0]);
 
-		//servPort = 11111;
+		servPort = 11112;
 		
 		ServiceReactor service;
 		try {
@@ -241,5 +244,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 			"planetlab03.cs.washington.edu",
 			"pl1.csl.utoronto.ca",
 			"pl2.rcc.uottawa.ca",
-			"Furry.local"};
+			"Furry.local",
+			"Knock3-Tablet"};
 }

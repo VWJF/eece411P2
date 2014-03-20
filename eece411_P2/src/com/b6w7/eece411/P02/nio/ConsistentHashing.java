@@ -26,7 +26,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
 public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
-	public static boolean IS_DEBUG = false;
+	public static boolean IS_DEBUG = true;
 	public static boolean IS_VERBOSE = false;
 
 //	private final HashFunction hashFunction;
@@ -47,7 +47,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * The structure used to maintain the record of the natural ordering within the map of nodes.
 	 */
-	private static List<ByteArrayWrapper> listOfNodes;
+	private final List<ByteArrayWrapper> listOfNodes;
 	
 	/**
 	 * The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.
@@ -73,23 +73,23 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			if(IS_DEBUG) System.out.println(i +"."+ node);
 			byte[] digest = md.digest(node.getBytes());
 			
-			if(IS_DEBUG) System.out.println("digest: "+NodeCommands.byteArrayAsString(digest));
+			if(IS_DEBUG) System.out.println("     ConsistentHashing() digest: "+NodeCommands.byteArrayAsString(digest));
 			//ByteArrayWrapper key = hashKey(digest);
 			ByteArrayWrapper key = hashKey(node);
-			if(IS_DEBUG) System.out.println("hashKey: "+key);
+			if(IS_DEBUG) System.out.println("     ConsistentHashing() hashKey: "+key);
 
 			mapOfNodes.put(key, node.getBytes()); //circle.put(key, node.getBytes());			
-			String err_msg = (null == getNode(hashKey(node))) ? "****Fail to get" : "Success returned get(): "+
+			String err_msg = (null == getNode(hashKey(node))) ? " ***      ConsistentHashing() Fail to get" : "          ConsistentHashing() Success returned get(): "+
 					NodeCommands.byteArrayAsString(getNode(hashKey(node)));
 			
-			if(IS_DEBUG) System.out.println(err_msg);
-			if(IS_DEBUG) System.out.println("Map Of Nodes Size: "+mapOfNodes.size());
-			if(IS_DEBUG) System.out.println(i +"."+ hashKey(node)+" "+new String(getNode(key)));
+			if(IS_DEBUG) System.out.println("     ConsistentHashing() " + err_msg);
+			if(IS_DEBUG) System.out.println("     ConsistentHashing() Map Of Nodes Size: "+mapOfNodes.size());
+			if(IS_DEBUG) System.out.println("     ConsistentHashing() " + i +"."+ hashKey(node)+" "+new String(getNode(key)));
 			if(IS_DEBUG) System.out.println();
 			i++;
 		}
 		
-		System.out.println("Map of Nodes Size at Constructor: "+mapOfNodes.size());
+		System.out.println("     ConsistentHashing() Map of Nodes Size at Constructor: "+mapOfNodes.size());
 		
 		listOfNodes = new ArrayList<ByteArrayWrapper>(mapOfNodes.keySet());
 		Collections.sort(listOfNodes);
@@ -124,7 +124,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	public int getNodePosition(String node){
 		ByteArrayWrapper key = hashKey(node);
-		return listOfNodes.indexOf(key);
+		if(IS_DEBUG) System.out.println("    ConsistentHashing::getNodePosition()  hashKey: "+key);
+		int ret = listOfNodes.indexOf(key);
+		if (-1 == ret)
+			System.out.println("### ConsistentHashing::getNodePosition() index not found for node "+ node);
+		return ret;
 	}
 	
 	public int getSizeAllNodes(){

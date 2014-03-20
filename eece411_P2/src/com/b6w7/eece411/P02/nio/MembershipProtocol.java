@@ -20,6 +20,11 @@ public class MembershipProtocol {
 		this.current_node = current_node;
 		this.total_nodes = total_nodes;
 		this.localTimestampVector = new int[this.total_nodes];
+		
+		// TODO debugging starting values:
+		for (int i=0; i<localTimestampVector.length; i++) {
+			localTimestampVector[i] = i * 1000;
+		}
 	}
 	
 	/**
@@ -46,8 +51,8 @@ public class MembershipProtocol {
 		localTimestampVector[current_node] = local;
 		//	wait(waittime);
 		
-		if(IS_DEBUG) System.out.println("=== mergeVector() (local="+local+") received vect: "+Arrays.toString(receivedVector));
-		if(IS_DEBUG) System.out.println("=== mergeVector() (local="+local+") after merging: "+Arrays.toString(localTimestampVector));
+		if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") received vect: "+Arrays.toString(receivedVector));
+		if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") after merging: "+Arrays.toString(localTimestampVector));
 
 	}
 

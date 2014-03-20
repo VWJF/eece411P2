@@ -73,6 +73,7 @@ public class GetCommand extends Command {
 	 */
 	private byte[] get(){
 
+		// TODO use ConsistentHashing
 		byte[] val = map.get( new ByteArrayWrapper(key) );
 
 //		System.out.println("(key.length, get key bytes): ("+key.length+
@@ -80,7 +81,7 @@ public class GetCommand extends Command {
 
 		if(val != null) {
 			// NONEXISTENT -- we want to debug here
-			if (IS_VERBOSE) System.out.println("*** GetCommand() Not Found " + this.toString());
+			if (IS_VERBOSE) System.out.println("*** GetCommand::get() Not Found " + this.toString());
 		}
 		return val;
 	}

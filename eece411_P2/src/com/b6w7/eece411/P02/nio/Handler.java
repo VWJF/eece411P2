@@ -70,7 +70,7 @@ final class Handler extends Command implements Runnable {
 	
 	// debug 
 	private boolean useRemote;
-	private boolean IS_DEBUG = false;
+	private boolean IS_DEBUG = true;
 
 	// possible states of any command
 	enum State {
@@ -105,7 +105,7 @@ final class Handler extends Command implements Runnable {
 		sel.wakeup();
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
-		if(IS_DEBUG) System.out.println("localhost,position,total: "+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes());
+		if(IS_DEBUG) System.out.println("    Handler() [localhost,position,total]: ["+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes()+"]");
 		
 		membership = new MembershipProtocol(map.getNodePosition(localhost), map.getSizeAllNodes());
 		this.mergeComplete = false;
@@ -493,7 +493,7 @@ final class Handler extends Command implements Runnable {
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
 				output.flip();
-				if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETED CASE ONE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETED REMOTE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				return;
 			}
 			
@@ -501,7 +501,7 @@ final class Handler extends Command implements Runnable {
 			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETED CASE TWO output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETED LOCAL output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 
 		@Override
@@ -699,7 +699,7 @@ final class Handler extends Command implements Runnable {
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
 				output.flip();
-				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED CASE ONE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED REMOTE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				return;
 			}
 
@@ -709,7 +709,7 @@ final class Handler extends Command implements Runnable {
 			if (replyValue != null)
 				output.put(replyValue);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED CASE TWO output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED LOCAL output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 
 		@Override
@@ -831,7 +831,7 @@ final class Handler extends Command implements Runnable {
 				// This means that input received the contents of a
 				// RECV_OWNER and can be directly forwarded to requester
 				output.flip();
-				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED CASE ONE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED REMOTE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				return;
 			}
 
@@ -839,7 +839,7 @@ final class Handler extends Command implements Runnable {
 			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED CASE TWO output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED LOCAL output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 
 		@Override

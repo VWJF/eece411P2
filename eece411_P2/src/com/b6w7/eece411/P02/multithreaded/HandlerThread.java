@@ -31,11 +31,11 @@ public class HandlerThread extends Thread implements PostCommand {
 			} else {
 				if (IS_VERBOSE) System.out.println("Issuing:  "+cmd);
 				cmd.execute();
-				System.out.println("Complete: "+cmd+ " totalCompleted=="+Command.totalCompleted.incrementAndGet()+" map.size=="+cmd.map.size());
+				System.out.println(" --- HandlerThread::run() Complete: "+cmd+ " totalCompleted=="+Command.totalCompleted.incrementAndGet()+" map.size=="+cmd.map.size());
 			}
 		}
 		//TODP: Not reached ......??
-		System.out.println("HandlerThread()::run() end");
+		System.out.println(" --- HandlerThread()::run() end");
 	}
 
 	@Override
