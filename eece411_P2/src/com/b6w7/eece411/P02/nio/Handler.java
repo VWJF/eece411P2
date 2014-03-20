@@ -742,8 +742,6 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
-			//TODO: MemebershipProtocol.updateSendVector()  should be done at receipt of OwnerResponse
-
 			replyCode = output.get(0);
 			
 			if (Reply.RPY_SUCCESS.getCode() == replyCode) {

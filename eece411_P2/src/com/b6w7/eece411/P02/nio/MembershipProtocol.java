@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public class MembershipProtocol {
 	/**
-	 * The Membership class can have a run() & execute().
+	 * The MembershipProtocol class can have a run() & execute().
 	 * run() would be used to send the local vectortimestamp to a remote node [currently method sendVector()]
 	 * execute() would be used to update the local vectortimestamp with 
 	 * 		the vector received from a remote node [currently method receiveVector()]
