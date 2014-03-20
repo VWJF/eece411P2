@@ -24,7 +24,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 //Based from code:
 // https://weblogs.java.net/blog/tomwhite/archive/2007/11/consistent_hash.html
 
-public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
+public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	public static boolean IS_DEBUG = false;
 	public static boolean IS_VERBOSE = false;
@@ -36,13 +36,13 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 	 * The structure used to maintain the view of the pairs (key,value) & participating nodes.
 	 * TODO: The data structure for circle should be changed. Propose: linked-list of Entry<ByteWrapper, byte[]>. 
 	 */
-	private final Map<ByteArrayWrapper, byte[]> circle; //new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2))
+	private HashMap<ByteArrayWrapper, byte[]> circle; //new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2))
 	//private final SortedMap<ByteArrayWrapper, byte[]> circle; // = new TreeMap<ByteArrayWrapper, byte[]>();
 	
 	/**
 	 * The structure used to maintain the view of the participating nodes. 
 	 */
-	private final SortedMap<ByteArrayWrapper, byte[]> mapOfNodes; // = new TreeMap<ByteArrayWrapper, byte[]>();
+	private final TreeMap<ByteArrayWrapper, byte[]> mapOfNodes; // = new TreeMap<ByteArrayWrapper, byte[]>();
 
 	/**
 	 * The structure used to maintain the record of the natural ordering within the map of nodes.
@@ -53,7 +53,7 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 	 * The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.
 	 */
 	private PriorityQueue<ByteArrayWrapper> orderedKeys;
-	//private ByteArrayWrapper key;
+
 	private static MessageDigest md;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
@@ -66,11 +66,10 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 		
 		//TODO: Ideally, the map(circle) has been initialized to store Commands.MAX_MEMORY (40,000) entries
 		// so that resizing does not need to occur.
-		this.circle = Collections.synchronizedMap(new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2))); //Initialized to large capacity to avoid excessive resizing.
-		this.mapOfNodes = Collections.synchronizedSortedMap(new TreeMap<ByteArrayWrapper, byte[]>());
+		this.circle = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
+		//Collections.synchronizedMap(new ..)
+		this.mapOfNodes = new TreeMap<ByteArrayWrapper, byte[]>(); //Collections.synchronizedSortedMap(new  ..)
 		this.md = MessageDigest.getInstance("SHA-1");
-
-		//ByteArrayWrapper key;
 		
 		int i = 0;
 		for (String node : nodes){	
@@ -127,12 +126,12 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 	 * @param node
 	 * @return
 	 */
-	public static int getNodePosition(String node){
+	public int getNodePosition(String node){
 		ByteArrayWrapper key = hashKey(node);
 		return listOfNodes.indexOf(key);
 	}
 	
-	public static int getSizeAllNodes(){
+	public int getSizeAllNodes(){
 		return listOfNodes.size();
 	}
 
@@ -409,9 +408,7 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 				"planetlab03.cs.washington.edu",
 				"pl1.csl.utoronto.ca",
 				"pl2.rcc.uottawa.ca"};
-		
-		Membership.Total_Nodes = nodes.length;
-		
+				
 		System.out.println();
 		
 		ConsistentHashing ch = null;
@@ -480,32 +477,31 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 
-	static class Membership{
+	class Membership{
 		/**
 		 * The Membership class can have a run() & execute().
 		 * run() would be used to send the local vectortimestamp to a remote node [currently method sendVector()]
 		 * execute() would be used to update the local vectortimestamp with 
 		 * 		the vector received from a remote node [currently method receiveVector()]
 		 */
-		//TODO: Obtain total number of nodes in the Key-Value Store.
-		public static int Total_Nodes;
-		//TODO: Obtain index of the current node from the representation in the MapOfNodes
-		public static int Current_Node = 0;
-		public static int[] localTimestampVector = new int[Total_Nodes];
-
-		private long waittime = 10000;  
+		private final int total_nodes;
+		private int current_node;
+		private int[] localTimestampVector;
 		
-		Membership(){
-			Current_Node = getNodePosition("sample localhostname");
-			Total_Nodes = getSizeAllNodes();
+		Membership(int current_node_index, int totalNodesInSystem){
+			current_node = getNodePosition("sample localhostname");
+			total_nodes = getSizeAllNodes();
+			
+			//current_node = current_node_index;
+			//total_nodes = totalNodesInSystem;
 		}
 		/**
 		 * Update the local timestamp vector based on the received vector timestamp 
 		 * @param receivedVector
 		 */
-		public void receiveVector(int[] receivedVector){
+		public void mergeVector(int[] receivedVector){
 			//behavior on receiving a vectorTimestamp at each node 
-			int local = localTimestampVector[Current_Node];
+			int local = localTimestampVector[current_node];
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
 			//if (success){
 			int i;
@@ -518,7 +514,7 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 			}
 			//else if (i == receivedOnWire.length && i < localTimestampVector.length)
 				
-			localTimestampVector[Current_Node] = local;
+			localTimestampVector[current_node] = local;
 			//	wait(waittime);
 		}
 
@@ -526,9 +522,9 @@ public class ConsistentHashing implements Map<ByteArrayWrapper, byte[]>{
 		 * Preparing the Vector Timestamp to be sent to a remote node.
 		 * @return
 		 */
-		public int[] sendVector(){
+		public int[] updateSendVector(){
 			
-			localTimestampVector[Current_Node]++;
+			localTimestampVector[current_node]++;
 			
 			return localTimestampVector;
 		}

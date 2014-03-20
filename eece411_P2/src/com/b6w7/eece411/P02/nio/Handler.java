@@ -2,6 +2,7 @@ package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -17,6 +18,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
+import com.b6w7.eece411.P02.nio.ConsistentHashing.Membership;
 
 final class Handler extends Command implements Runnable { 
 	private final SocketChannel socketRequester;
@@ -30,7 +32,7 @@ final class Handler extends Command implements Runnable {
 	private static final int RPYSIZE = NodeCommands.LEN_CMD_BYTES;		
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
-	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
+	private static final int TSVECTOR = NodeCommands.LEN_TIMESTAMP_BYTES;
 
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
@@ -39,6 +41,7 @@ final class Handler extends Command implements Runnable {
 	byte replyCode = Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
 
+	private final MembershipProtocol membership;
 	private final PostCommand dbHandler;
 
 	/**
@@ -53,6 +56,9 @@ final class Handler extends Command implements Runnable {
 	private Process process;
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
+	
+	private boolean mergeComplete = false;
+
 	
 	// debug 
 	private boolean useRemote;
@@ -69,7 +75,7 @@ final class Handler extends Command implements Runnable {
 	}
 
 
-	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, Map<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, boolean useRemote) 
+	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, boolean useRemote) 
 			throws IOException {
 
 		
@@ -89,6 +95,9 @@ final class Handler extends Command implements Runnable {
 		keyRequester.interestOps(SelectionKey.OP_READ);
 		sel.wakeup();
 		
+		String localhost = InetAddress.getLocalHost().getCanonicalHostName();
+		membership = new MembershipProtocol(map.getNodePosition(localhost), map.getSizeAllNodes());
+		this.mergeComplete = false;
 		// debug
 		this.useRemote = useRemote;
 	}
@@ -153,6 +162,7 @@ final class Handler extends Command implements Runnable {
 
 		case CHECKING_LOCAL:
 			if (IS_VERBOSE) System.out.println(" --- execute(): CHECKING_LOCAL " + this);
+			//TODO:membership.
 			process.checkLocal();
 			break;
 
@@ -194,17 +204,12 @@ final class Handler extends Command implements Runnable {
 	// sets cmd appropriately, 
 	// sets process to the corresponding Process subtype
 	private boolean requesterInputIsComplete() {
-		int cmdInt;
 		int position = input.position();
 		cmd = input.get(0);
+		cmd = NodeCommands.sanitizeCmd(cmd);
 
 		// Now we know what operation, now we need to know how many bytes that we expect
-		cmdInt = (int)cmd;
-		if (cmdInt >= requests.length || cmdInt < 0 )
-			cmd = Request.CMD_UNRECOG.getCode();
-
-		switch (requests[cmd]) {
-		case CMD_GET:
+		if (Request.CMD_GET.getCode() == cmd){
 			if (position >= CMDSIZE + KEYSIZE) {
 				process = new GetProcess();
 				input.position(CMDSIZE + KEYSIZE);
@@ -212,8 +217,8 @@ final class Handler extends Command implements Runnable {
 				return true;
 			}
 			return false;
-
-		case CMD_PUT:
+			
+		} else if (Request.CMD_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
 				process = new PutProcess();
 				input.position(CMDSIZE + KEYSIZE + VALUESIZE);
@@ -221,8 +226,8 @@ final class Handler extends Command implements Runnable {
 				return true;
 			}
 			return false;
-
-		case CMD_REMOVE:
+			
+		} else if (Request.CMD_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE) {
 				process = new RemoveProcess();
 				input.position(CMDSIZE + KEYSIZE);
@@ -231,15 +236,14 @@ final class Handler extends Command implements Runnable {
 			}
 			return false;
 
-		case CMD_TIMESTAMP:
-			if (position >= CMDSIZE + TIMESTAMPSIZE);
-			input.position(CMDSIZE + TIMESTAMPSIZE);
+		} else if (Request.CMD_TS_GET.getCode() == cmd) {
+			if (position >= CMDSIZE + KEYSIZE + TSVECTOR);
+			process = new TSGetProcess();
+			input.position(CMDSIZE + KEYSIZE + TSVECTOR);
 			input.flip();
 			return true;
 			
-		case CMD_NOT_SET:
-		case CMD_UNRECOG:
-		default:
+		} else {
 			process = new UnrecogProcess();
 			// bad command received on wire
 			// nothing to do
@@ -546,6 +550,9 @@ final class Handler extends Command implements Runnable {
 			}
 		}
 	}
+	
+	class TSGetProcess extends GetProcess {
+	}
 
 	class GetProcess implements Process {
 
@@ -557,6 +564,14 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
+			
+			//TODO: Steps can be moved to execute() state: CHECKING_LOCAL ??
+			// Seems like they cannot be moves since the state:CHECKING_LOCAL may occur several times.
+			if(mergeComplete == false){
+				//TODO: mergeVector();
+				membership.mergeVector(receivedVector);
+				mergeComplete = true;
+			}
 			
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
@@ -686,7 +701,7 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
-
+			
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
@@ -840,8 +855,19 @@ final class Handler extends Command implements Runnable {
 
 		StringBuilder s = new StringBuilder();
 
+		boolean isMatch = false;
 		s.append("[command=>");
-		s.append(requests[(int)cmd]);
+		MATCH_CMD: for (Request req: Request.values()) {
+			if (req.getCode() == cmd) {
+				s.append(req.toString());
+				isMatch = true;
+				break MATCH_CMD;
+			}
+		}
+		
+		if (!isMatch) 
+			s.append(Request.CMD_UNRECOG.toString());
+		
 		s.append("] [key=>");
 		if (null != key) {
 			for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
