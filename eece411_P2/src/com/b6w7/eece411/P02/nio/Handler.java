@@ -235,7 +235,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
-				process = new PutProcess(self);
+				process = new TSPutProcess(self);
 				input.position(CMDSIZE + KEYSIZE + VALUESIZE);
 				input.flip();
 				return true;
@@ -244,7 +244,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new RemoveProcess(self);
+				process = new TSRemoveProcess(self);
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -261,20 +261,21 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
-			//process = new TSPutProcess();
+			process = new TSPutProcess(self);
 			input.position(CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
 			input.flip();
 			return true;
 			
 		} else if (Request.CMD_TS_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-			//process = new TSRemoveProcess();
+			process = new TSRemoveProcess(self);
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
 			return true;
 			
 		} else {
 			process = new UnrecogProcess(this);
+			System.out.println(" ### common::requesterInputIsComplete() Unrecognized command received on wire 0x" + Integer.valueOf(0x100 + (int)(cmd & 0xFF)).toString());
 			// bad command received on wire
 			// nothing to do
 			input.position(CMDSIZE);
@@ -430,6 +431,63 @@ final class Handler extends Command implements Runnable {
 		processRecvRequester();
 	}
 
+	private void updateTSVector() {
+		//only perform this once
+		if (null == messageTimestamp) {
+			messageTimestamp = new byte[TIMESTAMPSIZE];
+			messageTimestamp = Arrays.copyOfRange(
+					input.array()
+					, CMDSIZE+KEYSIZE
+					, CMDSIZE+KEYSIZE+TIMESTAMPSIZE);
+
+			IntBuffer intTimeStampBuffer = ByteBuffer.wrap(messageTimestamp)
+			.order(ByteOrder.BIG_ENDIAN)
+			.asIntBuffer();
+			
+			int[] backingArray = new int[TIMESTAMPSIZE/INTSIZE];
+			try {
+				intTimeStampBuffer.get(backingArray);
+			} catch (BufferUnderflowException bue) {
+				bue.printStackTrace();
+				//Nothing.
+			}
+			membership.mergeVector(backingArray);
+
+			int[] updateTSVector = membership.updateSendVector();
+
+			byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
+			byteBufferTSVector.asIntBuffer().put(updateTSVector);
+			byteBufferTSVector.flip();
+		}
+	}
+	class TSPutProcess extends PutProcess {
+
+		TSPutProcess(Handler handler) {
+			super(handler);
+		}
+
+		@Override
+		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- TSPutProcess::checkLocal(): " + this);
+			updateTSVector();
+			super.checkLocal();
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() START " + handler.toString());
+			output.position(0);
+			output.put(Request.CMD_TS_PUT.getCode());
+			output.put(key);
+			output.put(value);
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() COMPLETE " + handler.toString());
+		}
+	}
+
 	class PutProcess implements Process {
 
 		protected final Handler handler;
@@ -527,6 +585,9 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
+					//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
+					membership.updateSendVector();
+					
 					if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() COMPLETE " + handler.toString());
 					generateRequesterReply();
 					
@@ -592,35 +653,7 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this);
-
-			//only perform this once
-			if (null == messageTimestamp) {
-				messageTimestamp = new byte[TIMESTAMPSIZE];
-				messageTimestamp = Arrays.copyOfRange(
-						input.array()
-						, CMDSIZE+KEYSIZE
-						, CMDSIZE+KEYSIZE+TIMESTAMPSIZE);
-
-				IntBuffer intTimeStampBuffer = ByteBuffer.wrap(messageTimestamp)
-				.order(ByteOrder.BIG_ENDIAN)
-				.asIntBuffer();
-				
-				int[] backingArray = new int[TIMESTAMPSIZE/INTSIZE];
-				try {
-					intTimeStampBuffer.get(backingArray);
-				} catch (BufferUnderflowException bue) {
-					bue.printStackTrace();
-					//Nothing.
-				}
-				membership.mergeVector(backingArray);
-
-				int[] updateTSVector = membership.updateSendVector();
-
-				byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
-				byteBufferTSVector.asIntBuffer().put(updateTSVector);
-				byteBufferTSVector.flip();
-				
-			}
+			updateTSVector();
 			super.checkLocal();
 		}
 		
@@ -639,48 +672,6 @@ final class Handler extends Command implements Runnable {
 			output.flip();
 			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE "+ handler.toString());
 		}
-		
-		@Override
-		public void recvOwner() {
-			//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
-			membership.updateSendVector();
-			
-			output.limit(output.capacity());
-
-			// read from the socket
-			try {
-//				if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
-				socketOwner.read(output);
-//				if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
-
-				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() COMPLETE " + handler.toString());
-					generateRequesterReply();
-					
-					state = State.SEND_REQUESTER;
-					keyRequester.interestOps(SelectionKey.OP_WRITE);
-					sel.wakeup();
-				}
-
-			} catch (IOException e) {
-				retryAtStateCheckingLocal(e);
-			}
-		}
-
-		private boolean recvOwnerIsComplete() {
-			if (Reply.RPY_SUCCESS.getCode() == output.get(0)) {
-				if (output.position() >= RPYSIZE + VALUESIZE) {
-					output.position(RPYSIZE + VALUESIZE);
-					output.flip();
-					return true;
-				}
-				return false;
-			}
-
-			output.position(RPYSIZE);
-			output.flip();
-			return true;
-		}
 	}
 
 	class GetProcess implements Process {
@@ -690,7 +681,6 @@ final class Handler extends Command implements Runnable {
 		GetProcess(Handler handler) {
 			this.handler = handler;
 		}
-
 
 		@Override
 		public void checkLocal() {			
@@ -780,6 +770,9 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
+					//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
+					membership.updateSendVector();
+					
 					if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() COMPLETE "+ handler.toString());
 					generateRequesterReply();
 					
@@ -793,8 +786,8 @@ final class Handler extends Command implements Runnable {
 			}
 		}
 
-		private boolean recvOwnerIsComplete() {
-			if (Reply.RPY_SUCCESS.getCode() == replyCode) {
+		protected boolean recvOwnerIsComplete() {
+			if (Reply.RPY_SUCCESS.getCode() == output.get(0)) {
 				if (output.position() >= RPYSIZE + VALUESIZE) {
 					output.position(RPYSIZE + VALUESIZE);
 					output.flip();
@@ -817,6 +810,29 @@ final class Handler extends Command implements Runnable {
 				if (IS_VERBOSE) System.out.println(" *** GetCommand() Not Found " + handler.toString());
 			}
 			return val;
+		}
+	}
+
+	class TSRemoveProcess extends RemoveProcess {
+
+		TSRemoveProcess(Handler handler) {
+			super(handler);
+		}
+		
+		@Override
+		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- TSRemoveProcess::checkLocal(): " + this);
+			updateTSVector();
+			super.checkLocal();
+		}
+		@Override
+		public void generateOwnerQuery() {
+			output.position(0);
+			output.put(cmd);
+			output.put(key);
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
 		}
 	}
 
