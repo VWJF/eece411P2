@@ -457,7 +457,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		
 		//hack to debug
-		//serverPort = 11112;
+		serverPort = 11112;
 		
 		List<Runnable> list = new LinkedList<Runnable>();
 

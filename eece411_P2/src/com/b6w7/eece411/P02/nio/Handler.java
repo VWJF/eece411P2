@@ -839,8 +839,19 @@ final class Handler extends Command implements Runnable {
 
 		StringBuilder s = new StringBuilder();
 
+		boolean isMatch = false;
 		s.append("[command=>");
-		s.append(requests[(int)cmd]);
+		MATCH_CMD: for (Request req: Request.values()) {
+			if (req.getCode() == cmd) {
+				s.append(req.toString());
+				isMatch = true;
+				break MATCH_CMD;
+			}
+		}
+		
+		if (!isMatch) 
+			s.append(Request.CMD_UNRECOG.toString());
+		
 		s.append("] [key=>");
 		if (null != key) {
 			for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)

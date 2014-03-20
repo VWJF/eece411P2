@@ -181,7 +181,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		int servPort = Integer.parseInt(args[0]);
 
-		//servPort = 11112;
+		servPort = 11112;
 		
 		ServiceReactor service;
 		try {
