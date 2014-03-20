@@ -596,10 +596,10 @@ final class Handler extends Command implements Runnable {
 				ByteBuffer.wrap(messageTimestamp)
 				.order(ByteOrder.BIG_ENDIAN)
 				.asIntBuffer();
-
-						ByteBuffer.wrap(messageTimestamp)
-						.order(ByteOrder.BIG_ENDIAN)
-						.asIntBuffer().array();
+                                              
+				ByteBuffer.wrap(messageTimestamp)
+				.order(ByteOrder.BIG_ENDIAN)
+				.asIntBuffer().array();
 
 				membership.mergeVector(
 						ByteBuffer.wrap(messageTimestamp)
