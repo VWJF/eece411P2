@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 1;  // total placed keys = 100 * 400 = 40000 
+	private static int NUM_TEST_RUNNABLES = 10;  // total placed keys = 100 * 400 = 40000 
 
 	//private static int count = 0; 
 	private int myCount;
@@ -692,7 +692,7 @@ public class TestNode implements Runnable, JoinThread {
 
 							isPass = false;
 							tryAgain = false;
-							failMessage = "expected "+NodeCommands.getReplyEnum((byte)(test.replyCode & 0xFF)).toString()+" but instead "+ NodeCommands.getReplyEnum((byte)(recvBuffer[0] & 0xFF)).toString();
+							failMessage = "unexpected "+ NodeCommands.getReplyEnum((byte)(recvBuffer[0] & 0xFF)).toString() + " " + test;
 						}
 
 						if (IS_VERBOSE) System.out.print("-Reading Value of GET.");
@@ -710,7 +710,7 @@ public class TestNode implements Runnable, JoinThread {
 							if (recvBuffer[0] == NodeCommands.Reply.RPY_SUCCESS.getCode() && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 								isPass = false;
 								tryAgain = false;
-								failMessage = test + " Number of bytes received: "+totalBytesRead;
+								failMessage = "insufficient read bytes " + test + " Number of bytes received: "+totalBytesRead;
 							}
 						}
 

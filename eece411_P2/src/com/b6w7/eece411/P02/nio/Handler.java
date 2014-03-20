@@ -552,7 +552,6 @@ final class Handler extends Command implements Runnable {
 		 * @return true if enough bytes read; false otherwise.
 		 */
 		private boolean recvOwnerIsComplete() {
-			replyCode = output.get(0);
 			output.position(RPYSIZE);
 			output.flip();
 			
@@ -669,9 +668,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
-			replyCode = output.get(0);
-			
-			if (Reply.RPY_SUCCESS.getCode() == replyCode) {
+			if (Reply.RPY_SUCCESS.getCode() == output.get(0)) {
 				if (output.position() >= RPYSIZE + VALUESIZE) {
 					output.position(RPYSIZE + VALUESIZE);
 					output.flip();
@@ -684,7 +681,6 @@ final class Handler extends Command implements Runnable {
 			output.flip();
 			return true;
 		}
-
 	}
 
 	class GetProcess implements Process {
@@ -798,8 +794,6 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
-			replyCode = output.get(0);
-			
 			if (Reply.RPY_SUCCESS.getCode() == replyCode) {
 				if (output.position() >= RPYSIZE + VALUESIZE) {
 					output.position(RPYSIZE + VALUESIZE);
@@ -932,7 +926,6 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
-			replyCode = output.get(0);
 			output.position(RPYSIZE);
 			output.flip();
 			return true;
