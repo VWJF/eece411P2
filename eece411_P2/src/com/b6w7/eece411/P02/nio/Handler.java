@@ -878,8 +878,8 @@ final class Handler extends Command implements Runnable {
 	public String toString(){
 
 		StringBuilder s = new StringBuilder();
-
 		boolean isMatch = false;
+		
 		s.append("[command=>");
 		MATCH_CMD: for (Request req: Request.values()) {
 			if (req.getCode() == cmd) {
@@ -888,7 +888,6 @@ final class Handler extends Command implements Runnable {
 				break MATCH_CMD;
 			}
 		}
-		
 		if (!isMatch) 
 			s.append(Request.CMD_UNRECOG.toString());
 		
@@ -899,6 +898,7 @@ final class Handler extends Command implements Runnable {
 		} else {
 			s.append("null");
 		}
+		
 		if (null != value) {
 			s.append("] [value["+value.length+"]=>");
 			for (int i=0; i<LEN_TO_STRING_OF_VAL; i++)
@@ -906,8 +906,19 @@ final class Handler extends Command implements Runnable {
 		} else {
 			s.append("] [value[-]=>null");
 		}
-
+		
+		isMatch = false;
 		s.append("] [replyCode=>");
+		MATCH_RPY: for (Reply rpy: Reply.values()) {
+			if (rpy.getCode() == replyCode) {
+				s.append(rpy.toString());
+				isMatch = true;
+				break MATCH_RPY;
+			}
+		}
+		if (!isMatch) 
+			s.append(Reply.RPY_UNRECOGNIZED.toString());
+
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
 		if (null != input) {
 			s.append("] [input.remaining()=>");
@@ -921,6 +932,4 @@ final class Handler extends Command implements Runnable {
 
 		return s.toString();
 	}
-
-
 }
