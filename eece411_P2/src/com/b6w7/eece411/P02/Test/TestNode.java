@@ -512,8 +512,8 @@ public class TestNode implements Runnable, JoinThread {
 			//			clientSocket = new Socket(serverURL, serverPort);
 
 			//populateTests();
-			//populateMemoryTests();
-			populateOneTest();
+			populateMemoryTests();
+			//populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -31,7 +33,7 @@ final class Handler extends Command implements Runnable {
 	private static final int RPYSIZE = NodeCommands.LEN_CMD_BYTES;		
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
-	private static final int TSVECTOR = NodeCommands.LEN_TIMESTAMP_BYTES;
+	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
 
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
@@ -39,6 +41,8 @@ final class Handler extends Command implements Runnable {
 	byte[] value;
 	byte replyCode = Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
+	byte[] messageTimestamp;
+
 
 	private final Membership membership = new Membership();
 	private final PostCommand dbHandler;
@@ -229,9 +233,23 @@ final class Handler extends Command implements Runnable {
 			return false;
 
 		} else if (Request.CMD_TS_GET.getCode() == cmd) {
-			if (position >= CMDSIZE + KEYSIZE + TSVECTOR);
+			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			process = new TSGetProcess();
-			input.position(CMDSIZE + KEYSIZE + TSVECTOR);
+			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
+			input.flip();
+			return true;
+			
+		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
+			if (position >= CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
+			//process = new TSPutProcess();
+			input.position(CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
+			input.flip();
+			return true;
+			
+		} else if (Request.CMD_TS_REMOVE.getCode() == cmd) {
+			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
+			//process = new TSRemoveProcess();
+			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
 			return true;
 			
@@ -544,6 +562,26 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	class TSGetProcess extends GetProcess {
+		
+		@Override
+		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this);
+			
+			//only perform this once
+			if (null == messageTimestamp) {
+				messageTimestamp = new byte[TIMESTAMPSIZE];
+				messageTimestamp = Arrays.copyOfRange(
+						input.array()
+						, CMDSIZE+KEYSIZE
+						, CMDSIZE+KEYSIZE+TIMESTAMPSIZE);
+				
+				membership.mergeVector(
+						ByteBuffer.wrap(messageTimestamp)
+						.order(ByteOrder.BIG_ENDIAN)
+						.asIntBuffer().array());
+			}
+			super.checkLocal();
+		}
 	}
 
 	class GetProcess implements Process {
@@ -620,9 +658,11 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void generateOwnerQuery() {
 			output.position(0);
-			output.put(cmd);
+			output.put(Request.CMD_TS_GET.getCode());
 			output.put(key);
-			output.flip();
+//			output.put(IntBuffer.wrap(ConsistentHashing.Membership.localTimestampVector).asReadOnlyBuffer());
+//			ByteBuffer.
+//			output.flip();
 		}
 
 		@Override
