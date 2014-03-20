@@ -60,13 +60,13 @@ final class Handler extends Command implements Runnable {
 	// frequently used, so stored here for future use
 	private final Request[] requests = Request.values();
 	private final Reply[] replies = Reply.values();
+	private final Handler self;
 	private Selector sel;
 	private Process process;
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
 	
 	private boolean mergeComplete = false;
-
 	
 	// debug 
 	private boolean useRemote;
@@ -111,6 +111,9 @@ final class Handler extends Command implements Runnable {
 		this.mergeComplete = false;
 		// debug
 		this.useRemote = useRemote;
+		
+		// keep reference to self so that nested classes can refer to the handler
+		self = this;
 	}
 
 	/**
@@ -204,7 +207,7 @@ final class Handler extends Command implements Runnable {
 		//if (IS_VERBOSE) System.out.println(" +++ Common::recvRequester() AFTER input.position()=="+input.position()+" input.limit()=="+input.limit());
 
 		if (requesterInputIsComplete()) {
-			if (IS_VERBOSE) System.out.println(" +++ Common::recvRequester() COMPLETE input.position()=="+input.position()+" input.limit()=="+input.limit());
+			if (IS_VERBOSE) System.out.println(" +++ Common::recvRequester() COMPLETE " + this.toString());
 			state = State.CHECKING_LOCAL;
 			keyRequester.interestOps(0);
 			processRecvRequester(); 
@@ -223,7 +226,7 @@ final class Handler extends Command implements Runnable {
 		// Now we know what operation, now we need to know how many bytes that we expect
 		if (Request.CMD_GET.getCode() == cmd){
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new TSGetProcess();
+				process = new TSGetProcess(self);
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -232,7 +235,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
-				process = new PutProcess();
+				process = new PutProcess(self);
 				input.position(CMDSIZE + KEYSIZE + VALUESIZE);
 				input.flip();
 				return true;
@@ -241,7 +244,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new RemoveProcess();
+				process = new RemoveProcess(self);
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -250,7 +253,7 @@ final class Handler extends Command implements Runnable {
 
 		} else if (Request.CMD_TS_GET.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-			process = new TSGetProcess();
+			process = new TSGetProcess(self);
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
 			System.out.println(" +-+ TS_GET.");
@@ -271,7 +274,7 @@ final class Handler extends Command implements Runnable {
 			return true;
 			
 		} else {
-			process = new UnrecogProcess();
+			process = new UnrecogProcess(this);
 			// bad command received on wire
 			// nothing to do
 			input.position(CMDSIZE);
@@ -428,6 +431,13 @@ final class Handler extends Command implements Runnable {
 	}
 
 	class PutProcess implements Process {
+
+		protected final Handler handler;
+
+		PutProcess(Handler handler) {
+			this.handler = handler;
+		}
+
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- PutProcess::checkLocal(): " + this);
@@ -483,13 +493,10 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (output.position() != 0) {
-//				if (output.position() != RPYSIZE)
-//					System.out.println("### PutProcess::output.position()=="+output.position()+ " != 1");
-				// This means that input received the contents of a
-				// RECV_OWNER and can be directly forwarded to requester
-				output.flip();
-				if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETE REMOTE " + this);
+			if (replyCode != NodeCommands.Reply.RPY_NOT_SET.getCode()) {
+				// This means that we received from owner in 
+				// RECV_OWNER and output can be directly forwarded to requester
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
 				return;
 			}
 			
@@ -497,7 +504,7 @@ final class Handler extends Command implements Runnable {
 			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETE LOCAL " + this);
+			if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETE LOCAL " + handler.toString());
 		}
 
 		@Override
@@ -511,6 +518,8 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void recvOwner() {
+			output.limit(output.capacity());
+
 			// read from the socket
 			try {
 //				if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
@@ -518,7 +527,7 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() COMPLETE " + this);
+					if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() COMPLETE " + handler.toString());
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -576,6 +585,10 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	class TSGetProcess extends GetProcess {
+		
+		TSGetProcess(Handler handler) {
+			super(handler);
+		}
 
 		@Override
 		public void checkLocal() {
@@ -614,7 +627,7 @@ final class Handler extends Command implements Runnable {
 		
 		@Override
 		public void generateOwnerQuery() {
-			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START " + this);
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START " + handler.toString());
 			output.position(0);
 			output.put(Request.CMD_TS_GET.getCode());
 			output.put(key);
@@ -625,7 +638,7 @@ final class Handler extends Command implements Runnable {
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE "+ this);
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE "+ handler.toString());
 		}
 		
 		@Override
@@ -633,6 +646,8 @@ final class Handler extends Command implements Runnable {
 			//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
 			membership.updateSendVector();
 			
+			output.limit(output.capacity());
+
 			// read from the socket
 			try {
 //				if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
@@ -640,7 +655,7 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() COMPLETE " + this);
+					if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() COMPLETE " + handler.toString());
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -662,6 +677,7 @@ final class Handler extends Command implements Runnable {
 					output.flip();
 					return true;
 				}
+				return false;
 			}
 
 			output.position(RPYSIZE);
@@ -672,6 +688,13 @@ final class Handler extends Command implements Runnable {
 	}
 
 	class GetProcess implements Process {
+
+		protected final Handler handler;
+
+		GetProcess(Handler handler) {
+			this.handler = handler;
+		}
+
 
 		@Override
 		public void checkLocal() {			
@@ -724,11 +747,10 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (output.position() != 0) {
-				// This means that input received the contents of a
-				// RECV_OWNER and can be directly forwarded to requester
-				output.flip();
-				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED REMOTE output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (replyCode != NodeCommands.Reply.RPY_NOT_SET.getCode()) {
+				// This means that we received from owner in 
+				// RECV_OWNER and output can be directly forwarded to requester
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
 				return;
 			}
 
@@ -738,7 +760,7 @@ final class Handler extends Command implements Runnable {
 			if (replyValue != null)
 				output.put(replyValue);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETED LOCAL output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE LOCAL " + handler.toString());
 		}
 
 		@Override
@@ -753,6 +775,8 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void recvOwner() {
+			output.limit(output.capacity());
+
 			// read from the socket
 			try {
 //				if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
@@ -760,7 +784,7 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() COMPLETE "+ this);
+					if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() COMPLETE "+ handler.toString());
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -782,6 +806,7 @@ final class Handler extends Command implements Runnable {
 					output.flip();
 					return true;
 				}
+				return false;
 			}
 
 			output.position(RPYSIZE);
@@ -795,7 +820,7 @@ final class Handler extends Command implements Runnable {
 			//				", "+NodeCommands.byteArrayAsString(key) +")" );
 			if(val == null) {
 				// NONEXISTENT -- we want to debug here
-				if (IS_VERBOSE) System.out.println(" *** GetCommand() Not Found " + this.toString());
+				if (IS_VERBOSE) System.out.println(" *** GetCommand() Not Found " + handler.toString());
 			}
 			return val;
 		}
@@ -803,9 +828,14 @@ final class Handler extends Command implements Runnable {
 
 	class RemoveProcess implements Process {
 
+		protected final Handler handler;
+
+		RemoveProcess(Handler handler) {
+			this.handler = handler;
+		}
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::checkLocal(): " + this);
+			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::checkLocal(): " + handler.toString());
 			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
@@ -856,11 +886,10 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (output.position() != 0) {
-				// This means that input received the contents of a
-				// RECV_OWNER and can be directly forwarded to requester
-				output.flip();
-				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED REMOTE "+ this);
+			if (replyCode != NodeCommands.Reply.RPY_NOT_SET.getCode()) {
+				// This means that we received from owner in 
+				// RECV_OWNER and output can be directly forwarded to requester
+				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
 				return;
 			}
 
@@ -868,7 +897,7 @@ final class Handler extends Command implements Runnable {
 			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETED LOCAL "+ this);
+			if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETE LOCAL "+ handler.toString());
 		}
 
 		@Override
@@ -881,6 +910,8 @@ final class Handler extends Command implements Runnable {
 		
 		@Override
 		public void recvOwner() {
+			output.limit(output.capacity());
+
 			// read from the socket
 			try {
 //				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
@@ -888,7 +919,7 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() COMPLETE "+ this);
+					if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() COMPLETE "+ handler.toString());
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -916,6 +947,12 @@ final class Handler extends Command implements Runnable {
 
 	class UnrecogProcess implements Process {
 
+		protected final Handler handler;
+
+		UnrecogProcess(Handler handler) {
+			this.handler = handler;
+		}
+
 		@Override
 		public void checkLocal() {
 			replyCode = NodeCommands.Reply.RPY_UNRECOGNIZED.getCode();
@@ -933,7 +970,7 @@ final class Handler extends Command implements Runnable {
 			output.position(0);
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ UnrecogProcess::generateRequesterReply() COMPLETED CASE ALL "+ this);
+			if (IS_VERBOSE) System.out.println(" +++ UnrecogProcess::generateRequesterReply() COMPLETE "+ handler.toString());
 		}
 
 		@Override
