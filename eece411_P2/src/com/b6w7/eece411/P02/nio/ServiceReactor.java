@@ -33,7 +33,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	/** ... 
 	private final Map<ByteArrayWrapper, byte[]> dht = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2));
 	... */
-	private final ConsistentHashing dht;
+	private final ConsistentHashing<ByteArrayWrapper, byte[]> dht;
 
 	private final HandlerThread dbHandler = new HandlerThread();
 
@@ -54,7 +54,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	public final boolean USE_REMOTE;
 
 	public ServiceReactor(int servPort) throws IOException, NoSuchAlgorithmException {
-		this.dht = new ConsistentHashing(nodes);
+		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 		serverPort = servPort;
 		InetAddress tempInetAddress;
 		try {
@@ -181,7 +181,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		int servPort = Integer.parseInt(args[0]);
 
-		servPort = 11112;
+		//servPort = 11112;
 		
 		ServiceReactor service;
 		try {

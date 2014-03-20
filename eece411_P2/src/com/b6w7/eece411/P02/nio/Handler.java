@@ -2,6 +2,7 @@ package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -34,7 +35,10 @@ final class Handler extends Command implements Runnable {
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
 	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
+	
+	private static final int INTSIZE = 4;
 
+	
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
 	ByteArrayWrapper hashedKey;
@@ -43,8 +47,7 @@ final class Handler extends Command implements Runnable {
 	byte[] replyValue;
 	byte[] messageTimestamp;
 
-
-	private final Membership membership = new Membership();
+	private final MembershipProtocol membership;
 	private final PostCommand dbHandler;
 
 	/**
@@ -59,6 +62,9 @@ final class Handler extends Command implements Runnable {
 	private Process process;
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
+	
+	private boolean mergeComplete = false;
+
 	
 	// debug 
 	private boolean useRemote;
@@ -75,7 +81,7 @@ final class Handler extends Command implements Runnable {
 	}
 
 
-	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, Map<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, boolean useRemote) 
+	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, boolean useRemote) 
 			throws IOException {
 
 		
@@ -95,6 +101,9 @@ final class Handler extends Command implements Runnable {
 		keyRequester.interestOps(SelectionKey.OP_READ);
 		sel.wakeup();
 		
+		String localhost = InetAddress.getLocalHost().getCanonicalHostName();
+		membership = new MembershipProtocol(map.getNodePosition(localhost), map.getSizeAllNodes());
+		this.mergeComplete = false;
 		// debug
 		this.useRemote = useRemote;
 	}
@@ -159,6 +168,7 @@ final class Handler extends Command implements Runnable {
 
 		case CHECKING_LOCAL:
 			if (IS_VERBOSE) System.out.println(" --- execute(): CHECKING_LOCAL " + this);
+			//TODO:membership.
 			process.checkLocal();
 			break;
 
@@ -237,6 +247,7 @@ final class Handler extends Command implements Runnable {
 			process = new TSGetProcess();
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
+			System.out.println("+-+-TS_GET.");
 			return true;
 			
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
@@ -260,6 +271,7 @@ final class Handler extends Command implements Runnable {
 			input.position(CMDSIZE);
 			input.flip();
 			return true;
+			//TODO: Tried debugging here: return false;
 		}
 	}
 
@@ -361,6 +373,7 @@ final class Handler extends Command implements Runnable {
 
 			if (outputIsComplete()) {
 				if (IS_VERBOSE) System.out.println(" +++ Common::sendRequester() COMPLETED output.position()=="+output.position()+" output.limit()=="+output.limit());
+				if (IS_VERBOSE) System.out.println(this);
 				if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
 				if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
 				if (null != socketRequester) socketRequester.close();
@@ -579,17 +592,24 @@ final class Handler extends Command implements Runnable {
 						ByteBuffer.wrap(messageTimestamp)
 						.order(ByteOrder.BIG_ENDIAN)
 						.asIntBuffer().array());
+				//TODO: Note:: array() will return the int[] that backs the IntBuffer. 
+				//..Changing the backing array modifies the IntBuffer()
 			}
 			super.checkLocal();
+		
+			int[] updateTSVector = membership.updateSendVector();
+			
+			ByteBuffer byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
+			byteBufferTSVector.asIntBuffer().put(updateTSVector);
+	
+			output.put(byteBufferTSVector.array());
 		}
 	}
 
 	class GetProcess implements Process {
 
 		@Override
-		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + this);
-			
+		public void checkLocal() {			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
