@@ -72,7 +72,7 @@ public class PutCommand extends Command {
 
 			if(result != null) {
 				// Overwriting -- we take note
-				System.out.println("*** PutCommand() Replacing Key " + this.toString());
+				System.out.println(" *** PutCommand() Replacing Key " + this.toString());
 			}
 
 			return true;

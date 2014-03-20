@@ -105,7 +105,7 @@ final class Handler extends Command implements Runnable {
 		sel.wakeup();
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
-		if(IS_DEBUG) System.out.println("    Handler() [localhost,position,total]: ["+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes()+"]");
+		if(IS_DEBUG) System.out.println("     Handler() [localhost,position,total]: ["+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes()+"]");
 		
 		membership = new MembershipProtocol(map.getNodePosition(localhost), map.getSizeAllNodes());
 		this.mergeComplete = false;
@@ -199,12 +199,12 @@ final class Handler extends Command implements Runnable {
 	// operation.  This can be called multiple times until enough bytes are received.
 	private void recvRequester() throws IOException {
 		// read from the socket
-		//if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvRequester() BEFORE input.position()=="+input.position()+" input.limit()=="+input.limit());
+		//if (IS_VERBOSE) System.out.println(" +++ Common::recvRequester() BEFORE input.position()=="+input.position()+" input.limit()=="+input.limit());
 		socketRequester.read(input);
-		//if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvRequester() AFTER input.position()=="+input.position()+" input.limit()=="+input.limit());
+		//if (IS_VERBOSE) System.out.println(" +++ Common::recvRequester() AFTER input.position()=="+input.position()+" input.limit()=="+input.limit());
 
 		if (requesterInputIsComplete()) {
-			if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvRequester() COMPLETE input.position()=="+input.position()+" input.limit()=="+input.limit());
+			if (IS_VERBOSE) System.out.println(" +++ Common::recvRequester() COMPLETE input.position()=="+input.position()+" input.limit()=="+input.limit());
 			state = State.CHECKING_LOCAL;
 			keyRequester.interestOps(0);
 			processRecvRequester(); 
@@ -253,7 +253,7 @@ final class Handler extends Command implements Runnable {
 			process = new TSGetProcess();
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
-			System.out.println("+-+-TS_GET.");
+			System.out.println(" +-+ TS_GET.");
 			return true;
 			
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
@@ -655,7 +655,7 @@ final class Handler extends Command implements Runnable {
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
-				System.out.println("--- GetProcess::checkLocal() Using remote");
+				System.out.println(" --- GetProcess::checkLocal() Using remote");
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -766,7 +766,7 @@ final class Handler extends Command implements Runnable {
 			//				", "+NodeCommands.byteArrayAsString(key) +")" );
 			if(val == null) {
 				// NONEXISTENT -- we want to debug here
-				if (IS_VERBOSE) System.out.println("*** GetCommand() Not Found " + this.toString());
+				if (IS_VERBOSE) System.out.println(" *** GetCommand() Not Found " + this.toString());
 			}
 			return val;
 		}

@@ -23,13 +23,13 @@ public class HandlerThread extends Thread implements PostCommand {
 			if (null == cmd) {
 				synchronized(inQueue) {
 					try {
-						if (IS_VERBOSE) System.out.println("HandlerThread()::run() waiting on inQueue");
+						if (IS_VERBOSE) System.out.println(" --- HandlerThread()::run() waiting on inQueue");
 						inQueue.wait();
 					} catch (InterruptedException e) {	/* do nothing. */ }
 				}
 
 			} else {
-				if (IS_VERBOSE) System.out.println("Issuing:  "+cmd);
+				if (IS_VERBOSE) System.out.println(" --- HandlerThread::run() Issuing:  "+cmd);
 				cmd.execute();
 				System.out.println(" --- HandlerThread::run() Complete: "+cmd+ " totalCompleted=="+Command.totalCompleted.incrementAndGet()+" map.size=="+cmd.map.size());
 			}

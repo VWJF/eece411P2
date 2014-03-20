@@ -63,7 +63,7 @@ public class MembershipProtocol {
 	public int[] updateSendVector(){
 		
 		localTimestampVector[current_node]++;
-		if(IS_DEBUG) System.out.println("=== updateSendVector() after update: "+Arrays.toString(localTimestampVector));
+		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(localTimestampVector));
 		
 		return localTimestampVector;
 	}

@@ -124,10 +124,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	public int getNodePosition(String node){
 		ByteArrayWrapper key = hashKey(node);
-		if(IS_DEBUG) System.out.println("    ConsistentHashing::getNodePosition()  hashKey: "+key);
+		if(IS_DEBUG) System.out.println("     ConsistentHashing::getNodePosition()  hashKey: "+key);
 		int ret = listOfNodes.indexOf(key);
 		if (-1 == ret)
-			System.out.println("### ConsistentHashing::getNodePosition() index not found for node "+ node);
+			System.out.println(" ### ConsistentHashing::getNodePosition() index not found for node "+ node);
 		return ret;
 	}
 	
