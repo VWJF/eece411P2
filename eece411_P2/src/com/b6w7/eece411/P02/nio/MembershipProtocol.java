@@ -54,8 +54,8 @@ public class MembershipProtocol {
 			localTimestampVector[current_node] = local;
 			//	wait(waittime);
 
-			if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") received vect: "+Arrays.toString(receivedVector));
-			if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") after merging: "+Arrays.toString(localTimestampVector));
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") received vect: "+Arrays.toString(receivedVector));
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") after merging: "+Arrays.toString(localTimestampVector));
 		}
 	}
 
@@ -70,7 +70,7 @@ public class MembershipProtocol {
 			localTimestampVector[current_node]++;
 			ret = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
 		}
-		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+ret.toString());
+		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
 		return ret;
 	}
 	

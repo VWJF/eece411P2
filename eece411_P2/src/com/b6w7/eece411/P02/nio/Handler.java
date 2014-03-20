@@ -46,7 +46,8 @@ final class Handler extends Command implements Runnable {
 	byte replyCode = Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
 	byte[] messageTimestamp;
-	ByteBuffer byteBufferTSVector;
+	//ByteBuffer byteBufferTSVector;
+	ByteBuffer byteBufferTSVector = ByteBuffer.allocate(TIMESTAMPSIZE).order(ByteOrder.BIG_ENDIAN);
 
 
 
@@ -455,7 +456,7 @@ final class Handler extends Command implements Runnable {
 
 			int[] updateTSVector = membership.updateSendVector();
 
-			byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
+			//byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
 			byteBufferTSVector.asIntBuffer().put(updateTSVector);
 			byteBufferTSVector.flip();
 		}
