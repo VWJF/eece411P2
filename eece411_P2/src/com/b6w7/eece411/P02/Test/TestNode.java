@@ -150,7 +150,12 @@ public class TestNode implements Runnable, JoinThread {
 			System.out.println("Thread: "+myCount+"\ntest skipped for "+keyString+"=>"+valueString+"\nvalue exceeds "+NodeCommands.LEN_VALUE_BYTES+" bytes");
 		}
 	}
-
+	
+	/**
+	 * Test Case: Test for protocol(sanity) check.
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnsupportedEncodingException
+	 */
 	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -208,7 +213,11 @@ public class TestNode implements Runnable, JoinThread {
 
 	}
 
-	// puts 100 keys, and then gets the same 100 keys
+	/**
+	 * Test case: puts 100 keys, and then gets the same 100 keys
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnsupportedEncodingException
+	 */
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
@@ -434,7 +443,101 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"HHHi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"IIIi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 	}
+	
+	/**
+	 * Test case: puts 30 keys..., and then gets the same 30 keys by populateGetTest()
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnsupportedEncodingException
+	 */
+		private void populatePutTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+			// test 1: put 'Scott' => '63215065', and so on ... 
 
+			myCount = new Random().nextInt(Integer.MAX_VALUE);	
+			myCount = 0; //To generate Repeatable Keys
+			System.out.println(myCount);
+			
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAHazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAMarco", "Polo", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAOld", "MacDonald", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAreala.ece.ubc.ca", "QQorRQ", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAfinance hub of the world", "Abu Dhabi", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAGotta get up 1234", "Get up and rooool 5678", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAeee iii eee ii ooo", "sheep", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAbombastic", "is the word??", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAgettysburg address", "Where exactly?", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAADrumming up sounds", "In the drumtown land", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAtypical qwerty", "with lousy shift key", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAnot@home.com", "telling you now", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
+
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBHazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBMarco", "Polo", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBOld", "MacDonald", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBreala.ece.ubc.ca", "QQorRQ", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBfinance hub of the world", "Abu Dhabi", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBGotta get up 1234", "Get up and rooool 5678", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBeee iii eee ii ooo", "sheep", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBbombastic", "is the word??", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBgettysburg address", "Where exactly?", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBDrumming up sounds", "In the drumtown land", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBtypical qwerty", "with lousy shift key", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBnot@home.com", "telling you now", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"BBBi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		}
+
+		/**
+		 * Test case: gets the same 30 keys as put by populatePutTest()
+		 * @throws NoSuchAlgorithmException
+		 * @throws UnsupportedEncodingException
+		 */
+		private void populateGetTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+			// test 1: put 'Scott' => '63215065', and so on ... 
+
+			myCount = new Random().nextInt(Integer.MAX_VALUE);		
+			myCount = 0; //To generate Repeatable Keys		
+			System.out.println(myCount);
+			
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAHazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAMarco", "Polo", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAOld", "MacDonald", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAreala.ece.ubc.ca", "QQorRQ", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAfinance hub of the world", "Abu Dhabi", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAGotta get up 1234", "Get up and rooool 5678", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAeee iii eee ii ooo", "sheep", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAbombastic", "is the word??", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAgettysburg address", "Where exactly?", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAADrumming up sounds", "In the drumtown land", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAtypical qwerty", "with lousy shift key", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAnot@home.com", "telling you now", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
+
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBHazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBMarco", "Polo", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBOld", "MacDonald", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBreala.ece.ubc.ca", "QQorRQ", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBfinance hub of the world", "Abu Dhabi", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBGotta get up 1234", "Get up and rooool 5678", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBeee iii eee ii ooo", "sheep", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBbombastic", "is the word??", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBgettysburg address", "Where exactly?", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBDrumming up sounds", "In the drumtown land", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBtypical qwerty", "with lousy shift key", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBnot@home.com", "telling you now", NodeCommands.Reply.RPY_SUCCESS.getCode());
+			populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"BBBi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
+
+		}
 	public static void main(String[] args) {
 
 		// If the command line arguments are missing, or invalid, then nothing to do
@@ -513,7 +616,9 @@ public class TestNode implements Runnable, JoinThread {
 
 			//populateTests();
 			//populateMemoryTests();
-			populateOneTest();
+			//populatePutTests(); //For the node that has stored the Key-Values
+			populateGetTests();	//For a node that did not store the Key-Values
+			//populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

@@ -123,6 +123,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/**
 	 * Given a host-name, obtain its position (the natural ordering) within the map of Nodes
+	 * Assumption, the given host-name is present in the list of nodes paticipating.
 	 * @param node
 	 * @return
 	 */

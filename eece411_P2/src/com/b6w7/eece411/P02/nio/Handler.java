@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -68,6 +70,7 @@ final class Handler extends Command implements Runnable {
 	
 	// debug 
 	private boolean useRemote;
+	private boolean IS_DEBUG = false;
 
 	// possible states of any command
 	enum State {
@@ -101,7 +104,9 @@ final class Handler extends Command implements Runnable {
 		keyRequester.interestOps(SelectionKey.OP_READ);
 		sel.wakeup();
 		
-		String localhost = InetAddress.getLocalHost().getCanonicalHostName();
+		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
+		if(IS_DEBUG) System.out.println("localhost,position,total: "+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes());
+		
 		membership = new MembershipProtocol(map.getNodePosition(localhost), map.getSizeAllNodes());
 		this.mergeComplete = false;
 		// debug
@@ -168,7 +173,7 @@ final class Handler extends Command implements Runnable {
 
 		case CHECKING_LOCAL:
 			if (IS_VERBOSE) System.out.println(" --- execute(): CHECKING_LOCAL " + this);
-			//TODO:membership.
+			//TODO: membership....
 			process.checkLocal();
 			break;
 
@@ -271,7 +276,6 @@ final class Handler extends Command implements Runnable {
 			input.position(CMDSIZE);
 			input.flip();
 			return true;
-			//TODO: Tried debugging here: return false;
 		}
 	}
 
@@ -575,7 +579,7 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	class TSGetProcess extends GetProcess {
-		
+
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this);
@@ -588,28 +592,25 @@ final class Handler extends Command implements Runnable {
 						, CMDSIZE+KEYSIZE
 						, CMDSIZE+KEYSIZE+TIMESTAMPSIZE);
 
-				ByteBuffer.wrap(messageTimestamp);
-
-				ByteBuffer.wrap(messageTimestamp)
-				.order(ByteOrder.BIG_ENDIAN);
-
-				ByteBuffer.wrap(messageTimestamp)
+				IntBuffer intTimeStampBuffer = ByteBuffer.wrap(messageTimestamp)
 				.order(ByteOrder.BIG_ENDIAN)
 				.asIntBuffer();
-
-						ByteBuffer.wrap(messageTimestamp)
-						.order(ByteOrder.BIG_ENDIAN)
-						.asIntBuffer().array();
-
-				membership.mergeVector(
-						ByteBuffer.wrap(messageTimestamp)
-						.order(ByteOrder.BIG_ENDIAN)
-						.asIntBuffer().array());
+				
+				int[] backingArray = new int[TIMESTAMPSIZE/INTSIZE];
+				try {
+					intTimeStampBuffer.get(backingArray);
+				} catch (BufferUnderflowException bue) {
+					bue.printStackTrace();
+					//Nothing.
+				}
+				membership.mergeVector(backingArray);
 
 				int[] updateTSVector = membership.updateSendVector();
 
 				byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
 				byteBufferTSVector.asIntBuffer().put(updateTSVector);
+				byteBufferTSVector.flip();
+				
 			}
 			super.checkLocal();
 		
@@ -627,6 +628,14 @@ final class Handler extends Command implements Runnable {
 			output.put(byteBufferTSVector);
 			output.flip();
 			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START output.position()=="+output.position()+" output.limit()=="+output.limit());
+		}
+		
+		private void recvOwnerIsComplete() {
+			//TODO: MemebershipProtocol.updateSendVector()  should be done at receipt of OwnerResponse
+			//....
+			//....
+			//....
+			return ;
 		}
 
 	}
@@ -733,6 +742,8 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
+			//TODO: MemebershipProtocol.updateSendVector()  should be done at receipt of OwnerResponse
+
 			replyCode = output.get(0);
 			
 			if (Reply.RPY_SUCCESS.getCode() == replyCode) {

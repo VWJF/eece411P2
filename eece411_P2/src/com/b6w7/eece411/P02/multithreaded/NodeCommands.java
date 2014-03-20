@@ -12,7 +12,7 @@ public class NodeCommands {
 	public static final int LEN_CMD_BYTES = 1;
 	public static final int LEN_KEY_BYTES = 32;
 	public static final int LEN_VALUE_BYTES = 1024;
-	public static final int LEN_TIMESTAMP_BYTES = 100*4;
+	public static final int LEN_TIMESTAMP_BYTES = 6*4;
 
 	// Needed to make a check in ClientInterface whether the "received" command/error code 
 	// were among eligible commands.
@@ -166,7 +166,7 @@ public class NodeCommands {
 		for (Request req: Request.values()) {
 			if (req.getCode() == cmd) {
 				isMatch = true;
-				System.out.println("+-+-NodeCommands:sanitizeCMD "+cmd);
+				// System.out.println("+-+-NodeCommands:sanitizeCMD "+cmd);
 				return req.getCode(); 
 				//break MATCH_CMD;
 			}
