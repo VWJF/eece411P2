@@ -34,7 +34,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/**
 	 * The structure used to maintain the view of the pairs (key,value) & participating nodes.
-	 * TODO: The data structure for circle should be changed. Propose: linked-list of Entry<ByteWrapper, byte[]>. 
+	 * Should be initialized to MAX_MEMORY*(1/load_factor), to limit the number of keys & avoid resizing.
 	 */
 	private HashMap<ByteArrayWrapper, byte[]> circle; //new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2))
 	//private final SortedMap<ByteArrayWrapper, byte[]> circle; // = new TreeMap<ByteArrayWrapper, byte[]>();
@@ -64,11 +64,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 //			add(node);
 //		}
 		
-		//TODO: Ideally, the map(circle) has been initialized to store Commands.MAX_MEMORY (40,000) entries
-		// so that resizing does not need to occur.
 		this.circle = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
-		//Collections.synchronizedMap(new ..)
-		this.mapOfNodes = new TreeMap<ByteArrayWrapper, byte[]>(); //Collections.synchronizedSortedMap(new  ..)
+		this.mapOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
 		this.md = MessageDigest.getInstance("SHA-1");
 		
 		int i = 0;
@@ -94,8 +91,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		System.out.println("Map of Nodes Size at Constructor: "+mapOfNodes.size());
 		
-		//listOfNodes = Collections.synchronizedList(new ArrayList<Entry<ByteArrayWrapper,byte[]>>(Command.MAX_NODES));
-		//TODO: does list need synchronization...Collections.synchronizedList() ??
 		listOfNodes = new ArrayList<ByteArrayWrapper>(mapOfNodes.keySet());
 		Collections.sort(listOfNodes);
 		
@@ -123,6 +118,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/**
 	 * Given a host-name, obtain its position (the natural ordering) within the map of Nodes
+	 * Assumption, the given host-name is present in the list of nodes participating.
 	 * @param node
 	 * @return
 	 */
@@ -191,8 +187,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			if(IS_VERBOSE) System.out.println("Finding InetAddress.");
 			return InetAddress.getByName(nextHost);
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			System.out.println("## getNext node in circle exception. " + e.getLocalizedMessage());
+			System.out.println("## getNodeResponsible node in circle exception. " + e.getLocalizedMessage());
 			e.printStackTrace();
 		}
 		return null;
@@ -241,7 +236,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				if(IS_VERBOSE) System.out.println("Finding InetAddress.");
 				return InetAddress.getByName(nextHost);
 			} catch (UnknownHostException e) {
-				// TODO Auto-generated catch block
 				System.out.println("## getNext node in circle exception. " + e.getLocalizedMessage());
 				e.printStackTrace();
 			}
@@ -376,7 +370,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	@Override
 	public byte[] remove(Object key) {
-		// TODO Auto-generated method stub
 		byte[] fromRemove = null;
 		try{
 			fromRemove = remove((ByteArrayWrapper) key);
@@ -411,10 +404,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				
 		System.out.println();
 		
-		ConsistentHashing ch = null;
+		ConsistentHashing<ByteArrayWrapper, byte[]> ch = null;
 		
 		try {
-			 ch = new ConsistentHashing(nodes);
+			 ch = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();
 			 System.out.println("Consistent Hash created of node map size: "+ch.getMapOfNodes().size());
@@ -475,62 +468,5 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			e.printStackTrace();
 		}
 	}
-	
-
-	class Membership{
-		/**
-		 * The Membership class can have a run() & execute().
-		 * run() would be used to send the local vectortimestamp to a remote node [currently method sendVector()]
-		 * execute() would be used to update the local vectortimestamp with 
-		 * 		the vector received from a remote node [currently method receiveVector()]
-		 */
-		private final int total_nodes;
-		private int current_node;
-		private int[] localTimestampVector;
-		
-		Membership(int current_node_index, int totalNodesInSystem){
-			current_node = getNodePosition("sample localhostname");
-			total_nodes = getSizeAllNodes();
-			
-			//current_node = current_node_index;
-			//total_nodes = totalNodesInSystem;
-		}
-		/**
-		 * Update the local timestamp vector based on the received vector timestamp 
-		 * @param receivedVector
-		 */
-		public void mergeVector(int[] receivedVector){
-			//behavior on receiving a vectorTimestamp at each node 
-			int local = localTimestampVector[current_node];
-			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
-			//if (success){
-			int i;
-			for(i = 0; i < localTimestampVector.length && i < receivedVector.length; i++){
-				localTimestampVector[i] = Math.max(receivedVector[i], localTimestampVector[i]); 
-			}
-			if ( localTimestampVector.length > receivedVector.length ){
-				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.length-1);
-				System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
-			}
-			//else if (i == receivedOnWire.length && i < localTimestampVector.length)
-				
-			localTimestampVector[current_node] = local;
-			//	wait(waittime);
-		}
-
-		/**
-		 * Preparing the Vector Timestamp to be sent to a remote node.
-		 * @return
-		 */
-		public int[] updateSendVector(){
-			
-			localTimestampVector[current_node]++;
-			
-			return localTimestampVector;
-		}
-	}
-
-
-
 
 }

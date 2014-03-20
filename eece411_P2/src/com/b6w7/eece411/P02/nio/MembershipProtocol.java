@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public class MembershipProtocol {
 	/**
-	 * The Membership class can have a run() & execute().
+	 * The MembershipProtocol class can have a run() & execute().
 	 * run() would be used to send the local vectortimestamp to a remote node [currently method sendVector()]
 	 * execute() would be used to update the local vectortimestamp with 
 	 * 		the vector received from a remote node [currently method receiveVector()]
@@ -27,6 +27,8 @@ public class MembershipProtocol {
 	 * @param receivedVector
 	 */
 	public void mergeVector(int[] receivedVector){
+		if(receivedVector == null)
+			return;
 		//behavior on receiving a vectorTimestamp at each node 
 		int local = localTimestampVector[current_node];
 		//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
@@ -44,7 +46,9 @@ public class MembershipProtocol {
 		localTimestampVector[current_node] = local;
 		//	wait(waittime);
 		
-		if(IS_DEBUG) System.out.println("=== mergeVector() after merging: "+Arrays.toString(localTimestampVector));
+		if(IS_DEBUG) System.out.println("=== mergeVector() (local="+local+") received vect: "+Arrays.toString(receivedVector));
+		if(IS_DEBUG) System.out.println("=== mergeVector() (local="+local+") after merging: "+Arrays.toString(localTimestampVector));
+
 	}
 
 	/**
@@ -54,7 +58,7 @@ public class MembershipProtocol {
 	public int[] updateSendVector(){
 		
 		localTimestampVector[current_node]++;
-		if(IS_DEBUG) System.out.println("updateSendVector() after update: "+Arrays.toString(localTimestampVector));
+		if(IS_DEBUG) System.out.println("=== updateSendVector() after update: "+Arrays.toString(localTimestampVector));
 		
 		return localTimestampVector;
 	}
