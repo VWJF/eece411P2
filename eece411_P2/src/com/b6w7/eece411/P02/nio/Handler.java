@@ -6,12 +6,10 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Queue;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
@@ -20,7 +18,6 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
-import com.b6w7.eece411.P02.nio.ConsistentHashing.Membership;
 
 final class Handler extends Command implements Runnable { 
 	private final SocketChannel socketRequester;
@@ -46,6 +43,9 @@ final class Handler extends Command implements Runnable {
 	byte replyCode = Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
 	byte[] messageTimestamp;
+	ByteBuffer byteBufferTSVector;
+
+
 
 	private final MembershipProtocol membership;
 	private final PostCommand dbHandler;
@@ -217,7 +217,7 @@ final class Handler extends Command implements Runnable {
 		// Now we know what operation, now we need to know how many bytes that we expect
 		if (Request.CMD_GET.getCode() == cmd){
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new GetProcess();
+				process = new TSGetProcess();
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -579,7 +579,7 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this);
-			
+
 			//only perform this once
 			if (null == messageTimestamp) {
 				messageTimestamp = new byte[TIMESTAMPSIZE];
@@ -587,23 +587,48 @@ final class Handler extends Command implements Runnable {
 						input.array()
 						, CMDSIZE+KEYSIZE
 						, CMDSIZE+KEYSIZE+TIMESTAMPSIZE);
-				
+
+				ByteBuffer.wrap(messageTimestamp);
+
+				ByteBuffer.wrap(messageTimestamp)
+				.order(ByteOrder.BIG_ENDIAN);
+
+				ByteBuffer.wrap(messageTimestamp)
+				.order(ByteOrder.BIG_ENDIAN)
+				.asIntBuffer();
+
+						ByteBuffer.wrap(messageTimestamp)
+						.order(ByteOrder.BIG_ENDIAN)
+						.asIntBuffer().array();
+
 				membership.mergeVector(
 						ByteBuffer.wrap(messageTimestamp)
 						.order(ByteOrder.BIG_ENDIAN)
 						.asIntBuffer().array());
-				//TODO: Note:: array() will return the int[] that backs the IntBuffer. 
-				//..Changing the backing array modifies the IntBuffer()
+
+				int[] updateTSVector = membership.updateSendVector();
+
+				byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
+				byteBufferTSVector.asIntBuffer().put(updateTSVector);
 			}
 			super.checkLocal();
 		
-			int[] updateTSVector = membership.updateSendVector();
-			
-			ByteBuffer byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
-			byteBufferTSVector.asIntBuffer().put(updateTSVector);
-	
-			output.put(byteBufferTSVector.array());
 		}
+		
+		@Override
+		public void generateOwnerQuery() {
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START output.position()=="+output.position()+" output.limit()=="+output.limit());
+			output.position(0);
+			output.put(Request.CMD_TS_GET.getCode());
+			output.put(key);
+			
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START output.position()=="+output.position()+" output.limit()=="+output.limit());
+		}
+
 	}
 
 	class GetProcess implements Process {
@@ -682,7 +707,7 @@ final class Handler extends Command implements Runnable {
 			output.put(key);
 //			output.put(IntBuffer.wrap(ConsistentHashing.Membership.localTimestampVector).asReadOnlyBuffer());
 //			ByteBuffer.
-//			output.flip();
+			output.flip();
 		}
 
 		@Override
@@ -943,7 +968,6 @@ final class Handler extends Command implements Runnable {
 			s.append(Reply.RPY_UNRECOGNIZED.toString());
 		}
 
-		s.append(NodeCommands.Reply.values()[replyCode].toString());
 		if (null != input) {
 			s.append("] [input.remaining()=>");
 			s.append(input.remaining());
