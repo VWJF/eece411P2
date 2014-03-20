@@ -156,6 +156,7 @@ final class Handler extends Command implements Runnable {
 			case SEND_REQUESTER:
 				if (IS_VERBOSE) System.out.println(" --- run(): SEND_REQUESTER " +this);
 				sendRequester();
+				if(IS_VERBOSE) System.out.println("MapSize: "+map.size());
 				break;
 				
 			case ABORT:
@@ -622,16 +623,18 @@ final class Handler extends Command implements Runnable {
 			output.position(0);
 			output.put(Request.CMD_TS_GET.getCode());
 			output.put(key);
+			//TODO: Seems like missing output.put(value);
+			//TODO: output.put(replyValue);
 			
-
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
 			output.flip();
 			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 		
+		@SuppressWarnings("unused")
 		private void recvOwnerIsComplete() {
-			//TODO: MemebershipProtocol.updateSendVector()  should be done at receipt of OwnerResponse
+			//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
 			//....
 			//....
 			//....
