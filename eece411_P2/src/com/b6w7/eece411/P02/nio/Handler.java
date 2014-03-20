@@ -493,7 +493,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (replyCode != NodeCommands.Reply.RPY_NOT_SET.getCode()) {
+			if (replyCode == NodeCommands.Reply.RPY_NOT_SET.getCode()) {
 				// This means that we received from owner in 
 				// RECV_OWNER and output can be directly forwarded to requester
 				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
@@ -747,7 +747,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (replyCode != NodeCommands.Reply.RPY_NOT_SET.getCode()) {
+			if (replyCode == NodeCommands.Reply.RPY_NOT_SET.getCode()) {
 				// This means that we received from owner in 
 				// RECV_OWNER and output can be directly forwarded to requester
 				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
@@ -886,7 +886,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			if (replyCode != NodeCommands.Reply.RPY_NOT_SET.getCode()) {
+			if (replyCode == NodeCommands.Reply.RPY_NOT_SET.getCode()) {
 				// This means that we received from owner in 
 				// RECV_OWNER and output can be directly forwarded to requester
 				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());

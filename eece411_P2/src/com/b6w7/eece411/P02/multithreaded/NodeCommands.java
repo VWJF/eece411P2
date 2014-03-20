@@ -89,8 +89,8 @@ public class NodeCommands {
 		 */
 	};   
 
-	private Request[] requests = Request.values();
-	private Reply[] replies = Reply.values();
+	public static Request[] requests = Request.values();
+	public static Reply[] replies = Reply.values();
 
 	/*
 	 * Given a byte array with the "Request fields" received
@@ -177,13 +177,31 @@ public class NodeCommands {
 
 	public static NodeCommands.Reply getReplyEnum(byte code) {
 		NodeCommands.Reply ret = null;
-		for (NodeCommands.Reply rpy: Reply.values()) {
-			if (rpy.getCode() == code)
+		for (NodeCommands.Reply rpy: replies) {
+			if (rpy.getCode() == code) {
 				ret = rpy; 
-			break;
+				break;
+			}
 		}
-		if (ret == null)
+		if (ret == null) {
+			System.out.println(" *** NodeCommands::getReplyEnum() Received unknown reply 0x" + Integer.toString(0x100 + (code & 0xFF), 16).substring(1));
 			ret = NodeCommands.Reply.RPY_UNRECOGNIZED;
+		}
+		return ret;
+	}
+
+	public static NodeCommands.Request getRequestEnum(byte code) {
+		NodeCommands.Request ret = null;
+		for (NodeCommands.Request req: requests) {
+			if (req.getCode() == code) {
+				ret = req; 
+				break;
+			}
+		}
+		if (ret == null) {
+			System.out.println(" *** NodeCommands::getRequestEnum() Received unknown cmd 0x" + Integer.toString(0x100 + (code & 0xFF), 16).substring(1));
+			ret = NodeCommands.Request.CMD_UNRECOG;
+		}
 		return ret;
 	}
 }

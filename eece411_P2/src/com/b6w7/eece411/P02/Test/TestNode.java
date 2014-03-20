@@ -617,10 +617,10 @@ public class TestNode implements Runnable, JoinThread {
 			//			clientSocket = new Socket(serverURL, serverPort);
 
 			//populateTests();
-			//populateMemoryTests();
+			populateMemoryTests();
 			//populatePutTests(); //For the node that has stored the Key-Values 11112
 			//populateGetTests();	//For a node that did not store the Key-Values 11111
-			populateOneTest();
+			//populateOneTest();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
@@ -710,8 +710,7 @@ public class TestNode implements Runnable, JoinThread {
 							if (recvBuffer[0] == NodeCommands.Reply.RPY_SUCCESS.getCode() && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {
 								isPass = false;
 								tryAgain = false;
-								failMessage = "expected value "+test.value +
-										" Number of bytes received: "+totalBytesRead;
+								failMessage = test + " Number of bytes received: "+totalBytesRead;
 							}
 						}
 
@@ -732,8 +731,8 @@ public class TestNode implements Runnable, JoinThread {
 							thisTestPassed++;
 
 						} else {
-							System.err.println("### TEST FAILED - " + failMessage+ " for " + test.toString());
-							System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage );
+							System.err.println("### TEST FAILED - " + failMessage);
+							System.out.println("Thread: "+myCount+"\n### TEST FAILED - " + failMessage );
 							thisTestFailed++;
 						}
 					} catch (BindException e) {

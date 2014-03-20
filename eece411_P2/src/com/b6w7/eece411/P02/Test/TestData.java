@@ -103,15 +103,7 @@ public class TestData {
 	public String toString() {
 		StringBuilder s = new StringBuilder();
 
-		s.append("[test index=>"+index+"] [command=>");
-		if(cmd == Request.CMD_GET.getCode() ||
-			cmd == Request.CMD_PUT.getCode() ||
-			cmd == Request.CMD_REMOVE.getCode() ||
-			cmd == Request.CMD_UNRECOG.getCode())	{
-			s.append(NodeCommands.Request.values()[cmd].toString());
-		}else{
-			s.append(NodeCommands.Request.CMD_UNRECOG.toString());
-		}
+		s.append("[test index=>"+index+"] [command=>"+NodeCommands.getRequestEnum(cmd));
 		
 		byte[] byteData = key.array();
 		s.append("] [key["+byteData.length+"]=>");
@@ -134,7 +126,7 @@ public class TestData {
 //			}
 		}
 
-		s.append("] [expected reply=>" + NodeCommands.Reply.values()[replyCode].toString());
+		s.append("] [expected reply=>" + NodeCommands.getReplyEnum(replyCode).toString());
 
 		if (NodeCommands.Request.CMD_GET.getCode() == cmd) {
 			byteData = replyValue.array();
