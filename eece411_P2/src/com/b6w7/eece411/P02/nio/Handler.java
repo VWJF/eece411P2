@@ -908,8 +908,10 @@ final class Handler extends Command implements Runnable {
 				break MATCH_CMD;
 			}
 		}
-		if (!isMatch) 
+		if (!isMatch) { 
+			s.append("###");
 			s.append(Request.CMD_UNRECOG.toString());
+		}
 		
 		s.append("] [key=>");
 		if (null != key) {
@@ -936,8 +938,10 @@ final class Handler extends Command implements Runnable {
 				break MATCH_RPY;
 			}
 		}
-		if (!isMatch) 
+		if (!isMatch) {
+			s.append("###");
 			s.append(Reply.RPY_UNRECOGNIZED.toString());
+		}
 
 		s.append(NodeCommands.Reply.values()[replyCode].toString());
 		if (null != input) {
