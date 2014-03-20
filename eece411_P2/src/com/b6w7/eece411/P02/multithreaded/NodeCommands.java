@@ -174,4 +174,16 @@ public class NodeCommands {
 		// command is not valid
 		return Request.CMD_UNRECOG.getCode();
 	}
+
+	public static NodeCommands.Reply getReplyEnum(byte code) {
+		NodeCommands.Reply ret = null;
+		for (NodeCommands.Reply rpy: Reply.values()) {
+			if (rpy.getCode() == code)
+				ret = rpy; 
+			break;
+		}
+		if (ret == null)
+			ret = NodeCommands.Reply.RPY_UNRECOGNIZED;
+		return ret;
+	}
 }

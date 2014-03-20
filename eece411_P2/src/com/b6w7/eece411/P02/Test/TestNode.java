@@ -157,13 +157,15 @@ public class TestNode implements Runnable, JoinThread {
 	 * @throws UnsupportedEncodingException
 	 */
 	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+
+//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 	}
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
@@ -684,13 +686,13 @@ public class TestNode implements Runnable, JoinThread {
 
 						// Check the received reply against the expected reply and determine success of test
 						if (recvBuffer[0] != test.replyCode) {
-							if (NodeCommands.Reply.values()[recvBuffer[0]] == NodeCommands.Reply.RPY_OVERLOAD) {
+							if (NodeCommands.getReplyEnum((byte)(recvBuffer[0])) == NodeCommands.Reply.RPY_OVERLOAD) {
 								throw new IOException();
 							}
 
 							isPass = false;
 							tryAgain = false;
-							failMessage = "expected "+NodeCommands.Reply.values()[test.replyCode & 0xFF].toString()+" but instead "+ NodeCommands.Reply.values()[recvBuffer[0] & 0xFF].toString();
+							failMessage = "expected "+NodeCommands.getReplyEnum((byte)(test.replyCode & 0xFF)).toString()+" but instead "+ NodeCommands.getReplyEnum((byte)(recvBuffer[0] & 0xFF)).toString();
 						}
 
 						if (IS_VERBOSE) System.out.print("-Reading Value of GET.");

@@ -34,26 +34,29 @@ public class MembershipProtocol {
 	public void mergeVector(int[] receivedVector){
 		if(receivedVector == null)
 			return;
-		//behavior on receiving a vectorTimestamp at each node 
-		int local = localTimestampVector[current_node];
-		//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
-		//if (success){
-		int i;
-		for(i = 0; i < localTimestampVector.length && i < receivedVector.length; i++){
-			localTimestampVector[i] = Math.max(receivedVector[i], localTimestampVector[i]); 
-		}
-		if ( localTimestampVector.length > receivedVector.length ){
-			int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.length-1);
-			System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
-		}
-		//else if (i == receivedOnWire.length && i < localTimestampVector.length)
-			
-		localTimestampVector[current_node] = local;
-		//	wait(waittime);
 		
-		if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") received vect: "+Arrays.toString(receivedVector));
-		if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") after merging: "+Arrays.toString(localTimestampVector));
+		// TODO : We are accessing localTimestampVector from both threads, so synchronize
+		synchronized (localTimestampVector) {
+			//behavior on receiving a vectorTimestamp at each node 
+			int local = localTimestampVector[current_node];
+			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
+			//if (success){
+			int i;
+			for(i = 0; i < localTimestampVector.length && i < receivedVector.length; i++){
+				localTimestampVector[i] = Math.max(receivedVector[i], localTimestampVector[i]); 
+			}
+			if ( localTimestampVector.length > receivedVector.length ){
+				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.length-1);
+				System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
+			}
+			//else if (i == receivedOnWire.length && i < localTimestampVector.length)
 
+			localTimestampVector[current_node] = local;
+			//	wait(waittime);
+
+			if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") received vect: "+Arrays.toString(receivedVector));
+			if(IS_DEBUG) System.out.println(" === mergeVector() (local="+local+") after merging: "+Arrays.toString(localTimestampVector));
+		}
 	}
 
 	/**
@@ -61,11 +64,14 @@ public class MembershipProtocol {
 	 * @return
 	 */
 	public int[] updateSendVector(){
-		
-		localTimestampVector[current_node]++;
-		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(localTimestampVector));
-		
-		return localTimestampVector;
+		// TODO : We are accessing localTimestampVector from both threads, so synchronize
+		int[] ret;
+		synchronized (localTimestampVector) {
+			localTimestampVector[current_node]++;
+			ret = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
+		}
+		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+ret.toString());
+		return ret;
 	}
 	
 }

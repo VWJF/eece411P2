@@ -150,7 +150,7 @@ final class Handler extends Command implements Runnable {
 
 			case RECV_OWNER:
 				if (IS_VERBOSE) System.out.println(" --- run(): RECV_OWNER " +this);
-				recvOwner();
+				process.recvOwner();
 				break;
 
 			case SEND_REQUESTER:
@@ -349,10 +349,6 @@ final class Handler extends Command implements Runnable {
 			output.position(0); // need to set to zero before entering RECV_OWNER!
 			sel.wakeup();
 		}
-	}
-
-	private void recvOwner() {
-		process.recvOwner();
 	}
 
 	/**
@@ -614,7 +610,6 @@ final class Handler extends Command implements Runnable {
 				
 			}
 			super.checkLocal();
-		
 		}
 		
 		@Override
@@ -625,20 +620,53 @@ final class Handler extends Command implements Runnable {
 			output.put(key);
 			//TODO: Seems like missing output.put(value);
 			//TODO: output.put(replyValue);
+			// Scott: This is the Get to the owner, and the owner has the value, so at this point 'replyValue' is still unknown
 			
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START output.position()=="+output.position()+" output.limit()=="+output.limit());
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE output.position()=="+output.position()+" output.limit()=="+output.limit());
 		}
 		
-		@SuppressWarnings("unused")
-		private void recvOwnerIsComplete() {
+		@Override
+		public void recvOwner() {
 			//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
-			//....
-			//....
-			//....
-			return ;
+			membership.updateSendVector();
+			
+			// read from the socket
+			try {
+//				if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				socketOwner.read(output);
+//				if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
+
+				if (recvOwnerIsComplete()) {
+					if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::recvOwner() COMPLETED output.position()=="+output.position()+" output.limit()=="+output.limit());
+					generateRequesterReply();
+					
+					state = State.SEND_REQUESTER;
+					keyRequester.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
+				}
+
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
+		}
+
+		private boolean recvOwnerIsComplete() {
+			replyCode = output.get(0);
+			
+			if (Reply.RPY_SUCCESS.getCode() == replyCode) {
+				if (output.position() >= RPYSIZE + VALUESIZE) {
+					output.position(RPYSIZE + VALUESIZE);
+					output.flip();
+					return true;
+				}
+			}
+
+			output.position(RPYSIZE);
+			output.flip();
+			return true;
 		}
 
 	}
@@ -677,6 +705,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
+				System.out.println(" --- GetProcess::checkLocal() Using local");
 				
 				// set replyCode as appropriate and prepare output buffer
 				replyValue = get();
