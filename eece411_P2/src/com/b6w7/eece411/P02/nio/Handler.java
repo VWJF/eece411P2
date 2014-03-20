@@ -20,6 +20,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
+import com.sun.xml.internal.ws.org.objectweb.asm.ByteVector;
 
 final class Handler extends Command implements Runnable { 
 	private final SocketChannel socketRequester;
@@ -226,7 +227,7 @@ final class Handler extends Command implements Runnable {
 		// Now we know what operation, now we need to know how many bytes that we expect
 		if (Request.CMD_GET.getCode() == cmd){
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new TSGetProcess(self);
+				process = new GetProcess(self);
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -235,7 +236,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
-				process = new TSPutProcess(self);
+				process = new PutProcess(self);
 				input.position(CMDSIZE + KEYSIZE + VALUESIZE);
 				input.flip();
 				return true;
@@ -244,7 +245,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new TSRemoveProcess(self);
+				process = new RemoveProcess(self);
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -283,7 +284,6 @@ final class Handler extends Command implements Runnable {
 			return true;
 		}
 	}
-
 
 	/**
 	 * Common method for all commands to complete their connection to a remote node
@@ -460,6 +460,7 @@ final class Handler extends Command implements Runnable {
 			byteBufferTSVector.flip();
 		}
 	}
+	
 	class TSPutProcess extends PutProcess {
 
 		TSPutProcess(Handler handler) {
@@ -471,20 +472,6 @@ final class Handler extends Command implements Runnable {
 			if (IS_VERBOSE) System.out.println(" --- TSPutProcess::checkLocal(): " + this);
 			updateTSVector();
 			super.checkLocal();
-		}
-
-		@Override
-		public void generateOwnerQuery() {
-			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() START " + handler.toString());
-			output.position(0);
-			output.put(Request.CMD_TS_PUT.getCode());
-			output.put(key);
-			output.put(value);
-
-			byteBufferTSVector.position(0);
-			output.put(byteBufferTSVector);
-			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() COMPLETE " + handler.toString());
 		}
 	}
 
@@ -567,11 +554,16 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateOwnerQuery() {
+			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() START " + handler.toString());
 			output.position(0);
-			output.put(cmd);
+			output.put(Request.CMD_TS_PUT.getCode());
 			output.put(key);
 			output.put(value);
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
 			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() COMPLETE " + handler.toString());
 		}
 
 		@Override
@@ -656,22 +648,6 @@ final class Handler extends Command implements Runnable {
 			updateTSVector();
 			super.checkLocal();
 		}
-		
-		@Override
-		public void generateOwnerQuery() {
-			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START " + handler.toString());
-			output.position(0);
-			output.put(Request.CMD_TS_GET.getCode());
-			output.put(key);
-			//TODO: Seems like missing output.put(value);
-			//TODO: output.put(replyValue);
-			// Scott: This is the Get to the owner, and the owner has the value, so at this point 'replyValue' is still unknown
-			
-			byteBufferTSVector.position(0);
-			output.put(byteBufferTSVector);
-			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE "+ handler.toString());
-		}
 	}
 
 	class GetProcess implements Process {
@@ -751,12 +727,18 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateOwnerQuery() {
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START " + handler.toString());
 			output.position(0);
 			output.put(Request.CMD_TS_GET.getCode());
 			output.put(key);
-//			output.put(IntBuffer.wrap(ConsistentHashing.Membership.localTimestampVector).asReadOnlyBuffer());
-//			ByteBuffer.
+			//TODO: Seems like missing output.put(value);
+			//TODO: output.put(replyValue);
+			// Scott: This is the Get to the owner, and the owner has the value, so at this point 'replyValue' is still unknown
+			
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
 			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE "+ handler.toString());
 		}
 
 		@Override
@@ -824,15 +806,6 @@ final class Handler extends Command implements Runnable {
 			if (IS_VERBOSE) System.out.println(" --- TSRemoveProcess::checkLocal(): " + this);
 			updateTSVector();
 			super.checkLocal();
-		}
-		@Override
-		public void generateOwnerQuery() {
-			output.position(0);
-			output.put(cmd);
-			output.put(key);
-			byteBufferTSVector.position(0);
-			output.put(byteBufferTSVector);
-			output.flip();
 		}
 	}
 
@@ -915,6 +888,8 @@ final class Handler extends Command implements Runnable {
 			output.position(0);
 			output.put(cmd);
 			output.put(key);
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
 			output.flip();
 		}
 		
