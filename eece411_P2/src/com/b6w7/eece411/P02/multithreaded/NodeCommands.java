@@ -12,7 +12,7 @@ public class NodeCommands {
 	public static final int LEN_CMD_BYTES = 1;
 	public static final int LEN_KEY_BYTES = 32;
 	public static final int LEN_VALUE_BYTES = 1024;
-	public static final int LEN_TIMESTAMP_BYTES = 7*4;
+	public static final int LEN_TIMESTAMP_BYTES = 8*4;
 
 	// Needed to make a check in ClientInterface whether the "received" command/error code 
 	// were among eligible commands.

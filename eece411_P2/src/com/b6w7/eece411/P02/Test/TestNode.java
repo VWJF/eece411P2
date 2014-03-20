@@ -617,8 +617,8 @@ public class TestNode implements Runnable, JoinThread {
 			//			clientSocket = new Socket(serverURL, serverPort);
 
 			//populateTests();
-			populateMemoryTests();
-			//populatePutTests(); //For the node that has stored the Key-Values 11112
+			//populateMemoryTests();
+			populatePutTests(); //For the node that has stored the Key-Values 11112
 			//populateGetTests();	//For a node that did not store the Key-Values 11111
 			//populateOneTest();
 
@@ -705,6 +705,7 @@ public class TestNode implements Runnable, JoinThread {
 							while (bytesRead != -1 && inFromServer.available() > 0) {
 								bytesRead = inFromServer.read(recvBuffer, totalBytesRead, NodeCommands.LEN_VALUE_BYTES - totalBytesRead);
 								totalBytesRead += bytesRead;
+								replyString +=" [value->"+new String(recvBuffer) +"]";
 							}
 
 							if (recvBuffer[0] == NodeCommands.Reply.RPY_SUCCESS.getCode() && totalBytesRead != NodeCommands.LEN_VALUE_BYTES) {

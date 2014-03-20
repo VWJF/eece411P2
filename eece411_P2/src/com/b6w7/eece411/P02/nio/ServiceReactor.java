@@ -184,7 +184,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		int servPort = Integer.parseInt(args[0]);
 
-		servPort = 11111;
+		//servPort = 11111;
 		
 		ServiceReactor service;
 		try {
@@ -244,6 +244,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 			"planetlab03.cs.washington.edu",
 			"pl1.csl.utoronto.ca",
 			"pl2.rcc.uottawa.ca",
-			"Furry.local",
-			"Knock3-Tablet"};
+			"Furry.local",	//When adding/removing nodes, must change the value of NodeCommands.LEN_TIMESTAMP_BYTES accordingly.
+			"Knock3-Tablet",
+			InetAddress.getLocalHost().getHostName()};
 }
