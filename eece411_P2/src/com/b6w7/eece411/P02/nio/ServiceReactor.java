@@ -124,7 +124,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				SocketRegisterData data;
 				while (registrations.size() > 0) {
-					if(IS_SHORT) System.out.println("--- Found registration to connect to 11112");
+					if(!IS_SHORT) System.out.println("--- ServiceReactor()::run() connecting to remote host");
 					data = registrations.poll();
 					data.key = data.sc.register(selector, data.ops, data.cmd);
 

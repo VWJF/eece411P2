@@ -502,7 +502,7 @@ final class Handler extends Command implements Runnable {
 				// we can transition to SEND_REQUESTER
 				
 				// set replyCode as appropriate and prepare output buffer
-				if(IS_SHORT) System.out.println("--- checkLocal() Using Local");
+				if(!IS_SHORT) System.out.println("--- PutProcess::checkLocal() ------------ Using Local --------------");
 				if( put() )
 					replyCode = Reply.RPY_SUCCESS.getCode(); 
 				else
@@ -518,7 +518,7 @@ final class Handler extends Command implements Runnable {
 			} else {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
-				if(IS_SHORT) System.out.println("--- PutProcess::checkLocal() Using remote");
+				if(!IS_SHORT) System.out.println("--- PutProcess::checkLocal() -------------- Using remote --------------");
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -675,7 +675,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
-				System.out.println(" --- GetProcess::checkLocal() Using local");
+				if(!IS_SHORT) System.out.println("--- GetProcess::checkLocal() ------------ Using Local --------------");
 				
 				// set replyCode as appropriate and prepare output buffer
 				replyValue = get();
@@ -693,7 +693,7 @@ final class Handler extends Command implements Runnable {
 			} else {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
-				System.out.println(" --- GetProcess::checkLocal() Using remote");
+				if(!IS_SHORT) System.out.println("--- GetProcess::checkLocal() ------------ Using Remote --------------");
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -838,6 +838,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
+				if(!IS_SHORT) System.out.println("--- RemoveProcess::checkLocal() ------------ Using Local --------------");
 				
 				// set replyCode as appropriate and prepare output buffer
 				replyValue = remove();
@@ -855,7 +856,7 @@ final class Handler extends Command implements Runnable {
 			} else {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
-				System.out.println("--- RemoveProcess::checkLocal() Using remote");
+				if(!IS_SHORT) System.out.println("--- RemoveProcess::checkLocal() ------------ Using Remote --------------");
 				state = State.CONNECT_OWNER;
 
 				try {
