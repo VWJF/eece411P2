@@ -60,8 +60,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	private static MessageDigest md;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-		//this.key = baw;
-//		this.numberOfReplicas = numberOfReplicas;
 
 //		for (T node : nodes) {
 //			add(node);
@@ -105,11 +103,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	private byte[] addNode(ByteArrayWrapper key, byte[] value) {
-		//   for (int i = 0; i < numberOfReplicas; i++) {
 		
 		// Additional Checking unnecessary since the thread that
 		// uses the Map should impose additional restrictions.
-		//if(circle.size() == Command.MAX_MEMORY && circle.containsKey(key)){
 		return mapOfNodes.put(key, value);
 	}
 	public byte[] getNode(ByteArrayWrapper key) {
@@ -145,8 +141,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	@Override
 	public byte[] put(ByteArrayWrapper key, byte[] value) {
-		//   for (int i = 0; i < numberOfReplicas; i++) {
-		
 		// Additional Checking unnecessary since the thread that
 		// uses the Map should impose additional restrictions.
 		//if(circle.size() == Command.MAX_MEMORY && circle.containsKey(key)){
@@ -155,7 +149,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 
 	private byte[] remove(ByteArrayWrapper key) {
-		//   for (int i = 0; i < numberOfReplicas; i++) {
 		return circle.remove(key);
 	}
 
@@ -246,13 +239,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	
 	// isThisMyIpAddress() code obtained and modified from 
 	// http://stackoverflow.com/questions/2406341/how-to-check-if-an-ip-address-is-the-local-host-on-a-multi-homed-system
-	public static boolean isThisMyIpAddress(InetSocketAddress owner) {
+	public static boolean isThisMyIpAddress(InetSocketAddress owner, int port) throws UnknownHostException {
 	    // Check if the address is defined on any interface
-	    try {
-	        return NetworkInterface.getByInetAddress(owner.getAddress()) != null;
-	    } catch (SocketException e) {
-	        return false;
-	    }
+		return (owner.getAddress().toString().equals(InetAddress.getLocalHost().toString())) && owner.getPort() == port;
 	}
 
 	/**

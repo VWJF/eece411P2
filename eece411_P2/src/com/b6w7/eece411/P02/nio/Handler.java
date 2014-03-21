@@ -158,6 +158,11 @@ final class Handler extends Command implements Runnable {
 				
 			case ABORT:
 				// TODO fill in
+				output.position(0);
+				output.put(NodeCommands.Reply.RPY_INTERNAL_FAILURE.getCode());
+				output.flip();
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				state = State.SEND_REQUESTER;
 				break;
 			}
 		} catch (IOException ex) { /* ... */ }
@@ -663,7 +668,7 @@ final class Handler extends Command implements Runnable {
 
 			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
 			
-			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner) ) {
+			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
