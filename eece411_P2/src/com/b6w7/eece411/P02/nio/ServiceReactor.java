@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketOptions;
 import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -62,7 +63,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
 		
-		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
+		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes, null);
 		serverPort = servPort;
 		InetAddress tempInetAddress;
 		try {
@@ -78,8 +79,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		System.out.println("Java version is " + System.getProperty("java.version"));
 //		if (System.getProperty("java.version").startsWith("1.7"))
-//			serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-		
+			//serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+			//serverSocket.socket().setReuseAddress(true);
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
 		int position = dht.getNodePosition(localhost+":"+serverPort);
@@ -129,6 +130,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 					data.key = data.sc.register(selector, data.ops, data.cmd);
 
 					data.sc.connect(data.addr);
+					if(IS_SHORT) System.out.println("--- checkLocal() woke up selector");
 				}
 				
 			} catch (IOException ex) { /* ... */ }
@@ -188,7 +190,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		int servPort = Integer.parseInt(args[0]);
-		servPort = 11112;
+		//servPort = 11112;
 
 		String participatingNodes[] = null;
 
@@ -199,11 +201,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
 				System.out.println("Error in reading: "+filename);
-				return;
+				//return;
 			} catch (IOException e1) {
 				e1.printStackTrace();
 				System.out.println("Error in reading: "+filename);
-				return;
+				//return;
 			}
 		}
 		
@@ -288,7 +290,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 //			"Furry.local",	//When adding/removing nodes, must change the value of NodeCommands.LEN_TIMESTAMP_BYTES accordingly.
 //			"Knock3-Tablet",
 //			InetAddress.getLocalHost().getHostName()};
-	public static String[] nodes = {"Knock3-Tablet:11111",
-			"Knock3-Tablet:11112"};
+	public static String[] nodes = {"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11111", 
+						"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11112"};
+			//{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
 }
 

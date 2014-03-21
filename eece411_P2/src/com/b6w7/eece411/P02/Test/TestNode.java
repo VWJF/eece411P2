@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 1;  // total placed keys = 100 * 400 = 40000 
+	private static int NUM_TEST_RUNNABLES = 1;
 
 	//private static int count = 0; 
 	private int myCount;
@@ -182,8 +182,8 @@ public class TestNode implements Runnable, JoinThread {
 		//		String myCount = Thread.currentThread().toString(); //String does not change with different threads
 		//		myCount = Integer.toString(new Random().nextInt(NUM_TEST_THREADS*NUM_TEST_THREADS));		
 
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -199,10 +199,10 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
 		populateOneTest(NodeCommands.Request.CMD_UNRECOG.getCode(), myCount+"Fake", "Fake", NodeCommands.Reply.RPY_UNRECOGNIZED.getCode());
 
@@ -662,12 +662,12 @@ public class TestNode implements Runnable, JoinThread {
 
 			//populateOneTest();
 			//populateTests();
-			populateMemoryTests();
+			//populateMemoryTests();
 			
 			//Test for routing.
 			//populatePutTests(); //For the node that has stored the Key-Values 11112
 			//populateGetTests();	//For a node that did not store the Key-Values 11111
-			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
+			populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

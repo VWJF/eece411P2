@@ -1,6 +1,8 @@
 package com.b6w7.eece411.P02.nio;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 
 public class MembershipProtocol {
 	/**
@@ -11,7 +13,7 @@ public class MembershipProtocol {
 	 */
 	private final int total_nodes;
 	private int current_node;
-	private int[] localTimestampVector;
+	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
 	
 	public static boolean IS_DEBUG = true;
 
@@ -19,11 +21,11 @@ public class MembershipProtocol {
 	public MembershipProtocol(int current_node, int total_nodes) {
 		this.current_node = current_node;
 		this.total_nodes = total_nodes;
-		this.localTimestampVector = new int[this.total_nodes];
+		this.localTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		
 		// TODO debugging starting values:
-		for (int i=0; i<localTimestampVector.length; i++) {
-			localTimestampVector[i] = i * 1000;
+		for (int i=0; i<localTimestampVector.size(); i++) {
+			localTimestampVector.set(i, i * 1000);
 		}
 	}
 	
@@ -35,28 +37,42 @@ public class MembershipProtocol {
 		if(receivedVector == null)
 			return;
 		
+		ArrayList<Integer> updateTimestampVector = new ArrayList<Integer>(this.total_nodes);
+		
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
 		synchronized (localTimestampVector) {
 			//behavior on receiving a vectorTimestamp at each node 
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.length+") (current_node=="+current_node);
-			int local = localTimestampVector[current_node];
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.size()+") (current_node=="+current_node);
+			int local = localTimestampVector.get(current_node);
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
-			//if (success){
+			
 			int i;
-			for(i = 0; i < localTimestampVector.length && i < receivedVector.length; i++){
-				localTimestampVector[i] = Math.max(receivedVector[i], localTimestampVector[i]); 
+			Integer update;
+			for(i = 0; i < localTimestampVector.size() && i < receivedVector.length; i++){
+				if(receivedVector[i] < 0 || localTimestampVector.get(i) == null ) {
+					update = null;
+				}
+				else{
+					update = Math.max(receivedVector[i], localTimestampVector.get(i));;
+				}
+		///***/	update = Math.max(receivedVector[i], localTimestampVector.get(i));
+		///***/	localTimestampVector.set(i, update);
+				updateTimestampVector.add(update);
 			}
-			if ( localTimestampVector.length > receivedVector.length ){
-				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.length-1);
-				System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
+			if ( localTimestampVector.size() > receivedVector.length ){
+				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.size()-1);
+				
+				updateTimestampVector.addAll(convertArrayToList(remaining));
+				//System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
 			}
-			//else if (i == receivedOnWire.length && i < localTimestampVector.length)
-
-			localTimestampVector[current_node] = local;
+			updateTimestampVector.set(current_node, local);
+			//localTimestampVector.set(current_node, local);
+			localTimestampVector = updateTimestampVector;
+			localTimestampVector.trimToSize();
 			//	wait(waittime);
 
 			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") received vect: "+Arrays.toString(receivedVector));
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") after merging: "+Arrays.toString(localTimestampVector));
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") after merging: "+localTimestampVector);
 		}
 	}
 
@@ -64,15 +80,94 @@ public class MembershipProtocol {
 	 * Preparing the Vector Timestamp to be sent to a remote node.
 	 * @return
 	 */
-	public int[] updateSendVector(){
+	public int[] incrementAndGetVector(){
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
-		int[] ret;
+		int[] retInt;
+		ArrayList<Integer> retInteger;
+		Integer update;
+		
 		synchronized (localTimestampVector) {
-			localTimestampVector[current_node]++;
-			ret = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
+			update = localTimestampVector.get(current_node).intValue();
+			localTimestampVector.set(current_node, update++);
+			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
+			retInteger = new ArrayList<Integer>(localTimestampVector);
+			localTimestampVector.trimToSize();
 		}
-		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
-		return ret;
+		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
+		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+retInteger);
+
+		retInteger.trimToSize();
+		int[] backingArray = convertListToArray(retInteger);
+		
+		return backingArray;
+	}
+
+	private int[] convertListToArray(ArrayList<Integer> retInteger) {
+		Integer update;
+		int[] backingArray = new int[total_nodes];
+		try {
+			Iterator<Integer> iter = retInteger.iterator();
+			int i = 0;
+			while(iter.hasNext()){
+				update = iter.next().intValue();
+				i++;
+				if(update == null)
+					continue;
+				backingArray[i] = update;
+			}
+		} catch (IndexOutOfBoundsException iob) {
+			iob.printStackTrace();
+			//Nothing.
+		}
+		return backingArray;
 	}
 	
+	/**
+	 * Accessor for the local Timestamp Vector.
+	 * @return
+	 */
+	public Integer getTimestamp(int nodeIndex){
+		// TODO : We are accessing localTimestampVector from both threads, so synchronize
+		Integer timestamp;
+
+		int[] retInt;
+		ArrayList<Integer> retInteger;
+		synchronized (localTimestampVector) {
+			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
+			retInteger = new ArrayList<Integer>(localTimestampVector);
+			timestamp = localTimestampVector.get(nodeIndex);
+		}
+		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
+		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+retInteger);
+		
+		//return ret;
+		return timestamp;
+	}
+	
+	public void shutdown(Integer update){
+		//TODO:
+		synchronized (localTimestampVector) {
+			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
+			localTimestampVector.set(current_node, update);
+		}
+	}
+	
+	/**
+	 * Helper method to convert int[] to ArrayList<Integer>
+	 * @param ints
+	 * @return ArrayList<Integer> where ints[x] < 0 are replaced with null entries in the ArrayList
+	 */
+	private ArrayList<Integer> convertArrayToList(int[] ints){
+		ArrayList<Integer> intList = new ArrayList<Integer>(ints.length);
+		
+		for (int index = 0; index < ints.length; index++)
+	    { 
+			if (ints[index] < 0){
+				intList.add(null);
+			}else{
+				intList.add(ints[index]);
+			}
+	    }
+		return intList;
+	}
 }
