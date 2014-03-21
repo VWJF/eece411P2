@@ -186,17 +186,17 @@ public class WorkerThread implements Runnable {
 
 				switch (Request.values()[cmdByte]) {
 				case CMD_PUT:
-					cmd = new PutCommand(key, value, map);
+					// cmd = new PutCommand(key, value, map);
 					//System.out.println("Issuing "+cmd);
 					db.post(cmd);
 					break;				
 				case CMD_GET:
-					cmd = new GetCommand(key, map);
+					// cmd = new GetCommand(key, map);
 					//System.out.println("Issuing:  "+cmd);
 					db.post(cmd);
 					break;				
 				case CMD_REMOVE:
-					cmd = new RemoveCommand(key, map);
+					// cmd = new RemoveCommand(key, map);
 					//System.out.println("Issuing:  "+cmd);
 					db.post(cmd);
 					break;		

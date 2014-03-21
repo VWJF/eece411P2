@@ -3,8 +3,7 @@ package com.b6w7.eece411.P02.nio;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -59,19 +58,15 @@ final class Handler extends Command implements Runnable {
 	protected State state = State.RECV_REQUESTER;
 
 	// frequently used, so stored here for future use
-	private final Request[] requests = Request.values();
-	private final Reply[] replies = Reply.values();
 	private final Handler self;
 	private Selector sel;
 	private Process process;
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
 	
-	private boolean mergeComplete = false;
-	
-	// debug 
-	private boolean useRemote;
 	private boolean IS_DEBUG = true;
+	
+	private final int serverPort;
 
 	// possible states of any command
 	enum State {
@@ -85,7 +80,7 @@ final class Handler extends Command implements Runnable {
 	}
 
 
-	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, boolean useRemote) 
+	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort) 
 			throws IOException {
 
 		
@@ -106,13 +101,11 @@ final class Handler extends Command implements Runnable {
 		sel.wakeup();
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
-		if(IS_DEBUG) System.out.println("     Handler() [localhost, position, totalnodes]: ["+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes()+"]");
+		if(IS_DEBUG) System.out.println("     Handler() [localhost, position, totalnodes]: ["+localhost+","+map.getNodePosition(localhost+":"+serverPort)+","+ map.getSizeAllNodes()+"]");
 		
-		membership = new MembershipProtocol(map.getNodePosition(localhost), map.getSizeAllNodes());
-		this.mergeComplete = false;
-		// debug
-		this.useRemote = useRemote;
-		
+		membership = new MembershipProtocol(map.getNodePosition(localhost+":"+serverPort), map.getSizeAllNodes());
+
+		this.serverPort = serverPort;
 		// keep reference to self so that nested classes can refer to the handler
 		self = this;
 	}
@@ -368,7 +361,7 @@ final class Handler extends Command implements Runnable {
 	private void sendRequester() {
 		try {
 			if (null == socketRequester || !socketRequester.isOpen()) {
-				System.out.println("### sendRequest() socketRequester is still non-null or open");
+				System.out.println("### sendRequest() socketRequester is still null or not open");
 				return;
 			}
 
@@ -493,30 +486,9 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			InetAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(node));
+			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
 			
-			if (useRemote) {
-				// OK, we decided that the location of key is at a remote node
-				// we can transition to CONNECT_OWNER and connect to remote node
-				if(IS_SHORT) System.out.println("--- checkLocal() Using remote");
-				state = State.CONNECT_OWNER;
-
-				try {
-					// prepare the output buffer, and signal for opening a socket to remote
-					generateOwnerQuery();
-
-					socketOwner = SocketChannel.open();
-					socketOwner.configureBlocking(false);
-					// Send message to selector and wake up selector to process the message.
-					// There is no need to set interestOps() because selector will check its queue.
-					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
-					sel.wakeup();
-
-				} catch (IOException e) {
-					retryAtStateCheckingLocal(e);
-				}
-
-			} else {
+			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -534,6 +506,27 @@ final class Handler extends Command implements Runnable {
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
+
+			} else {
+				// OK, we decided that the location of key is at a remote node
+				// we can transition to CONNECT_OWNER and connect to remote node
+				if(IS_SHORT) System.out.println("--- PutProcess::checkLocal() Using remote");
+				state = State.CONNECT_OWNER;
+
+				try {
+					// prepare the output buffer, and signal for opening a socket to remote
+					generateOwnerQuery();
+
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					sel.wakeup();
+
+				} catch (IOException e) {
+					retryAtStateCheckingLocal(e);
+				}
 			}
 		}
 
@@ -668,29 +661,9 @@ final class Handler extends Command implements Runnable {
 			
 			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + this.handler);
 
+			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
 			
-			if (useRemote) {
-				// OK, we decided that the location of key is at a remote node
-				// we can transition to CONNECT_OWNER and connect to remote node
-				System.out.println(" --- GetProcess::checkLocal() Using remote");
-				state = State.CONNECT_OWNER;
-
-				try {
-					// prepare the output buffer, and signal for opening a socket to remote
-					generateOwnerQuery();
-
-					socketOwner = SocketChannel.open();
-					socketOwner.configureBlocking(false);
-					// Send message to selector and wake up selector to process the message.
-					// There is no need to set interestOps() because selector will check its queue.
-					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT);
-					sel.wakeup();
-
-				} catch (IOException e) {
-					retryAtStateCheckingLocal(e);
-				}
-
-			} else {
+			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner) ) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -708,6 +681,28 @@ final class Handler extends Command implements Runnable {
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
+				
+			} else {
+				// OK, we decided that the location of key is at a remote node
+				// we can transition to CONNECT_OWNER and connect to remote node
+				System.out.println(" --- GetProcess::checkLocal() Using remote");
+				state = State.CONNECT_OWNER;
+
+				try {
+					// prepare the output buffer, and signal for opening a socket to remote
+					generateOwnerQuery();
+
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					sel.wakeup();
+
+				} catch (IOException e) {
+					retryAtStateCheckingLocal(e);
+				}
+
 			}
 		}
 
@@ -829,29 +824,9 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			if (useRemote) {
-				// OK, we decided that the location of key is at a remote node
-				// we can transition to CONNECT_OWNER and connect to remote node
-				System.out.println("--- RemoveProcess::checkLocal() Using remote");
-				state = State.CONNECT_OWNER;
-
-				try {
-					// prepare the output buffer, and signal for opening a socket to remote
-					generateOwnerQuery();
-
-					socketOwner = SocketChannel.open();
-					socketOwner.configureBlocking(false);
-					// Send message to selector and wake up selector to process the message.
-					// There is no need to set interestOps() because selector will check its queue.
-					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT);
-					sel.wakeup();
-
-				} catch (IOException e) {
-					retryAtStateCheckingLocal(e);
-				}
-
-
-			} else {
+			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+			
+			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -868,6 +843,27 @@ final class Handler extends Command implements Runnable {
 				state = State.SEND_REQUESTER;
 				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
+
+			} else {
+				// OK, we decided that the location of key is at a remote node
+				// we can transition to CONNECT_OWNER and connect to remote node
+				System.out.println("--- RemoveProcess::checkLocal() Using remote");
+				state = State.CONNECT_OWNER;
+
+				try {
+					// prepare the output buffer, and signal for opening a socket to remote
+					generateOwnerQuery();
+
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					sel.wakeup();
+
+				} catch (IOException e) {
+					retryAtStateCheckingLocal(e);
+				}
 			}
 		}
 
@@ -976,8 +972,8 @@ final class Handler extends Command implements Runnable {
 
 
 	public void registerData(SelectionKey keyOwner2,
-			SocketChannel socketOwner2, int opConnect) {
-		remote = new SocketRegisterData(keyOwner2, socketOwner2, opConnect, this);
+			SocketChannel socketOwner2, int opConnect, InetSocketAddress owner) {
+		remote = new SocketRegisterData(keyOwner2, socketOwner2, opConnect, this, owner);
 		queue.add(remote);
 
 	}

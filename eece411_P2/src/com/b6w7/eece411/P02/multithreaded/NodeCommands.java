@@ -3,6 +3,8 @@ package com.b6w7.eece411.P02.multithreaded;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
+import com.b6w7.eece411.P02.nio.ServiceReactor;
+
 /**
  * Static class with byte codes for TCP commands with a {@link Node}
  * @author Scott Hazlett
@@ -12,7 +14,7 @@ public class NodeCommands {
 	public static final int LEN_CMD_BYTES = 1;
 	public static final int LEN_KEY_BYTES = 32;
 	public static final int LEN_VALUE_BYTES = 1024;
-	public static final int LEN_TIMESTAMP_BYTES = 8*4;
+	public static final int LEN_TIMESTAMP_BYTES = ServiceReactor.nodes.length * 4;
 
 	// Needed to make a check in ClientInterface whether the "received" command/error code 
 	// were among eligible commands.

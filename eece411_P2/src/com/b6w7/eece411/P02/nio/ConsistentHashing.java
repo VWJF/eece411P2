@@ -1,6 +1,7 @@
 package com.b6w7.eece411.P02.nio;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -171,7 +172,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param requestedKey
 	 * @return
 	 */
-	public InetAddress getNodeResponsible(ByteArrayWrapper requestedKey) {
+	public InetSocketAddress getNodeResponsible(ByteArrayWrapper requestedKey) {
 		if (mapOfNodes.isEmpty()) {
 			System.out.println("Map Of Nodes Empty.");
 			return null;
@@ -188,15 +189,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		if(IS_VERBOSE) System.out.println("NextOf: "+requestedKey.toString()+"[value->"+nextOfValue
 				+"]"+"\nis target TargetHost: "+nextKey+" [value->"+nextHost+"]");
 
+		String addr[] = nextHost.split(":");
 
-		try {
-			if(IS_VERBOSE) System.out.println("Finding InetAddress.");
-			return InetAddress.getByName(nextHost);
-		} catch (UnknownHostException e) {
-			System.out.println("## getNodeResponsible node in circle exception. " + e.getLocalizedMessage());
-			e.printStackTrace();
-		}
-		return null;
+		if(IS_VERBOSE) System.out.println("Finding InetSocketAddress.");
+		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
 	
 	/**
@@ -250,10 +246,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	
 	// isThisMyIpAddress() code obtained and modified from 
 	// http://stackoverflow.com/questions/2406341/how-to-check-if-an-ip-address-is-the-local-host-on-a-multi-homed-system
-	public static boolean isThisMyIpAddress(InetAddress addr) {
+	public static boolean isThisMyIpAddress(InetSocketAddress owner) {
 	    // Check if the address is defined on any interface
 	    try {
-	        return NetworkInterface.getByInetAddress(addr) != null;
+	        return NetworkInterface.getByInetAddress(owner.getAddress()) != null;
 	    } catch (SocketException e) {
 	        return false;
 	    }
