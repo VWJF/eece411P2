@@ -62,13 +62,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	private MembershipProtocol membership;
 	private static MessageDigest md;
 
-	public ConsistentHashing(String[] nodes, MembershipProtocol member) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
 //		for (T node : nodes) {
 //			add(node);
 //		}
-		
-		this.membership = member;
 		this.circle = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
 		this.mapOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
 		this.md = MessageDigest.getInstance("SHA-1");
@@ -104,6 +102,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		// circle has been initialized with the pairs of (Node, hostname).
 		// Create a new view containing only the existing nodes.
 		// mapOfNodes.putAll( circle.tailMap(circle.firstKey()) );
+	}
+	
+	public void setMembership(MembershipProtocol membership) {
+		this.membership = membership;
 	}
 	
 	private byte[] addNode(ByteArrayWrapper key, byte[] value) {
@@ -495,7 +497,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ConsistentHashing<ByteArrayWrapper, byte[]> ch = null;
 		
 		try {
-			 ch = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes, null);
+			 ch = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();
 			 System.out.println("Consistent Hash created of node map size: "+ch.getMapOfNodes().size());

@@ -258,7 +258,6 @@ final class Handler extends Command implements Runnable {
 			process = new TSGetProcess(self);
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
-			System.out.println(" +-+ TS_GET.");
 			return true;
 			
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
@@ -275,9 +274,15 @@ final class Handler extends Command implements Runnable {
 			input.flip();
 			return true;
 			
+		} else if (Request.CMD_ANNOUNCEDEATH.getCode() == cmd) {
+			process = new TSAnnounceDeathProcess(self);
+			input.position(CMDSIZE);
+			input.flip();
+			return true;
+			
 		} else {
 			process = new UnrecogProcess(this);
-			System.out.println(" ### common::requesterInputIsComplete() Unrecognized command received on wire 0x" + Integer.valueOf(0x100 + (int)(cmd & 0xFF)).toString());
+			System.out.println(" ### common::requesterInputIsComplete() Unrecognized command received on wire 0x" + Integer.toString((0x100 + (int)(cmd & 0xFF)), 16).substring(1));
 			// bad command received on wire
 			// nothing to do
 			input.position(CMDSIZE);
@@ -369,7 +374,7 @@ final class Handler extends Command implements Runnable {
 	private void sendRequester() {
 		try {
 			if (null == socketRequester || !socketRequester.isOpen()) {
-				System.out.println("### sendRequest() socketRequester is still null or not open");
+				if (IS_VERBOSE) System.out.println(" *** sendRequest() socketRequester is still null or not open");
 				return;
 			}
 
@@ -462,6 +467,64 @@ final class Handler extends Command implements Runnable {
 		}
 	}
 	
+	class TSAnnounceDeathProcess implements Process {
+
+		protected final Handler handler;
+
+		TSAnnounceDeathProcess(Handler handler) {
+			this.handler = handler;
+		}
+
+		@Override
+		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- TSAnnounceDeathProcess::checkLocal(): " + this.handler);
+
+			output = ByteBuffer.allocate(2048);
+			
+			// OK, we decided that the location of key is at local node
+			// perform appropriate action with database
+			// we can transition to SEND_REQUESTER
+			
+			// set replyCode as appropriate and prepare output buffer
+			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() ------------ Using Local --------------");
+			if( announceDeath() )
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+
+			generateRequesterReply();
+
+			// signal to selector that we are ready to write
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+		}
+
+		private boolean announceDeath() {
+			// create the list of key-values that we need to transfer to an adjacent node
+			
+			
+			return false;
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			throw new UnsupportedOperationException(" ### should not call TSAnnounceDeathProcess::generateOwnerQuery()");
+		}
+
+		@Override
+		public void generateRequesterReply() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void recvOwner() {
+			throw new UnsupportedOperationException(" ### should not call TSAnnounceDeathProcess::recvOwner()");
+		}
+		
+	}
+	
 	class TSPutProcess extends PutProcess {
 
 		TSPutProcess(Handler handler) {
@@ -475,6 +538,7 @@ final class Handler extends Command implements Runnable {
 			super.checkLocal();
 		}
 	}
+	
 	class PutProcess implements Process {
 
 		protected final Handler handler;

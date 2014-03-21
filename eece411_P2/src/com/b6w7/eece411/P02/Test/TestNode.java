@@ -223,7 +223,8 @@ public class TestNode implements Runnable, JoinThread {
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
-		myCount = new Random().nextInt(Integer.MAX_VALUE);		
+		myCount = new Random().nextInt(Integer.MAX_VALUE);
+		myCount = 1000;
 		System.out.println(myCount);
 
 		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
@@ -231,6 +232,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAHazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAMarco", "Polo", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -604,7 +606,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		
 		//hack to debug
-		//serverPort = 11112;
+		serverPort = 11112;
 		
 		List<Runnable> list = new LinkedList<Runnable>();
 
