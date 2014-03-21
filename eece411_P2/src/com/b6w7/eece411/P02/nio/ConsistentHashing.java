@@ -1,6 +1,8 @@
 package com.b6w7.eece411.P02.nio;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -246,6 +248,17 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		return null;
 	}
 	
+	// isThisMyIpAddress() code obtained and modified from 
+	// http://stackoverflow.com/questions/2406341/how-to-check-if-an-ip-address-is-the-local-host-on-a-multi-homed-system
+	public static boolean isThisMyIpAddress(InetAddress addr) {
+	    // Check if the address is defined on any interface
+	    try {
+	        return NetworkInterface.getByInetAddress(addr) != null;
+	    } catch (SocketException e) {
+	        return false;
+	    }
+	}
+
 	/**
 	 * Accessor for data structure with view of the nodes in the Key-Value Store.
 	 * @return

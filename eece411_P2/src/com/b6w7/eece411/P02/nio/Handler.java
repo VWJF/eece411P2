@@ -3,6 +3,8 @@ package com.b6w7.eece411.P02.nio;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -20,7 +22,6 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
-import com.sun.xml.internal.ws.org.objectweb.asm.ByteVector;
 
 final class Handler extends Command implements Runnable { 
 	private final SocketChannel socketRequester;
@@ -475,7 +476,6 @@ final class Handler extends Command implements Runnable {
 			super.checkLocal();
 		}
 	}
-
 	class PutProcess implements Process {
 
 		protected final Handler handler;
@@ -495,6 +495,8 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
+			InetAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(node));
+			
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
@@ -509,7 +511,7 @@ final class Handler extends Command implements Runnable {
 					socketOwner.configureBlocking(false);
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
-					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT);
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
 					sel.wakeup();
 
 				} catch (IOException e) {
@@ -665,6 +667,8 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
+			
+			
 			
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
