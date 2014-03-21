@@ -158,6 +158,9 @@ public class MembershipProtocol {
 	
 	public void shutdown(Integer updateIndex){
 		//TODO:
+		
+		if (localTimestampVector == null) 
+			System.out.println("		if (localTimestampVector == null) ");
 		synchronized (localTimestampVector) {
 			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
 			if(updateIndex == null){
@@ -166,8 +169,12 @@ public class MembershipProtocol {
 			else{
 				localTimestampVector.set(updateIndex.intValue(), -localTimestampVector.get(updateIndex.intValue()));
 			}
-			
-			if(IS_DEBUG) System.out.println(" === shutdownindex "+updateIndex.intValue());
+			int x;
+			if(updateIndex == null)
+				x = -1;
+			else
+				x = updateIndex.intValue();
+			if(IS_DEBUG) System.out.println(" === shutdownindex "+x);
 		}
 	}
 	

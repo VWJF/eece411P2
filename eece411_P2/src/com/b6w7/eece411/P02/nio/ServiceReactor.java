@@ -1,13 +1,11 @@
 package com.b6w7.eece411.P02.nio;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketOptions;
 import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -19,16 +17,16 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimerTask;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Timer;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.HandlerThread;
 import com.b6w7.eece411.P02.multithreaded.JoinThread;
-import com.sun.java_cup.internal.runtime.Scanner;
 
 // Code for Reactor pattern obtained and modified from 
 // http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf
@@ -96,7 +94,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-		sk.attach(new Acceptor());
+		sk.attach(new Acceptor(this));
 	}
 
 	// code for ExecutorService obtained and modified from 
@@ -143,37 +141,32 @@ public class ServiceReactor implements Runnable, JoinThread {
 			}
 		}
 		
-		//TODO: Not Reached ......??
-		// Nope! :)  For now it's an infinite loop.
-		// But for the announceShutdown operation, we can flip the keepRunning flag, and then
-		// this code would be reached
-
 		System.out.println("Waiting for handler thread to stop");
 
-//		System.out.println("Waiting worker threads to stop");
-//		executor.shutdown();
-//		while (!executor.isTerminated()) { 		}
-
 		if (null != dbHandler) {
-			dbHandler.keepRunning = false;
+			dbHandler.kill();
 			do {
 				try {
 					dbHandler.join();
 				} catch (InterruptedException e) { /* do nothing */ }
 			} while (dbHandler.isAlive());
 		}
-		//TODO: Not Reached ......??
+
 		System.out.println("All threads completed");
 	}
 
 	class Acceptor implements Runnable { // inner
+		private final JoinThread parent;
+		Acceptor(JoinThread parent) {
+			this.parent = parent;
+		}
 		public void run() {
 			try {
 				if(IS_SHORT) System.out.println("*** Acceptor::Accepting Connection");
 				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)
-					new Handler(selector, c, dbHandler, dht, registrations, serverPort, membership);
+					new Handler(selector, c, dbHandler, dht, registrations, serverPort, membership, parent);
 				
 			} catch(IOException ex) { /* ... */ }
 		} 
@@ -236,10 +229,18 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 	@Override
 	public void announceDeath() {
-		// announce the release of a TCP resource
-		synchronized (threadSem) {
-			threadSem ++;
-		}
+		final Timer t = new Timer();
+
+		t.schedule(new TimerTask() {
+			
+			@Override
+			public void run() {
+				System.out.println("     announceDeath() keepRunning = false");
+				keepRunning = false;
+				selector.wakeup();
+				t.cancel();
+			}
+		}, 2000);
 	}
 	
 	private void sampleDHT(){

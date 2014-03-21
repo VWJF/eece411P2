@@ -276,13 +276,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**TODO: Untested */
 		boolean transfersComplete = false;
 		int compare = 0;//	int i = 0;
-		byte iBytes = 0;
+		byte iBytes = 0; int index = out.position();
 		
 		//byte[] iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
-		out.clear();
-		out.put(Request.CMD_TS_PUT.getCode());
-		out.put(iBytes); int index = 1;
-		
+		out.put(iBytes); 
+
 		ByteArrayWrapper peekKey = orderedKeys.peek();
 		while(peekKey != null && (compare = keyLimit.compareTo(peekKey)) <=0){
 			if(out.remaining() >= NodeCommands.LEN_KEY_BYTES + NodeCommands.LEN_VALUE_BYTES ){
@@ -312,6 +310,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	public void shutdown(String node){
 		if(node == null){
 			membership.shutdown(null);
+			return;
 		}
 		
 		ByteArrayWrapper key = hashKey(node);
