@@ -184,7 +184,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		/**TODO: Addition get Next node responsible.
 		 * Untested.
 		 * */ 	
-		while(this.membership.getTimestamp(listOfNodes.indexOf(nextKey)) == 0000){
+		while(this.membership.getTimestamp(listOfNodes.indexOf(nextKey)) == null){
 			nextKey = getNextNodeTo(nextKey);
 		}
 		
