@@ -5,6 +5,8 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -57,14 +59,16 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	private PriorityQueue<ByteArrayWrapper> orderedKeys;
 
+	private MembershipProtocol membership;
 	private static MessageDigest md;
 
-	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+	public ConsistentHashing(String[] nodes, MembershipProtocol member) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
 //		for (T node : nodes) {
 //			add(node);
 //		}
 		
+		this.membership = member;
 		this.circle = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
 		this.mapOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
 		this.md = MessageDigest.getInstance("SHA-1");
@@ -94,7 +98,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		listOfNodes = new ArrayList<ByteArrayWrapper>(mapOfNodes.keySet());
 		Collections.sort(listOfNodes);
-		
+
 		orderedKeys = new PriorityQueue<ByteArrayWrapper>((int) (40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
 		orderedKeys.addAll(circle.keySet());
 		// circle has been initialized with the pairs of (Node, hostname).
@@ -149,6 +153,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 
 	private byte[] remove(ByteArrayWrapper key) {
+		
+		orderedKeys.remove(key);
 		return circle.remove(key);
 	}
 
@@ -175,6 +181,13 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
 		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 
+		/**TODO: Addition get Next node responsible.
+		 * Untested.
+		 * */ 	
+		while(this.membership.getTimestamp(listOfNodes.indexOf(nextKey)) == 0000){
+			nextKey = getNextNodeTo(nextKey);
+		}
+		
 		String nextHost = new String(mapOfNodes.get(nextKey));
 		String nextOfValue = "(key,value) does not exist in circle";
 		if(circle.get(requestedKey)!= null)
@@ -193,9 +206,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * that is subsequent to the given key.
 	 * "key" can be a key for a node or data.
 	 * @param key
-	 * @return
+	 * @return ByteArrayWrapper (Key) for the next node.
 	 */
-	public InetAddress getNextNodeTo(ByteArrayWrapper key) {
+	public ByteArrayWrapper getNextNodeTo(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
 			System.out.println("Map Of Nodes Empty.");
 			return null;
@@ -224,17 +237,18 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			if(circle.get(key)!= null)
 				nextOfValue = new String(circle.get(key));
 			if(IS_VERBOSE) System.out.println("NextOf: "+key.toString()+"[value->"+nextOfValue
-							+"]"+"\nis target TargetHost: "+nextKey+" [value->"+nextHost+"]");
-			
+							+"]"+"\nis target TargetHost: "+nextKey+" [value->"+nextHost+"]");		
 
-			try {
-				if(IS_VERBOSE) System.out.println("Finding InetAddress.");
-				return InetAddress.getByName(nextHost);
-			} catch (UnknownHostException e) {
-				System.out.println("## getNext node in circle exception. " + e.getLocalizedMessage());
-				e.printStackTrace();
-			}
-		return null;
+//			try {
+//				if(IS_VERBOSE) System.out.println("Resolving InetAddress.");
+//				return InetAddress.getByName(nextHost);
+//			} catch (UnknownHostException e) {
+//				System.out.println("## getNext node in circle exception. " + e.getLocalizedMessage());
+//				e.printStackTrace();
+//			}
+//		return null;
+		return nextKey;
+
 	}
 	
 	// isThisMyIpAddress() code obtained and modified from 
@@ -249,6 +263,62 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		}
 	}
 
+	/**
+	 * Method that populates a ByteBuffer with (Key,Value) pairs so that they may be transferred to other nodes.
+	 * Used when joining/leaving the Key-Value Store.
+	 * @param out: (ByteBuffer used to send the Key-Value pairs).
+	 * @param keyLimit: (ByteArrayWrapper that will determine the keys to be transferred [inclusive limit].
+	 */
+	private void transferKeys(ByteBuffer out, ByteArrayWrapper keyLimit){
+	/**TODO: Untested */
+		boolean transfersComplete = false;
+		int i = 0, compare = 0;
+		
+		byte[] iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
+		out.clear();
+		out.put(iBytes);
+		
+		ByteArrayWrapper peekKey = orderedKeys.peek();
+		while(peekKey != null && (compare = keyLimit.compareTo(peekKey)) <=0){
+			if(out.remaining() >= NodeCommands.LEN_KEY_BYTES + NodeCommands.LEN_VALUE_BYTES ){
+				peekKey = orderedKeys.poll();
+				out.put(peekKey.keyBuffer);
+				i++;
+			}
+			else{
+				transfersComplete = false;
+				break;
+			}
+			peekKey = orderedKeys.peek();
+		}
+		
+		transfersComplete = (peekKey == null || compare >=0);
+		
+		iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
+		out.rewind();
+		out.put(iBytes);
+		out.flip();	
+	}
+	
+	/**
+	 * Method to notify MemebrshipProtocol to update the timestamp vector.
+	 * @param node: key of the node that is to be "disabled".
+	 */
+	public void shutdown(String node){
+		if(node == null){
+			membership.shutdown(null);
+		}
+		
+		ByteArrayWrapper key = hashKey(node);
+		if(IS_DEBUG) System.out.println("     ConsistentHashing::getNodePosition()  hashKey: "+key);
+		
+		int ret = listOfNodes.indexOf(key);
+		if (-1 == ret){
+			System.out.println(" ### ConsistentHashing::getNodePosition() index not found for node "+ node);
+			return;
+		}
+		membership.shutdown(ret);
+	}
 	/**
 	 * Accessor for data structure with view of the nodes in the Key-Value Store.
 	 * @return
@@ -425,7 +495,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ConsistentHashing<ByteArrayWrapper, byte[]> ch = null;
 		
 		try {
-			 ch = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
+			 ch = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes, null);
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();
 			 System.out.println("Consistent Hash created of node map size: "+ch.getMapOfNodes().size());

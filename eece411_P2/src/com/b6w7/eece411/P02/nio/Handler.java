@@ -442,8 +442,8 @@ final class Handler extends Command implements Runnable {
 					, CMDSIZE+KEYSIZE+TIMESTAMPSIZE);
 
 			IntBuffer intTimeStampBuffer = ByteBuffer.wrap(messageTimestamp)
-			.order(ByteOrder.BIG_ENDIAN)
-			.asIntBuffer();
+											.order(ByteOrder.BIG_ENDIAN)
+											.asIntBuffer();
 			
 			int[] backingArray = new int[TIMESTAMPSIZE/INTSIZE];
 			try {
@@ -454,7 +454,7 @@ final class Handler extends Command implements Runnable {
 			}
 			membership.mergeVector(backingArray);
 
-			int[] updateTSVector = membership.updateSendVector();
+			int[] updateTSVector = membership.incrementAndGetVector();
 
 			//byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
 			byteBufferTSVector.asIntBuffer().put(updateTSVector);
@@ -579,8 +579,8 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
-					membership.updateSendVector();
+					//TODO: MemebershipProtocol.incrementAndGetVector() should be performed at the receipt of OwnerResponse ??
+					//membership.incrementAndGetVector();
 					
 					if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() COMPLETE " + handler.toString());
 					generateRequesterReply();
@@ -759,8 +759,8 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					//TODO: MemebershipProtocol.updateSendVector() should be performed at the receipt of OwnerResponse
-					membership.updateSendVector();
+					//TODO: MemebershipProtocol.incrementAndGetVector() should be performed at the receipt of OwnerResponse
+					//membership.incrementAndGetVector();
 					
 					if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() COMPLETE "+ handler.toString());
 					generateRequesterReply();

@@ -62,7 +62,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
 		
-		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
+		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes, null);
 		serverPort = servPort;
 		InetAddress tempInetAddress;
 		try {
