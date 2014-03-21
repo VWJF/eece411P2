@@ -56,10 +56,12 @@ public class ServiceReactor implements Runnable, JoinThread {
 	final Selector selector;
 	final ServerSocketChannel serverSocket;
 	final InetAddress inetAddress;
+	final MembershipProtocol membership;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
+		
 		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 		serverPort = servPort;
 		InetAddress tempInetAddress;
@@ -78,6 +80,16 @@ public class ServiceReactor implements Runnable, JoinThread {
 //		if (System.getProperty("java.version").startsWith("1.7"))
 //			serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 		
+		
+		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
+		int position = dht.getNodePosition(localhost+":"+serverPort);
+
+		membership = new MembershipProtocol(position, dht.getSizeAllNodes());
+
+		if(IS_VERBOSE) System.out.println(" &&& ServiceReactor() [localhost, position, totalnodes]: ["+localhost+","+position+","+ dht.getSizeAllNodes()+"]");
+		if (position <0)
+			if(IS_VERBOSE) System.out.println(" &&& Handler() position is negative! " + position);
+
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
@@ -158,7 +170,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)
-					new Handler(selector, c, dbHandler, dht, registrations, serverPort);
+					new Handler(selector, c, dbHandler, dht, registrations, serverPort, membership);
 				
 			} catch(IOException ex) { /* ... */ }
 		} 
@@ -177,7 +189,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		int servPort = Integer.parseInt(args[0]);
-		//servPort = 11111;
+		servPort = 11112;
 
 		String participatingNodes[] = null;
 

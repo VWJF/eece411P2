@@ -38,6 +38,7 @@ public class MembershipProtocol {
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
 		synchronized (localTimestampVector) {
 			//behavior on receiving a vectorTimestamp at each node 
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.length+") (current_node=="+current_node);
 			int local = localTimestampVector[current_node];
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
 			//if (success){
