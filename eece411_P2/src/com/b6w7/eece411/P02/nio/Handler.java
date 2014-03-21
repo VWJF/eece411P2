@@ -164,6 +164,11 @@ final class Handler extends Command implements Runnable {
 				
 			case ABORT:
 				// TODO fill in
+				output.position(0);
+				output.put(NodeCommands.Reply.RPY_INTERNAL_FAILURE.getCode());
+				output.flip();
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				state = State.SEND_REQUESTER;
 				break;
 			}
 		} catch (IOException ex) { /* ... */ }

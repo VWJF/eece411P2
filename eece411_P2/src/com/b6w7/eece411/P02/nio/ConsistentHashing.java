@@ -57,8 +57,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	private static MessageDigest md;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-		//this.key = baw;
-//		this.numberOfReplicas = numberOfReplicas;
 
 //		for (T node : nodes) {
 //			add(node);
@@ -102,11 +100,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	private byte[] addNode(ByteArrayWrapper key, byte[] value) {
-		//   for (int i = 0; i < numberOfReplicas; i++) {
 		
 		// Additional Checking unnecessary since the thread that
 		// uses the Map should impose additional restrictions.
-		//if(circle.size() == Command.MAX_MEMORY && circle.containsKey(key)){
 		return mapOfNodes.put(key, value);
 	}
 	public byte[] getNode(ByteArrayWrapper key) {
@@ -142,8 +138,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	@Override
 	public byte[] put(ByteArrayWrapper key, byte[] value) {
-		//   for (int i = 0; i < numberOfReplicas; i++) {
-		
 		// Additional Checking unnecessary since the thread that
 		// uses the Map should impose additional restrictions.
 		//if(circle.size() == Command.MAX_MEMORY && circle.containsKey(key)){
@@ -152,7 +146,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 
 	private byte[] remove(ByteArrayWrapper key) {
-		//   for (int i = 0; i < numberOfReplicas; i++) {
 		return circle.remove(key);
 	}
 
@@ -186,6 +179,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		if(IS_VERBOSE) System.out.println("NextOf: "+requestedKey.toString()+"[value->"+nextOfValue
 				+"]"+"\nis target TargetHost: "+nextKey+" [value->"+nextHost+"]");
 
+//		String hostname = InetAddress.getLocalHost().getHostName();
+//		InetAddress.getByName(hostname);
 
 		try {
 			if(IS_VERBOSE) System.out.println("Finding InetAddress.");
