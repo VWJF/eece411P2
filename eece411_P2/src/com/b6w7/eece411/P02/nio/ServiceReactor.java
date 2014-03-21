@@ -63,7 +63,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
 		
-		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes, null);
+		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 		serverPort = servPort;
 		InetAddress tempInetAddress;
 		try {
@@ -80,13 +80,15 @@ public class ServiceReactor implements Runnable, JoinThread {
 		System.out.println("Java version is " + System.getProperty("java.version"));
 //		if (System.getProperty("java.version").startsWith("1.7"))
 			//serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-			//serverSocket.socket().setReuseAddress(true);
+			serverSocket.socket().setReuseAddress(true);
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
 		int position = dht.getNodePosition(localhost+":"+serverPort);
 
 		membership = new MembershipProtocol(position, dht.getSizeAllNodes());
 
+		dht.setMembership(membership);
+		
 		if(IS_VERBOSE) System.out.println(" &&& ServiceReactor() [localhost, position, totalnodes]: ["+localhost+","+position+","+ dht.getSizeAllNodes()+"]");
 		if (position <0)
 			if(IS_VERBOSE) System.out.println(" &&& Handler() position is negative! " + position);
@@ -190,7 +192,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		int servPort = Integer.parseInt(args[0]);
-		//servPort = 11112;
+		servPort = 11111;
 
 		String participatingNodes[] = null;
 
@@ -290,8 +292,9 @@ public class ServiceReactor implements Runnable, JoinThread {
 //			"Furry.local",	//When adding/removing nodes, must change the value of NodeCommands.LEN_TIMESTAMP_BYTES accordingly.
 //			"Knock3-Tablet",
 //			InetAddress.getLocalHost().getHostName()};
-	public static String[] nodes = {"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11111", 
-						"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11112"};
-			//{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
+	public static String[] nodes = 
+//			{"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11111", 
+//						"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11112"};
+			{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
 }
 
