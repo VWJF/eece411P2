@@ -188,11 +188,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
 				System.out.println("Error in reading: "+filename);
-				return;
+				//return;
 			} catch (IOException e1) {
 				e1.printStackTrace();
 				System.out.println("Error in reading: "+filename);
-				return;
+				//return;
 			}
 		}
 		
@@ -277,7 +277,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 //			"Furry.local",	//When adding/removing nodes, must change the value of NodeCommands.LEN_TIMESTAMP_BYTES accordingly.
 //			"Knock3-Tablet",
 //			InetAddress.getLocalHost().getHostName()};
-	public static String[] nodes = {"Knock3-Tablet:11111",
-			"Knock3-Tablet:11112"};
+	public static String[] nodes = {"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11111", 
+						"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11112"};
+			//{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
 }
 
