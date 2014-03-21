@@ -44,8 +44,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 	private final HandlerThread dbHandler = new HandlerThread();
 
-	private int serverPort;
-	private ExecutorService executor;
+	public final int serverPort;
 	private boolean keepRunning = true;
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
@@ -57,8 +56,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 	final Selector selector;
 	final ServerSocketChannel serverSocket;
 	final InetAddress inetAddress;
-	// debugging flag
-	public final boolean USE_REMOTE;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
@@ -85,18 +82,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 		sk.attach(new Acceptor());
-		
-		// TODO remove hack for debugging
-		if (servPort == 11111) {
-			System.out.println("Using Remote");
-			USE_REMOTE = true; 
-
-		} else {
-			System.out.println("Using Local");
-			USE_REMOTE = false;
-			servPort = 11112; 
-		}
-
 	}
 
 	// code for ExecutorService obtained and modified from 
@@ -173,7 +158,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)
-					new Handler(selector, c, dbHandler, dht, registrations, USE_REMOTE);
+					new Handler(selector, c, dbHandler, dht, registrations, serverPort);
 				
 			} catch(IOException ex) { /* ... */ }
 		} 
@@ -193,7 +178,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		int servPort = Integer.parseInt(args[0]);
 		String participatingNodes[] = null;
-		//servPort = 11111;
+		servPort = 11111;
 		if (args.length == 2) {
 			String filename = args[1];
 			try {
@@ -282,13 +267,15 @@ public class ServiceReactor implements Runnable, JoinThread {
 	    return nodes;
 
 	}
-	private String[] nodes = {"planetlab2.cs.ubc.ca",
-			"cs-planetlab4.cs.surrey.sfu.ca",
-			"planetlab03.cs.washington.edu",
-			"pl1.csl.utoronto.ca",
-			"pl2.rcc.uottawa.ca",
-			"Furry.local",	//When adding/removing nodes, must change the value of NodeCommands.LEN_TIMESTAMP_BYTES accordingly.
-			"Knock3-Tablet",
-			InetAddress.getLocalHost().getHostName()};
+//	private String[] nodes = {"planetlab2.cs.ubc.ca",
+//			"cs-planetlab4.cs.surrey.sfu.ca",
+//			"planetlab03.cs.washington.edu",
+//			"pl1.csl.utoronto.ca",
+//			"pl2.rcc.uottawa.ca",
+//			"Furry.local",	//When adding/removing nodes, must change the value of NodeCommands.LEN_TIMESTAMP_BYTES accordingly.
+//			"Knock3-Tablet",
+//			InetAddress.getLocalHost().getHostName()};
+	public static String[] nodes = {"Knock3-Tablet:11111",
+			"Knock3-Tablet:11112"};
 }
 

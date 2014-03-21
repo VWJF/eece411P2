@@ -2,9 +2,9 @@ package com.b6w7.eece411.P02.multithreaded;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Map;
 
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
+import com.b6w7.eece411.P02.nio.ConsistentHashing;
 
 public class PutCommand extends Command {
 	final byte[] key;
@@ -14,7 +14,7 @@ public class PutCommand extends Command {
 
 	// protocol for Request: put command <cmd,key,value>
 	// protocol for Response: <cmd>
-	public PutCommand(byte[] key, byte[] value, Map<ByteArrayWrapper, byte[]> map) {
+	public PutCommand(byte[] key, byte[] value, ConsistentHashing<ByteArrayWrapper, byte[]> map) {
 		// check arguments for correctness
 		if (null == key || key.length != NodeCommands.LEN_KEY_BYTES) {
 			throw new IllegalArgumentException("key must be 32 bytes for all operations");

@@ -1,7 +1,8 @@
 package com.b6w7.eece411.P02.multithreaded;
 
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.b6w7.eece411.P02.nio.ConsistentHashing;
 
 /**
  * Abstract class that contains the information for processing one command received over TCP.
@@ -22,7 +23,7 @@ public abstract class Command {
 	/**
 	 * A reference to the local (sub)portion of the Distributed Hash Table
 	 */
-	public Map<ByteArrayWrapper, byte[]> map;
+	public ConsistentHashing<ByteArrayWrapper, byte[]> map;
 		
 	// toString parameters
 	public static final int LEN_TO_STRING_OF_KEY = 5;
