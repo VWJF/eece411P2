@@ -2,7 +2,6 @@ package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
@@ -80,7 +79,7 @@ final class Handler extends Command implements Runnable {
 	}
 
 
-	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort) 
+	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort, MembershipProtocol membership) 
 			throws IOException {
 
 		
@@ -100,10 +99,14 @@ final class Handler extends Command implements Runnable {
 		keyRequester.interestOps(SelectionKey.OP_READ);
 		sel.wakeup();
 		
-		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
-		if(IS_DEBUG) System.out.println("     Handler() [localhost, position, totalnodes]: ["+localhost+","+map.getNodePosition(localhost+":"+serverPort)+","+ map.getSizeAllNodes()+"]");
+//		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
+//		int position = map.getNodePosition(localhost+":"+serverPort);
+//
+//		if(IS_DEBUG) System.out.println(" &&& Handler() [localhost, position, totalnodes]: ["+localhost+","+position+","+ map.getSizeAllNodes()+"]");
+//		if (position <0)
+//			if(IS_DEBUG) System.out.println(" &&& Handler() position is negative! " + position);
 		
-		membership = new MembershipProtocol(map.getNodePosition(localhost+":"+serverPort), map.getSizeAllNodes());
+		this.membership= membership;
 
 		this.serverPort = serverPort;
 		// keep reference to self so that nested classes can refer to the handler
