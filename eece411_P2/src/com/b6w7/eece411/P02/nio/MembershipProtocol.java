@@ -24,8 +24,8 @@ public class MembershipProtocol {
 		this.localTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		
 		// TODO debugging starting values:
-		for (int i=0; i<localTimestampVector.size(); i++) {
-			localTimestampVector.set(i, i * 1000);
+		for (int i=0; i<this.total_nodes; i++) {
+			localTimestampVector.add(i * 1000);
 		}
 	}
 	
@@ -113,7 +113,7 @@ public class MembershipProtocol {
 				i++;
 				if(update == null)
 					continue;
-				backingArray[i] = update;
+				backingArray[i-1] = update;
 			}
 		} catch (IndexOutOfBoundsException iob) {
 			iob.printStackTrace();

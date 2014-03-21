@@ -282,7 +282,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else {
 			process = new UnrecogProcess(this);
-			System.out.println(" ### common::requesterInputIsComplete() Unrecognized command received on wire 0x" + Integer.valueOf(0x100 + (int)(cmd & 0xFF)).toString());
+			System.out.println(" ### common::requesterInputIsComplete() Unrecognized command received on wire 0x" + Integer.toString((0x100 + (int)(cmd & 0xFF)), 16).substring(1));
 			// bad command received on wire
 			// nothing to do
 			input.position(CMDSIZE);
@@ -374,7 +374,7 @@ final class Handler extends Command implements Runnable {
 	private void sendRequester() {
 		try {
 			if (null == socketRequester || !socketRequester.isOpen()) {
-				System.out.println("### sendRequest() socketRequester is still null or not open");
+				if (IS_VERBOSE) System.out.println(" *** sendRequest() socketRequester is still null or not open");
 				return;
 			}
 
