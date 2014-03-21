@@ -47,17 +47,15 @@ public class MembershipProtocol {
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
 			
 			int i;
-			Integer update;
+			int update;
 			for(i = 0; i < localTimestampVector.size() && i < receivedVector.length; i++){
-				if(receivedVector[i] < 0 || localTimestampVector.get(i) == null ) {
-					update = null;
-				}
-				else{
-					update = Math.max(receivedVector[i], localTimestampVector.get(i));;
+				update = localTimestampVector.get(i).intValue();
+				if(receivedVector[i] > 0 ) {
+					update = Math.max(receivedVector[i], update);;
 				}
 		///***/	update = Math.max(receivedVector[i], localTimestampVector.get(i));
 		///***/	localTimestampVector.set(i, update);
-				updateTimestampVector.add(update);
+				updateTimestampVector.add(new Integer(update));
 			}
 			if ( localTimestampVector.size() > receivedVector.length ){
 				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.size()-1);
@@ -84,36 +82,36 @@ public class MembershipProtocol {
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
 		int[] retInt;
 		ArrayList<Integer> retInteger;
-		Integer update;
+		int update;
 		
 		synchronized (localTimestampVector) {
 			update = localTimestampVector.get(current_node).intValue();
-			localTimestampVector.set(current_node, update++);
+			if(update > 0)
+				update++;
+			localTimestampVector.set(current_node, update);
 			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
 			retInteger = new ArrayList<Integer>(localTimestampVector);
 			localTimestampVector.trimToSize();
 		}
 		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
-		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+retInteger);
+		if(IS_DEBUG) System.out.println(" === incrementAndGetVector() after update: "+retInteger);
 
 		retInteger.trimToSize();
 		int[] backingArray = convertListToArray(retInteger);
-		
+		if(IS_DEBUG) System.out.println(" === updateSendVector() backingArray: "+Arrays.toString(backingArray));
+
 		return backingArray;
 	}
 
 	private int[] convertListToArray(ArrayList<Integer> retInteger) {
-		Integer update;
+		int update;
 		int[] backingArray = new int[total_nodes];
 		try {
 			Iterator<Integer> iter = retInteger.iterator();
 			int i = 0;
 			while(iter.hasNext()){
 				update = iter.next().intValue();
-				i++;
-				if(update == null)
-					continue;
-				backingArray[i-1] = update;
+				backingArray[i++] = update;
 			}
 		} catch (IndexOutOfBoundsException iob) {
 			iob.printStackTrace();
@@ -126,7 +124,7 @@ public class MembershipProtocol {
 	 * Accessor for the local Timestamp Vector.
 	 * @return
 	 */
-	public Integer getTimestamp(int nodeIndex){
+	public int getTimestamp(int nodeIndex){
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
 		Integer timestamp;
 
@@ -138,17 +136,25 @@ public class MembershipProtocol {
 			timestamp = localTimestampVector.get(nodeIndex);
 		}
 		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
-		if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+retInteger);
+		if(IS_DEBUG) System.out.println(" === getTimestampVector() "+retInteger);
 		
 		//return ret;
-		return timestamp;
+		retInteger.trimToSize();
+		return timestamp.intValue();
 	}
 	
-	public void shutdown(Integer update){
+	public void shutdown(Integer updateIndex){
 		//TODO:
 		synchronized (localTimestampVector) {
 			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
-			localTimestampVector.set(current_node, update);
+			if(updateIndex == null){
+				localTimestampVector.set(current_node, -localTimestampVector.get(current_node));
+			}
+			else{
+				localTimestampVector.set(updateIndex.intValue(), -localTimestampVector.get(updateIndex.intValue()));
+			}
+			
+			if(IS_DEBUG) System.out.println(" === shutdownindex "+updateIndex.intValue());
 		}
 	}
 	

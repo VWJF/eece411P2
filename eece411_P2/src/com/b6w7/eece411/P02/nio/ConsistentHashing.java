@@ -25,6 +25,7 @@ import java.util.TreeMap;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
+import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 
 //Based from code:
 // https://weblogs.java.net/blog/tomwhite/archive/2007/11/consistent_hash.html
@@ -186,7 +187,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		/**TODO: Addition get Next node responsible.
 		 * Untested.
 		 * */ 	
-		while(this.membership.getTimestamp(listOfNodes.indexOf(nextKey)) == null){
+		while(this.membership.getTimestamp(listOfNodes.indexOf(nextKey)) < 0){
 			nextKey = getNextNodeTo(nextKey);
 		}
 		
@@ -274,18 +275,21 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	private void transferKeys(ByteBuffer out, ByteArrayWrapper keyLimit){
 	/**TODO: Untested */
 		boolean transfersComplete = false;
-		int i = 0, compare = 0;
+		int compare = 0;//	int i = 0;
+		byte iBytes = 0;
 		
-		byte[] iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
+		//byte[] iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
 		out.clear();
-		out.put(iBytes);
+		out.put(Request.CMD_TS_PUT.getCode());
+		out.put(iBytes); int index = 1;
 		
 		ByteArrayWrapper peekKey = orderedKeys.peek();
 		while(peekKey != null && (compare = keyLimit.compareTo(peekKey)) <=0){
 			if(out.remaining() >= NodeCommands.LEN_KEY_BYTES + NodeCommands.LEN_VALUE_BYTES ){
 				peekKey = orderedKeys.poll();
 				out.put(peekKey.keyBuffer);
-				i++;
+				out.put(mapOfNodes.get(peekKey));
+				iBytes++;
 			}
 			else{
 				transfersComplete = false;
@@ -296,9 +300,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		transfersComplete = (peekKey == null || compare >=0);
 		
-		iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
-		out.rewind();
-		out.put(iBytes);
+		//iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
+		out.put(index, iBytes);
 		out.flip();	
 	}
 	
