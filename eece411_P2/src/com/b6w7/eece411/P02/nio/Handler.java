@@ -2,6 +2,7 @@ package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
@@ -437,14 +438,14 @@ final class Handler extends Command implements Runnable {
 		processRecvRequester();
 	}
 
-	private void updateTSVector() {
+	private void updateTSVector(int index) {
 		//only perform this once
 		if (null == messageTimestamp) {
 			messageTimestamp = new byte[TIMESTAMPSIZE];
 			messageTimestamp = Arrays.copyOfRange(
 					input.array()
-					, CMDSIZE+KEYSIZE
-					, CMDSIZE+KEYSIZE+TIMESTAMPSIZE);
+					, index
+					, index+TIMESTAMPSIZE);
 
 			IntBuffer intTimeStampBuffer = ByteBuffer.wrap(messageTimestamp)
 											.order(ByteOrder.BIG_ENDIAN)
@@ -479,37 +480,63 @@ final class Handler extends Command implements Runnable {
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSAnnounceDeathProcess::checkLocal(): " + this.handler);
 
-			output = ByteBuffer.allocate(2048);
+//			key = new byte[KEYSIZE];
+//			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+//			value = new byte[VALUESIZE];
+//			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
+			hashedKey = new ByteArrayWrapper(key);
+			output = ByteBuffer.allocate(20480);
 			
-			// OK, we decided that the location of key is at local node
-			// perform appropriate action with database
-			// we can transition to SEND_REQUESTER
+			// OK we need to send key values pairs to remote node
+			// We call our local method to fill our output buffer as much as possible
 			
-			// set replyCode as appropriate and prepare output buffer
-			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() ------------ Using Local --------------");
-			if( announceDeath() )
-				replyCode = Reply.RPY_SUCCESS.getCode(); 
-			else
-				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
-
-			generateRequesterReply();
-
-			// signal to selector that we are ready to write
-			state = State.SEND_REQUESTER;
-			keyRequester.interestOps(SelectionKey.OP_WRITE);
-			sel.wakeup();
-		}
-
-		private boolean announceDeath() {
-			// create the list of key-values that we need to transfer to an adjacent node
+			// OK, we decided that the location of key is at a remote node
+			// we can transition to CONNECT_OWNER and connect to remote node
+			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() BEFORE " + handler.toString());
 			
+			try {
+				map.transferKeys(output, ConsistentHashing.hashKey(InetAddress.getLocalHost().getHostName()+":"+serverPort));
+			} catch (UnknownHostException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() AFTER " + handler.toString());
 			
-			return false;
+//			if (output.get(0) == (byte)0) {
+//				output.pu
+//				// ok there is nothing left to pull from local, time to shut down the server
+//				
+//			} else {
+//				// ok we have some keys to send to a remote node
+//				try {
+//					// prepare the output buffer, and signal for opening a socket to remote
+//					generateOwnerQuery();
+//
+//					socketOwner = SocketChannel.open();
+//					socketOwner.configureBlocking(false);
+//					// Send message to selector and wake up selector to process the message.
+//					// There is no need to set interestOps() because selector will check its queue.
+//					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+//					sel.wakeup();
+//
+//				} catch (IOException e) {
+//					retryAtStateCheckingLocal(e);
+//				}
+//			}
 		}
 
 		@Override
 		public void generateOwnerQuery() {
-			throw new UnsupportedOperationException(" ### should not call TSAnnounceDeathProcess::generateOwnerQuery()");
+			if (IS_VERBOSE) System.out.println(" +++ TSAnnounceDeathProcess::generateOwnerQuery() START " + handler.toString());
+			output.position(0);
+			output.put(Request.CMD_TS_PUT_BULK.getCode());
+			output.put(key);
+			output.put(value);
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSAnnounceDeathProcess::generateOwnerQuery() COMPLETE " + handler.toString());
 		}
 
 		@Override
@@ -534,7 +561,7 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSPutProcess::checkLocal(): " + this);
-			updateTSVector();
+			updateTSVector(CMDSIZE+KEYSIZE+VALUESIZE);
 			super.checkLocal();
 		}
 	}
@@ -711,7 +738,7 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this.handler);
-			updateTSVector();
+			updateTSVector(CMDSIZE+KEYSIZE);
 			super.checkLocal();
 		}
 	}
@@ -875,7 +902,7 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSRemoveProcess::checkLocal(): " + this.handler);
-			updateTSVector();
+			updateTSVector(CMDSIZE+KEYSIZE);
 			super.checkLocal();
 		}
 	}

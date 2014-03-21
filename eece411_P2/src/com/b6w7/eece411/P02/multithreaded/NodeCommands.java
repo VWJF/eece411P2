@@ -28,7 +28,8 @@ public class NodeCommands {
 		CMD_NOT_SET((byte)0x20), 
 		CMD_TS_PUT((byte)0x21),
 		CMD_TS_GET((byte)0x22),
-		CMD_TS_REMOVE((byte)0x23);	
+		CMD_TS_REMOVE((byte)0x23),	
+		CMD_TS_PUT_BULK((byte)0x24);	
 		
 		private byte value;
 

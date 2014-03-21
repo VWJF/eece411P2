@@ -271,7 +271,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param out: (ByteBuffer used to send the Key-Value pairs).
 	 * @param keyLimit: (ByteArrayWrapper that will determine the keys to be transferred [inclusive limit].
 	 */
-	private void transferKeys(ByteBuffer out, ByteArrayWrapper keyLimit){
+	public void transferKeys(ByteBuffer out, ByteArrayWrapper keyLimit){
 	/**TODO: Untested */
 		boolean transfersComplete = false;
 		int i = 0, compare = 0;
