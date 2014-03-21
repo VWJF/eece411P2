@@ -47,10 +47,8 @@ final class Handler extends Command implements Runnable {
 	byte replyCode = Reply.RPY_NOT_SET.getCode();
 	byte[] replyValue;
 	byte[] messageTimestamp;
-	//ByteBuffer byteBufferTSVector;
 	ByteBuffer byteBufferTSVector = ByteBuffer.allocate(TIMESTAMPSIZE).order(ByteOrder.BIG_ENDIAN);
-
-
+	//ByteBuffer byteBufferTSVector;
 
 	private final MembershipProtocol membership;
 	private final PostCommand dbHandler;
@@ -108,7 +106,7 @@ final class Handler extends Command implements Runnable {
 		sel.wakeup();
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
-		if(IS_DEBUG) System.out.println("     Handler() [localhost,position,total]: ["+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes()+"]");
+		if(IS_DEBUG) System.out.println("     Handler() [localhost, position, totalnodes]: ["+localhost+","+map.getNodePosition(localhost)+","+ map.getSizeAllNodes()+"]");
 		
 		membership = new MembershipProtocol(map.getNodePosition(localhost), map.getSizeAllNodes());
 		this.mergeComplete = false;
@@ -486,7 +484,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- PutProcess::checkLocal(): " + this);
+			if (IS_VERBOSE) System.out.println(" --- PutProcess::checkLocal(): " + this.handler);
 
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
@@ -647,7 +645,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this);
+			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this.handler);
 			updateTSVector();
 			super.checkLocal();
 		}
@@ -668,7 +666,8 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			
+			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + this.handler);
+
 			
 			if (useRemote) {
 				// OK, we decided that the location of key is at a remote node
@@ -808,7 +807,7 @@ final class Handler extends Command implements Runnable {
 		
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- TSRemoveProcess::checkLocal(): " + this);
+			if (IS_VERBOSE) System.out.println(" --- TSRemoveProcess::checkLocal(): " + this.handler);
 			updateTSVector();
 			super.checkLocal();
 		}
@@ -946,6 +945,8 @@ final class Handler extends Command implements Runnable {
 		public void checkLocal() {
 			replyCode = NodeCommands.Reply.RPY_UNRECOGNIZED.getCode();
 			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
+
+			if (IS_VERBOSE) System.out.println(" --- TSUnrecogProcess::checkLocal(): " + this.handler);
 
 			generateRequesterReply();
 			

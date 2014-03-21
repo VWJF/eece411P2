@@ -81,10 +81,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			if(IS_DEBUG) System.out.println("     ConsistentHashing() hashKey: "+key);
 
 			mapOfNodes.put(key, node.getBytes()); //circle.put(key, node.getBytes());			
-			String err_msg = (null == getNode(hashKey(node))) ? " ***      ConsistentHashing() Fail to get" : "          ConsistentHashing() Success returned get(): "+
+			String err_msg = (null == getNode(hashKey(node))) ? " *** ConsistentHashing() Fail to get" : "     ConsistentHashing() Success returned get(): "+
 					NodeCommands.byteArrayAsString(getNode(hashKey(node)));
 			
-			if(IS_DEBUG) System.out.println("     ConsistentHashing() " + err_msg);
+			if(IS_DEBUG) System.out.println(err_msg);
 			if(IS_DEBUG) System.out.println("     ConsistentHashing() Map Of Nodes Size: "+mapOfNodes.size());
 			if(IS_DEBUG) System.out.println("     ConsistentHashing() " + i +"."+ hashKey(node)+" "+new String(getNode(key)));
 			if(IS_DEBUG) System.out.println();
@@ -280,19 +280,15 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * Method used to create the hashed ByteArrayWrapper of a given node 
 	 * that is to be inserted in the Key-Value Store
-	 * @param node
+	 * @param byte[] node
 	 * @return
 	 */
-	public static ByteArrayWrapper hashKey(String node){
+	public static ByteArrayWrapper hashKey(byte[] node){
 		ByteArrayWrapper key;
 		byte[] digest;
-		
-		try {
-			digest = md.digest(node.getBytes("UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			digest = md.digest(node.getBytes());
-		}
 
+		digest = md.digest(node);
+		
 		if (digest.length > NodeCommands.LEN_KEY_BYTES) {
 			key = new ByteArrayWrapper(Arrays.copyOfRange(digest, 0, NodeCommands.LEN_KEY_BYTES));
 		} else {
@@ -300,7 +296,22 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		return key;
 	}
-
+	
+	/**
+	 * Method used to create the hashed ByteArrayWrapper of a given node 
+	 * that is to be inserted in the Key-Value Store
+	 * @param String node
+	 * @return
+	 */
+	public static ByteArrayWrapper hashKey(String node){
+	
+		try {
+			return hashKey(node.getBytes("UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			return hashKey(node.getBytes());
+		}
+	}
+	
 	@Override
 	public void clear() {
 		circle.clear();		
