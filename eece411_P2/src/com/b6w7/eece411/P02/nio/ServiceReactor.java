@@ -1,5 +1,9 @@
 package com.b6w7.eece411.P02.nio;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -11,6 +15,8 @@ import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -21,6 +27,7 @@ import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.HandlerThread;
 import com.b6w7.eece411.P02.multithreaded.JoinThread;
+import com.sun.java_cup.internal.runtime.Scanner;
 
 // Code for Reactor pattern obtained and modified from 
 // http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf
@@ -53,7 +60,9 @@ public class ServiceReactor implements Runnable, JoinThread {
 	// debugging flag
 	public final boolean USE_REMOTE;
 
-	public ServiceReactor(int servPort) throws IOException, NoSuchAlgorithmException {
+	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
+		if (nodesFromFile != null) 
+			nodes = nodesFromFile;
 		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 		serverPort = servPort;
 		InetAddress tempInetAddress;
@@ -177,18 +186,32 @@ public class ServiceReactor implements Runnable, JoinThread {
 	} 
 
 	public static void main(String[] args) {
-		if (args.length != 1) {
+		if (args.length > 2) {
 			printUsage();
 			return;
 		}
 
 		int servPort = Integer.parseInt(args[0]);
-
+		String participatingNodes[] = null;
 		//servPort = 11111;
+		if (args.length == 2) {
+			String filename = args[1];
+			try {
+				participatingNodes = populateNodeList(filename);
+			} catch (FileNotFoundException e1) {
+				e1.printStackTrace();
+				System.out.println("Error in reading: "+filename);
+				return;
+			} catch (IOException e1) {
+				e1.printStackTrace();
+				System.out.println("Error in reading: "+filename);
+				return;
+			}
+		}
 		
 		ServiceReactor service;
 		try {
-			service = new ServiceReactor(servPort);
+			service = new ServiceReactor(servPort, participatingNodes);
 			new Thread(service).start();
 		} catch (IOException e) {
 			System.out.println("Could not start service. " + e.getMessage());
@@ -201,11 +224,13 @@ public class ServiceReactor implements Runnable, JoinThread {
 		System.out.println("USAGE:\n"
 				+ " java -cp"
 				+ " <file.jar>"
-				+ " <server port>");
+				+ " <server port>"
+				+ " <filename>");
 		System.out.println("EXAMPLE:\n"
 				+ " java -cp"
 				+ " P03.jar"
-				+ " 11111");
+				+ " 11111"
+				+ " nodes.txt");
 	}
 
 	@Override
@@ -238,6 +263,24 @@ public class ServiceReactor implements Runnable, JoinThread {
 		catch(Exception e){
 			e.printStackTrace();
 		}
+	}
+	
+	private static String[] populateNodeList(String filename) throws FileNotFoundException, IOException{
+	    String token1;
+	    BufferedReader inFile
+	    = new BufferedReader(new FileReader(filename));
+
+	    List<String> nodesList = new LinkedList<String>();
+
+	    while ((token1 = inFile.readLine()) != null) {
+	    	nodesList.add(token1);
+	    }
+	    inFile.close();
+
+
+	    String[] nodes = nodesList.toArray(new String[nodesList.size()]);
+	    return nodes;
+
 	}
 	private String[] nodes = {"planetlab2.cs.ubc.ca",
 			"cs-planetlab4.cs.surrey.sfu.ca",
