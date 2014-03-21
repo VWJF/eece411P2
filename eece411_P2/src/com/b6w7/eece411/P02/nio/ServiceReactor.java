@@ -192,7 +192,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		int servPort = Integer.parseInt(args[0]);
-		//servPort = 11111;
 
 		String participatingNodes[] = null;
 
