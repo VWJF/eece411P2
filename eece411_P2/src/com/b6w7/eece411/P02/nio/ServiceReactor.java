@@ -80,7 +80,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		System.out.println("Java version is " + System.getProperty("java.version"));
 //		if (System.getProperty("java.version").startsWith("1.7"))
 			//serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-			//serverSocket.socket().setReuseAddress(true);
+			serverSocket.socket().setReuseAddress(true);
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
 		int position = dht.getNodePosition(localhost+":"+serverPort);
