@@ -502,27 +502,29 @@ final class Handler extends Command implements Runnable {
 			}
 			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() AFTER " + handler.toString());
 			
-//			if (output.get(0) == (byte)0) {
-//				output.pu
-//				// ok there is nothing left to pull from local, time to shut down the server
-//				
-//			} else {
-//				// ok we have some keys to send to a remote node
-//				try {
-//					// prepare the output buffer, and signal for opening a socket to remote
-//					generateOwnerQuery();
-//
-//					socketOwner = SocketChannel.open();
-//					socketOwner.configureBlocking(false);
-//					// Send message to selector and wake up selector to process the message.
-//					// There is no need to set interestOps() because selector will check its queue.
-//					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
-//					sel.wakeup();
-//
-//				} catch (IOException e) {
-//					retryAtStateCheckingLocal(e);
-//				}
-//			}
+			if (output.get(0) == (byte)0) {
+				// ok there is nothing left to pull from local, time to shut down the server
+				generateOwnerQuery();
+				
+			} else {
+				// ok we have some keys to send to a remote node
+				try {
+					InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+
+					// prepare the output buffer, and signal for opening a socket to remote
+					generateOwnerQuery();
+
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					sel.wakeup();
+
+				} catch (IOException e) {
+					retryAtStateCheckingLocal(e);
+				}
+			}
 		}
 
 		@Override
