@@ -128,7 +128,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 					data = registrations.poll();
 					data.key = data.sc.register(selector, data.ops, data.cmd);
 
-					data.sc.connect(new InetSocketAddress(11112));
+					data.sc.connect(data.addr);
 					if(IS_SHORT) System.out.println("--- checkLocal() woke up selector");
 				}
 				
@@ -189,7 +189,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		int servPort = Integer.parseInt(args[0]);
-		servPort = 11112;
+		//servPort = 11112;
 
 		String participatingNodes[] = null;
 
