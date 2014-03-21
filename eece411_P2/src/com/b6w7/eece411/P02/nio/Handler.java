@@ -258,7 +258,6 @@ final class Handler extends Command implements Runnable {
 			process = new TSGetProcess(self);
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
-			System.out.println(" +-+ TS_GET.");
 			return true;
 			
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
@@ -272,6 +271,12 @@ final class Handler extends Command implements Runnable {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			process = new TSRemoveProcess(self);
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
+			input.flip();
+			return true;
+			
+		} else if (Request.CMD_ANNOUNCEDEATH.getCode() == cmd) {
+			process = new TSAnnounceDeathProcess(self);
+			input.position(CMDSIZE);
 			input.flip();
 			return true;
 			
@@ -462,6 +467,64 @@ final class Handler extends Command implements Runnable {
 		}
 	}
 	
+	class TSAnnounceDeathProcess implements Process {
+
+		protected final Handler handler;
+
+		TSAnnounceDeathProcess(Handler handler) {
+			this.handler = handler;
+		}
+
+		@Override
+		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- TSAnnounceDeathProcess::checkLocal(): " + this.handler);
+
+			output = ByteBuffer.allocate(2048);
+			
+			// OK, we decided that the location of key is at local node
+			// perform appropriate action with database
+			// we can transition to SEND_REQUESTER
+			
+			// set replyCode as appropriate and prepare output buffer
+			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() ------------ Using Local --------------");
+			if( announceDeath() )
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+
+			generateRequesterReply();
+
+			// signal to selector that we are ready to write
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+		}
+
+		private boolean announceDeath() {
+			// create the list of key-values that we need to transfer to an adjacent node
+			
+			
+			return false;
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			throw new UnsupportedOperationException(" ### should not call TSAnnounceDeathProcess::generateOwnerQuery()");
+		}
+
+		@Override
+		public void generateRequesterReply() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void recvOwner() {
+			throw new UnsupportedOperationException(" ### should not call TSAnnounceDeathProcess::recvOwner()");
+		}
+		
+	}
+	
 	class TSPutProcess extends PutProcess {
 
 		TSPutProcess(Handler handler) {
@@ -475,6 +538,7 @@ final class Handler extends Command implements Runnable {
 			super.checkLocal();
 		}
 	}
+	
 	class PutProcess implements Process {
 
 		protected final Handler handler;
