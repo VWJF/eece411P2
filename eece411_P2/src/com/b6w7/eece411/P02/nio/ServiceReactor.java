@@ -177,8 +177,10 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		int servPort = Integer.parseInt(args[0]);
+		//servPort = 11111;
+
 		String participatingNodes[] = null;
-		servPort = 11111;
+
 		if (args.length == 2) {
 			String filename = args[1];
 			try {
