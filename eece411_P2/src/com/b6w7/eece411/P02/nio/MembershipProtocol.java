@@ -43,6 +43,19 @@ public class MembershipProtocol {
 		synchronized (localTimestampVector) {
 			//behavior on receiving a vectorTimestamp at each node 
 			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.size()+") (current_node=="+current_node);
+			if(IS_DEBUG) {
+				StringBuilder s = new StringBuilder();
+				s.append(" === MembershipProtocol::mergeVector() [localTimestampVector["+localTimestampVector.size()+"]=>");
+				for (Integer element: localTimestampVector)
+					s.append(element.toString() + ",");
+				s.append("]\n");
+				s.append(" === MembershipProtocol::mergeVector()       [receivedVector["+localTimestampVector.size()+"]=>");
+				for (int element: receivedVector)
+					s.append(element + ",");
+				s.append("]");
+				System.out.println(s.toString());
+			}
+			
 			int local = localTimestampVector.get(current_node);
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
 			
