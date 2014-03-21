@@ -493,7 +493,7 @@ final class Handler extends Command implements Runnable {
 			
 			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
 			
-			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner)) {
+			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -831,7 +831,7 @@ final class Handler extends Command implements Runnable {
 			
 			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
 			
-			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner)) {
+			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER

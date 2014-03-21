@@ -239,9 +239,14 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	
 	// isThisMyIpAddress() code obtained and modified from 
 	// http://stackoverflow.com/questions/2406341/how-to-check-if-an-ip-address-is-the-local-host-on-a-multi-homed-system
-	public static boolean isThisMyIpAddress(InetSocketAddress owner, int port) throws UnknownHostException {
+	public static boolean isThisMyIpAddress(InetSocketAddress owner, int port){
 	    // Check if the address is defined on any interface
-		return (owner.getAddress().toString().equals(InetAddress.getLocalHost().toString())) && owner.getPort() == port;
+		try {
+			return (owner.getAddress().toString().equals(InetAddress.getLocalHost().toString())) && owner.getPort() == port;
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	/**
