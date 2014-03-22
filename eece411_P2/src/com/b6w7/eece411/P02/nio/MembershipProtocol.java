@@ -25,7 +25,7 @@ public class MembershipProtocol {
 		
 		// TODO debugging starting values:
 		for (int i=0; i<this.total_nodes; i++) {
-			localTimestampVector.add(i * 1000);
+			localTimestampVector.add(1);
 		}
 	}
 	
@@ -66,14 +66,15 @@ public class MembershipProtocol {
 			int i, localView, remoteView;
 			int update;
 			for(i = 0; i < localTimestampVector.size() && i < receivedVector.length; i++){
-				update = localTimestampVector.get(i).intValue();
-				if(receivedVector[i] > 0 ) {
-					localView = receivedVector[i];
-					remoteView = update;
-					update = (Math.abs(localView)>Math.abs(remoteView)) ? localView : remoteView;
-					//update = Math.max(receivedVector[i], update);;
-				}
-		///***/	update = Math.max(receivedVector[i], localTimestampVector.get(i));
+				localView = localTimestampVector.get(i).intValue();
+				remoteView = receivedVector[i];
+				//localView = update;
+				update = localView;
+				 if(Math.abs(localView) < Math.abs(remoteView)) { 
+					 update = remoteView;
+				 }
+				//update = Math.max(receivedVector[i], update);;
+				///***/	update = Math.max(receivedVector[i], localTimestampVector.get(i));
 		///***/	localTimestampVector.set(i, update);
 				updateTimestampVector.add(new Integer(update));
 			}
@@ -211,7 +212,7 @@ public class MembershipProtocol {
 			sampleForMerge[i] = 1; 
 			sampleForReceipt[i] = 0;
 		}
-		sampleForMerge[current_node] = 0;
+		sampleForMerge[current_node] = 2;
 		
 		System.out.println("MemebershipProtocol:Test sampleForMerge "+Arrays.toString(sampleForMerge));		
 		System.out.println("MemebershipProtocol:Test sampleForReceipt "+Arrays.toString(sampleForReceipt));
