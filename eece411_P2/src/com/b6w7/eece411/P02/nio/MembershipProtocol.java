@@ -40,7 +40,7 @@ public class MembershipProtocol {
 		ArrayList<Integer> updateTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
-		synchronized (localTimestampVector) {
+//		synchronized (localTimestampVector) {
 			//behavior on receiving a vectorTimestamp at each node 
 			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.size()+") (current_node=="+current_node +")");
 			
@@ -65,24 +65,29 @@ public class MembershipProtocol {
 			
 			int i, localView, remoteView;
 			int update;
-			for(i = 0; i < localTimestampVector.size() && i < receivedVector.length; i++){
+			if (IS_DEBUG) 
+				if (localTimestampVector.size() != receivedVector.length) 
+					System.out.println(" ### MembershipProtocol::mergeVector() receivedVector.length==" + receivedVector.length);
+
+			for(i = 0; i < localTimestampVector.size(); i++){
+
 				localView = localTimestampVector.get(i).intValue();
 				remoteView = receivedVector[i];
 				//localView = update;
 				update = localView;
-				 if(Math.abs(localView) < Math.abs(remoteView)) { 
-					 update = remoteView;
-				 }
+				if(Math.abs(localView) < Math.abs(remoteView)) { 
+					update = remoteView;
+				}
 				//update = Math.max(receivedVector[i], update);;
 				///***/	update = Math.max(receivedVector[i], localTimestampVector.get(i));
-		///***/	localTimestampVector.set(i, update);
+				///***/	localTimestampVector.set(i, update);
 				updateTimestampVector.add(new Integer(update));
-			}
-			if ( localTimestampVector.size() > receivedVector.length ){
-				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.size()-1);
-				
-				updateTimestampVector.addAll(convertArrayToList(remaining));
-				//System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
+				//			}
+				//			if ( localTimestampVector.size() > receivedVector.length ){
+				//				int[] remaining = Arrays.copyOfRange(receivedVector, i, localTimestampVector.size()-1);
+				//				
+				//				updateTimestampVector.addAll(convertArrayToList(remaining));
+				//				//System.arraycopy(remaining, 0, localTimestampVector, i, remaining.length);
 			}
 			updateTimestampVector.set(current_node, local);
 			//localTimestampVector.set(current_node, local);
@@ -91,7 +96,7 @@ public class MembershipProtocol {
 			//	wait(waittime);
 
 			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") after merging: "+localTimestampVector);
-		}
+	
 	}
 
 	/**
@@ -104,7 +109,7 @@ public class MembershipProtocol {
 		ArrayList<Integer> retInteger;
 		int update;
 		
-		synchronized (localTimestampVector) {
+//		synchronized (localTimestampVector) {
 			update = localTimestampVector.get(current_node).intValue();
 			if(update > 0)
 				update++;
@@ -112,7 +117,7 @@ public class MembershipProtocol {
 			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
 			retInteger = new ArrayList<Integer>(localTimestampVector);
 			localTimestampVector.trimToSize();
-		}
+//		}
 		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
 		if(IS_DEBUG) System.out.println(" === incrementAndGetVector() after update: "+retInteger);
 
@@ -150,11 +155,11 @@ public class MembershipProtocol {
 
 		int[] retInt;
 		ArrayList<Integer> retInteger;
-		synchronized (localTimestampVector) {
+//		synchronized (localTimestampVector) {
 			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
 			retInteger = new ArrayList<Integer>(localTimestampVector);
 			timestamp = localTimestampVector.get(nodeIndex);
-		}
+//		}
 		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
 		if(IS_DEBUG) System.out.println(" === getTimestampVector() "+retInteger);
 		
@@ -168,7 +173,7 @@ public class MembershipProtocol {
 		
 		if (localTimestampVector == null) 
 			System.out.println("		if (localTimestampVector == null) ");
-		synchronized (localTimestampVector) {
+//		synchronized (localTimestampVector) {
 			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
 			if(updateIndex == null){
 				localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
@@ -182,7 +187,7 @@ public class MembershipProtocol {
 			else
 				shutdownIndex = updateIndex.intValue();
 			if(IS_DEBUG) System.out.println(" === shutdownindex "+shutdownIndex +" "+ Arrays.toString(convertListToArray(localTimestampVector)));
-		}
+//		}
 	}
 	
 	/**
