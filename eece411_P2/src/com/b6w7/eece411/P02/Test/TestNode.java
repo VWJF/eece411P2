@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 1;
+	private static int NUM_TEST_RUNNABLES = 5;
 
 	//private static int count = 0; 
 	private int myCount;
@@ -172,7 +172,7 @@ public class TestNode implements Runnable, JoinThread {
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
 //		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 	}
@@ -233,7 +233,6 @@ public class TestNode implements Runnable, JoinThread {
 		// test 1: put 'Scott' => '63215065', and so on ... 
 
 		myCount = new Random().nextInt(Integer.MAX_VALUE);
-		myCount = 1000;
 		System.out.println(myCount);
 
 		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);

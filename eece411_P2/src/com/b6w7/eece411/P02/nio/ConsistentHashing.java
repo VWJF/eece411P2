@@ -2,11 +2,8 @@ package com.b6w7.eece411.P02.nio;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -19,13 +16,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
-import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 
 //Based from code:
 // https://weblogs.java.net/blog/tomwhite/archive/2007/11/consistent_hash.html
@@ -166,6 +163,36 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			return null;
 		}
 		return circle.get(key);
+	}
+	
+	public InetSocketAddress getRandomOnlineNode() {
+		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() BEFORE");
+		if (mapOfNodes.isEmpty()) {
+			System.out.println("Map Of Nodes Empty.");
+			return null;
+		}
+		
+		Random rand = new Random(listOfNodes.size());
+		int randomIndex = rand.nextInt();
+		int startingIndex = randomIndex;
+		ByteArrayWrapper node = listOfNodes.get(randomIndex);
+
+		while (membership.getTimestamp(randomIndex++) < 0) {
+			if (randomIndex == listOfNodes.size())
+				randomIndex = 0;
+			
+			// we have exhausted all entries without a match
+			if (randomIndex == startingIndex)
+				return null;
+		}
+		
+		// we found a random element
+		String nextHost = new String(mapOfNodes.get(node));
+
+		String addr[] = nextHost.split(":");
+
+		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() FOUND " + node);
+		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
 	
 	/**
