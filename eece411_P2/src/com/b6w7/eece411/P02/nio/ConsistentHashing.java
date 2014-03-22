@@ -172,21 +172,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			return null;
 		}
 		
-		Random rand = new Random(listOfNodes.size());
-		int randomIndex = rand.nextInt();
-		int startingIndex = randomIndex;
+		int randomIndex = membership.getRandomIndex();
+		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() Index: "+randomIndex);
 		ByteArrayWrapper node = listOfNodes.get(randomIndex);
 
-		while (membership.getTimestamp(randomIndex++) < 0) {
-			if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CANDIDATE " + new String(mapOfNodes.get(node)));
-			if (randomIndex == listOfNodes.size())
-				randomIndex = 0;
-			
-			// we have exhausted all entries without a match
-			if (randomIndex == startingIndex)
-				return null;
-		}
-		
 		// we found a random element
 		String nextHost = new String(mapOfNodes.get(node));
 		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CHOSEN    " + nextHost);
