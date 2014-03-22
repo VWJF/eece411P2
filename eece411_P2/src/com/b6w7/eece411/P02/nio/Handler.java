@@ -808,6 +808,9 @@ final class Handler extends Command implements Runnable {
 				if (retriesLeft == 3)
 					randomNode = map.getRandomOnlineNode();
 				
+				if (randomNode == null)
+					abort(new IllegalStateException("All nodes are offline"));
+				
 				key = (randomNode.getAddress().getHostName() + ":" + randomNode.getPort()).getBytes();
 
 				if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==["+randomNode.getAddress().getHostAddress()+","+randomNode.getPort()+"]");
