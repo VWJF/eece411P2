@@ -2,8 +2,8 @@ package com.b6w7.eece411.P02.nio;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
-import java.util.Random;
 
 public class MembershipProtocol {
 	/**
@@ -141,18 +141,61 @@ public class MembershipProtocol {
 	 * @return
 	 */
 	public Integer getRandomIndex(){
-		Random rand = new Random();
-		int randomIndex;
-		do{
-			//randomIndex = (int) (Math.random() * ( total_nodes-1 - 0 )); //inclusive [0,total_nodes-1]
-			randomIndex = (rand.nextInt(total_nodes)); //[inclusive,exclusive)=[0,total_nodes)
-		}while( randomIndex == current_node || localTimestampVector.get(randomIndex) < 0);
+		//To obtain a unique random number to use as indices fo localtimestampvector.
+		//Create a list of all entries in the localtimestampvector. 
+		//Use Collections.shuffle() to randomize the list.
+		//The random index will be an entry from the list.
+		ArrayList<Integer> rand = new ArrayList<Integer>(this.total_nodes);
+		int i = 0;
+		for(i = 0; i < total_nodes; i++){
+			rand.add(i);
+		}
+		Collections.shuffle(rand);
 		
-		if(randomIndex == current_node)
+		if(IS_DEBUG) System.out.println(" === getRandomIndex() prior");
+		if(IS_DEBUG) System.out.println(" === Random generator: shuffle: "+rand);
+		
+		int test, randomIndex = current_node;
+		Integer r;
+		boolean validRandomFound = false;
+		i = total_nodes;
+		try{
+			do{
+				r = rand.remove(0);
+				if(r == null){
+					validRandomFound = false;
+					break;
+				}
+				randomIndex = r.intValue();
+				test = localTimestampVector.get(randomIndex);
+				if(test > 0){
+					validRandomFound = true;
+					break;
+				}
+			}while(  (--i) != 0  );
+		}catch(NullPointerException npe){
+			//A valid entry does not exist.
+			//npe.printStackTrace();
+			if(IS_DEBUG) System.out.println(" === getRandomIndex() NullPointerExcept: "+npe.getLocalizedMessage());
+			randomIndex = current_node;
+		}catch(IndexOutOfBoundsException iob){
+			//A valid entry does not exist.
+			//iob.printStackTrace();
+			if(IS_DEBUG) System.out.println(" === getRandomIndex() IndexOutBndExcept: "+iob.getLocalizedMessage());
+			randomIndex = current_node;
+		}
+		if(IS_DEBUG) System.out.println(" === getRandomIndex() post: "+randomIndex);
+
+		if(randomIndex == current_node )
 			return null;
 		 
 		return new Integer(randomIndex);
 	}
+	/**
+	 * Helper method to obtain a int[] from an ArrayList<Integer>.
+	 * @param retInteger
+	 * @return
+	 */
 	private int[] convertListToArray(ArrayList<Integer> retInteger) {
 		int update;
 		int[] backingArray = new int[total_nodes];

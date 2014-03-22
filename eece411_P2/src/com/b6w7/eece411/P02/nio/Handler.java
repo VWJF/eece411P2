@@ -478,7 +478,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
-		e.printStackTrace();
+		//e.printStackTrace();
 		try {
 			if (null != socketOwner) socketOwner.close();
 		} catch (IOException e2) {}
@@ -808,7 +808,7 @@ final class Handler extends Command implements Runnable {
 				if (retriesLeft == 3)
 					randomNode = map.getRandomOnlineNode();
 				
-				if (randomNode == null) {
+				if (randomNode == null){
 					abort(new IllegalStateException("All nodes are offline"));
 					return;
 				}

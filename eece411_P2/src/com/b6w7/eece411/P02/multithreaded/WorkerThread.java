@@ -15,7 +15,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 public class WorkerThread implements Runnable {
 
 	// extra debug output from normal
-	private static boolean IS_VERBOSE = false;
+	private static boolean IS_VERBOSE = true;
 
 	private final Socket socket;
 	private final PostCommand db;

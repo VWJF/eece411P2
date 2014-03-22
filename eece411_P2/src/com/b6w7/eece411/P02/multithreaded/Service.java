@@ -31,7 +31,7 @@ public class Service extends Thread implements JoinThread {
 	private ExecutorService executor;
 	private boolean keepRunning = true;
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
-	private static boolean IS_VERBOSE = false;
+	private static boolean IS_VERBOSE = true;
 	
 	public Service(int servPort) {
 		this.servPort = servPort;

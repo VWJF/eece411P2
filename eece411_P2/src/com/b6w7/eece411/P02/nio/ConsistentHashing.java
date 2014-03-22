@@ -16,7 +16,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -30,7 +29,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	public static boolean IS_DEBUG = true;
-	public static boolean IS_VERBOSE = true;
+	public static boolean IS_VERBOSE = false;
 
 //	private final HashFunction hashFunction;
 //	private final int numberOfReplicas;
