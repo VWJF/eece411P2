@@ -345,7 +345,7 @@ final class Handler extends Command implements Runnable {
 	 */
 	private void connectOwner() {
 		try {
-			if(IS_SHORT) System.out.println("Waiting for connectOwner to complete");
+			if(!IS_SHORT) System.out.println("     Handler::connectOwner() Waiting for connectOwner to complete");
 			try {
 				if (socketOwner.finishConnect())  { // {System.out.print("a");}
 					keyOwner = remote.key;
@@ -361,11 +361,14 @@ final class Handler extends Command implements Runnable {
 				}
 
 			} catch (ConnectException e1) {
+				if(!IS_SHORT) System.out.println(" ### Handler::connectOwner() Could not connect to to owner");
+				e1.printStackTrace();
 				// We could not contact the owner node, so reply that internal error occurred
 				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
 				process.generateRequesterReply();
 				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				if (null != keyRequester)
+					keyRequester.interestOps(SelectionKey.OP_WRITE);
 			}
 
 		} catch (UnknownHostException e) {
@@ -467,6 +470,12 @@ final class Handler extends Command implements Runnable {
 	 */
 	private void retryAtStateCheckingLocal(Exception e) {
 		retriesLeft --;
+		if (retriesLeft < 0) {
+			retriesLeft = 3;
+			// we have exhausted trying to connect to this owner
+			membership.shutdown(ConsistentHashing.hashKey(key));
+		}
+
 		System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
 		e.printStackTrace();
 		try {
@@ -507,6 +516,7 @@ final class Handler extends Command implements Runnable {
 		int[] updateTSVector = membership.incrementAndGetVector();
 
 		//byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
+		byteBufferTSVector.position(0);
 		byteBufferTSVector.asIntBuffer().put(updateTSVector);
 		byteBufferTSVector.limit(byteBufferTSVector.capacity());
 	}
@@ -820,7 +830,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateOwnerQuery() {
-			if (IS_VERBOSE) System.out.println(" +++ TSPushProcess::generateOwnerQuery() START " + self);
+			if (IS_VERBOSE) System.out.println(" +++ TSPushProcess::generateOwnerQuery() START    " + self);
 			output.position(0);
 			output.put(Request.CMD_TS_PUSH.getCode());
 

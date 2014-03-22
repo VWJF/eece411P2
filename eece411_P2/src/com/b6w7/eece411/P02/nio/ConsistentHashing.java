@@ -30,7 +30,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	public static boolean IS_DEBUG = true;
-	public static boolean IS_VERBOSE = false;
+	public static boolean IS_VERBOSE = true;
 
 //	private final HashFunction hashFunction;
 //	private final int numberOfReplicas;
@@ -172,19 +172,24 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			return null;
 		}
 		
-		Random rand = new Random(listOfNodes.size());
-		int randomIndex = rand.nextInt();
+		Random rand = new Random();
+		int randomIndex = rand.nextInt(listOfNodes.size());
 		int startingIndex = randomIndex;
 		ByteArrayWrapper node = listOfNodes.get(randomIndex);
+		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CANDIDATE " + new String(mapOfNodes.get(node)));
 
-		while (membership.getTimestamp(randomIndex++) < 0) {
-			if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CANDIDATE " + new String(mapOfNodes.get(node)));
+		while (membership.getTimestamp(randomIndex) < 0) {
+			randomIndex ++;
+			
 			if (randomIndex == listOfNodes.size())
 				randomIndex = 0;
 			
 			// we have exhausted all entries without a match
 			if (randomIndex == startingIndex)
 				return null;
+
+			node = listOfNodes.get(randomIndex);
+			if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CANDIDATE " + new String(mapOfNodes.get(node)));
 		}
 		
 		// we found a random element

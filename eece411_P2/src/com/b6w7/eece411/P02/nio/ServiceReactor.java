@@ -108,23 +108,23 @@ public class ServiceReactor implements Runnable, JoinThread {
 	public void run() {
 		System.out.println("Server listening on port " + serverPort + " with address: "+inetAddress);
 
-//		timer = new Timer();
-//		timer.schedule(new TimerTask() {
-//			
-//			@Override
-//			public void run() {
-//				try {
-//					System.out.println("ServiceReactor::Timer::run() Spawning new Handler");
-//					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, self);
-//					dbHandler.post(cmd);
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//				
-//			}
-//		}, 
-//		2000, 10000);
+		timer = new Timer();
+		timer.schedule(new TimerTask() {
+			
+			@Override
+			public void run() {
+				try {
+					System.out.println("ServiceReactor::Timer::run() Spawning new Handler");
+					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, self);
+					dbHandler.post(cmd);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			}
+		}, 
+		2000, 10000);
 		
 		// start handler thread
 		dbHandler.start();
@@ -317,6 +317,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	public static String[] nodes = 
 //			{"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11111", 
 //						"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11112"};
-			{"Knock3-Tablet:11111", "Knock3-Tablet:11112", "Knock3-Tablet:11113", "Knock3-Tablet:11114"};
+//		{"Knock3-Tablet:11111", "Knock3-Tablet:11112", "Knock3-Tablet:11113", "Knock3-Tablet:11114"};
+	{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
 }
 
