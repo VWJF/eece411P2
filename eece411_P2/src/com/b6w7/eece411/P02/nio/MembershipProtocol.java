@@ -3,6 +3,7 @@ package com.b6w7.eece411.P02.nio;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Random;
 
 public class MembershipProtocol {
 	/**
@@ -12,10 +13,10 @@ public class MembershipProtocol {
 	 * 		the vector received from a remote node [currently method receiveVector()]
 	 */
 	private final int total_nodes;
-	private int current_node;
+	private final int current_node;
 	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
 	
-	public static boolean IS_DEBUG = true;
+	private static boolean IS_DEBUG = true;
 
 
 	public MembershipProtocol(int current_node, int total_nodes) {
@@ -128,6 +129,18 @@ public class MembershipProtocol {
 		return backingArray;
 	}
 
+	/**
+	 * Return a random index in the range of localtimestampVector that does not match the current_node
+	 * @return
+	 */
+	public int getRandomIndex(){
+		int randomIndex;
+		do{
+			randomIndex = (int) (Math.random() * ( total_nodes-1 - 0 )); //inclusive [0,total_nodes-1]
+		}while( randomIndex == current_node);
+		
+		return randomIndex;
+	}
 	private int[] convertListToArray(ArrayList<Integer> retInteger) {
 		int update;
 		int[] backingArray = new int[total_nodes];

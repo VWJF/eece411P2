@@ -204,12 +204,12 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-//		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
@@ -614,7 +614,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		
 		//hack to debug
-		serverPort = 11112;
+		//fserverPort = 11112;
 		
 		List<Runnable> list = new LinkedList<Runnable>();
 
