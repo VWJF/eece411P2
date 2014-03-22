@@ -12,10 +12,10 @@ public class MembershipProtocol {
 	 * 		the vector received from a remote node [currently method receiveVector()]
 	 */
 	private final int total_nodes;
-	private int current_node;
+	private final int current_node;
 	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
 	
-	public static boolean IS_DEBUG = true;
+	private static boolean IS_DEBUG = true;
 
 
 	public MembershipProtocol(int current_node, int total_nodes) {
