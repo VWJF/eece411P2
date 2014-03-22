@@ -203,8 +203,19 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		/**TODO: Addition get Next node responsible.
 		 * Untested.
 		 * */ 	
-		while(this.membership.getTimestamp(listOfNodes.indexOf(nextKey)) < 0){
+		ByteArrayWrapper tempNextKey = getNextNodeTo(nextKey);
+		nextKey = tempNextKey;
+		int x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
+		while(x < 0){
 			nextKey = getNextNodeTo(nextKey);
+			if( nextKey == tempNextKey ){
+				if(IS_VERBOSE) {
+					String nextOfValue = new String(circle.get(requestedKey));
+					System.out.println("#### Get(Remote)NodeResponsible has returned localnode"+nextKey.toString()+"[value->"+nextOfValue);
+				}
+				break;
+			}		
+			x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
 		}
 		
 		String nextHost = new String(mapOfNodes.get(nextKey));
