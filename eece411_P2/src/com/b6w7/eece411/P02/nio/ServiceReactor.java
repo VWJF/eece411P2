@@ -163,6 +163,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 			}
 		}
 		
+		System.out.println("Waiting for timer thread to stop");
+		
+		if (null != timer) 
+				timer.cancel();
+
 		System.out.println("Waiting for handler thread to stop");
 
 		if (null != dbHandler) {
