@@ -28,7 +28,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
 public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
-	public static boolean IS_DEBUG = false;
+	public static boolean IS_DEBUG = true;
 	public static boolean IS_VERBOSE = false;
 
 //	private final HashFunction hashFunction;

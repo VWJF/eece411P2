@@ -16,7 +16,7 @@ public class MembershipProtocol {
 	private final int current_node;
 	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
 	
-	private static boolean IS_DEBUG = false;
+	private static boolean IS_DEBUG = true;
 
 
 	public MembershipProtocol(int current_node, int total_nodes) {

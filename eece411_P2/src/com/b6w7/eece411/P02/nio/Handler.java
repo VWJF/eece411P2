@@ -66,7 +66,7 @@ final class Handler extends Command implements Runnable {
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
 	
-	private boolean IS_DEBUG = false;
+	private boolean IS_DEBUG = true;
 	
 	private final int serverPort;
 	private final JoinThread parent;
