@@ -175,12 +175,12 @@ public class MembershipProtocol {
 			else{
 				localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
 			}
-			int x;
+			int shutdownIndex;
 			if(updateIndex == null)
-				x = -1;
+				shutdownIndex = -1;
 			else
-				x = updateIndex.intValue();
-			if(IS_DEBUG) System.out.println(" === shutdownindex "+x);
+				shutdownIndex = updateIndex.intValue();
+			if(IS_DEBUG) System.out.println(" === shutdownindex "+shutdownIndex +" "+ Arrays.toString(convertListToArray(localTimestampVector)));
 		}
 	}
 	
@@ -222,6 +222,7 @@ public class MembershipProtocol {
 		System.out.println("MemebershipProtocol:main() "+Arrays.toString(sampleForReceipt));
 		
 		mp.shutdown(null);
-		
+		mp.shutdown(0);
+		mp.shutdown(1);
 	}
 }
