@@ -470,7 +470,7 @@ final class Handler extends Command implements Runnable {
 	private void retryAtStateCheckingLocal(Exception e) {
 		retriesLeft --;
 		if (retriesLeft < 0) {
-			System.out.println(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft"+retriesLeft+".  <<<<<<<<<<");
+			System.out.println(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft: "+retriesLeft+".  <<<<<<<<<<");
 			retriesLeft = 3;
 			// we have exhausted trying to connect to this owner
 			// he is probably offline
