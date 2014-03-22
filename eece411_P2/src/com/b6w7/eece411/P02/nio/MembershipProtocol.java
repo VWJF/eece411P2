@@ -133,9 +133,11 @@ public class MembershipProtocol {
 	 * @return
 	 */
 	public int getRandomIndex(){
+		Random rand = new Random();
 		int randomIndex;
 		do{
-			randomIndex = (int) (Math.random() * ( total_nodes-1 - 0 )); //inclusive [0,total_nodes-1]
+			//randomIndex = (int) (Math.random() * ( total_nodes-1 - 0 )); //inclusive [0,total_nodes-1]
+			randomIndex = (rand.nextInt(total_nodes)); //[inclusive,exclusive)=[0,total_nodes)
 		}while( randomIndex == current_node);
 		
 		return randomIndex;
