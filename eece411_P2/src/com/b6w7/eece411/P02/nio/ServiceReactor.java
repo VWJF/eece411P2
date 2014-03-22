@@ -114,7 +114,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 			@Override
 			public void run() {
 				try {
-					System.out.println("ServiceReactor::Timer::run() Spawning new Handler");
+					if (IS_VERBOSE) System.out.println("ServiceReactor::Timer::run() Spawning new Handler");
 					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, self);
 					dbHandler.post(cmd);
 				} catch (IOException e) {
@@ -152,7 +152,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 					data.key = data.sc.register(selector, data.ops, data.cmd);
 
 					data.sc.connect(data.addr);
-					if(IS_SHORT) System.out.println("--- checkLocal() woke up selector");
+					if(!IS_SHORT) System.out.println("--- checkLocal() woke up selector");
 				}
 				
 			} catch (IOException ex) { /* ... */ }
@@ -184,7 +184,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 		public void run() {
 			try {
-				if(IS_SHORT) System.out.println("*** Acceptor::Accepting Connection");
+				if(!IS_SHORT) System.out.println("*** Acceptor::Accepting Connection");
 				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)

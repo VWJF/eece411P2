@@ -66,7 +66,7 @@ final class Handler extends Command implements Runnable {
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
 	
-	private boolean IS_DEBUG = true;
+	private boolean IS_DEBUG = false;
 	
 	private final int serverPort;
 	private final JoinThread parent;
@@ -478,7 +478,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
-		e.printStackTrace();
+		//e.printStackTrace();
 		try {
 			if (null != socketOwner) socketOwner.close();
 		} catch (IOException e2) {}

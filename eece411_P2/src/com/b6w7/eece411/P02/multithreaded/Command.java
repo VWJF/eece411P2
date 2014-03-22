@@ -31,8 +31,8 @@ public abstract class Command {
 
 	// debug variables
 	public static AtomicInteger totalCompleted = new AtomicInteger(0);
-	public static boolean IS_VERBOSE = true;
-	public static boolean IS_SHORT = false;
+	public static boolean IS_VERBOSE = false;
+	public static boolean IS_SHORT = true;
 	
 	// abstact class methods to be overriden
 	public abstract void execute();
