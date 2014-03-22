@@ -76,7 +76,15 @@ public class MembershipProtocol {
 				remoteView = receivedVector[i];
 				//localView = update;
 				update = localView;
-				if(Math.abs(localView) < Math.abs(remoteView)) { 
+				if(Math.abs(localView) == Math.abs(remoteView)){
+					//Timestamps contain identical entries (in magnitude), then update with the entry that is negative. 
+					if (localView < remoteView){
+						 update = localView;
+					 }else{
+						 update = remoteView;
+					 }
+				}
+				else if(Math.abs(localView) < Math.abs(remoteView)) { 
 					update = remoteView;
 				}
 				//update = Math.max(receivedVector[i], update);;
