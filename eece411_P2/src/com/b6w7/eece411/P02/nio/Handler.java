@@ -2,7 +2,6 @@ package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
@@ -36,6 +35,7 @@ final class Handler extends Command implements Runnable {
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
 	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
+	private static final int MAX_TCP_RETRIES = 3;
 	
 	private static final int INTSIZE = 4;
 
@@ -49,6 +49,8 @@ final class Handler extends Command implements Runnable {
 	byte[] messageTimestamp;
 	ByteBuffer byteBufferTSVector = ByteBuffer.allocate(TIMESTAMPSIZE).order(ByteOrder.BIG_ENDIAN);
 	//ByteBuffer byteBufferTSVector;
+	
+	private int retriesLeft = MAX_TCP_RETRIES;
 
 	private final MembershipProtocol membership;
 	private final PostCommand dbHandler;
@@ -231,7 +233,7 @@ final class Handler extends Command implements Runnable {
 		// Now we know what operation, now we need to know how many bytes that we expect
 		if (Request.CMD_GET.getCode() == cmd){
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new GetProcess(self);
+				process = new GetProcess();
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -240,7 +242,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
-				process = new PutProcess(self);
+				process = new PutProcess();
 				input.position(CMDSIZE + KEYSIZE + VALUESIZE);
 				input.flip();
 				return true;
@@ -249,7 +251,7 @@ final class Handler extends Command implements Runnable {
 			
 		} else if (Request.CMD_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE) {
-				process = new RemoveProcess(self);
+				process = new RemoveProcess();
 				input.position(CMDSIZE + KEYSIZE);
 				input.flip();
 				return true;
@@ -258,33 +260,33 @@ final class Handler extends Command implements Runnable {
 
 		} else if (Request.CMD_TS_GET.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-			process = new TSGetProcess(self);
+			process = new TSGetProcess();
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
 			return true;
 			
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
-			process = new TSPutProcess(self);
+			process = new TSPutProcess();
 			input.position(CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
 			input.flip();
 			return true;
 			
 		} else if (Request.CMD_TS_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-			process = new TSRemoveProcess(self);
+			process = new TSRemoveProcess();
 			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 			input.flip();
 			return true;
 			
 		} else if (Request.CMD_ANNOUNCEDEATH.getCode() == cmd) {
-			process = new TSAnnounceDeathProcess(self);
+			process = new TSAnnounceDeathProcess();
 			input.position(CMDSIZE);
 			input.flip();
 			return true;
 			
 		} else {
-			process = new UnrecogProcess(this);
+			process = new UnrecogProcess();
 			System.out.println(" ### common::requesterInputIsComplete() Unrecognized command received on wire 0x" + Integer.toString((0x100 + (int)(cmd & 0xFF)), 16).substring(1));
 			// bad command received on wire
 			// nothing to do
@@ -440,7 +442,7 @@ final class Handler extends Command implements Runnable {
 		processRecvRequester();
 	}
 
-	private void updateTSVector(int index) {
+	private void mergeVector(int index) {
 		//only perform this once
 		if (null == messageTimestamp) {
 			messageTimestamp = new byte[TIMESTAMPSIZE];
@@ -461,26 +463,23 @@ final class Handler extends Command implements Runnable {
 				//Nothing.
 			}
 			membership.mergeVector(backingArray);
-
-			int[] updateTSVector = membership.incrementAndGetVector();
-
-			//byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
-			byteBufferTSVector.asIntBuffer().put(updateTSVector);
-			byteBufferTSVector.flip();
 		}
+	}
+	
+	private void incrLocalTime() {
+		int[] updateTSVector = membership.incrementAndGetVector();
+
+		//byteBufferTSVector = ByteBuffer.allocate(updateTSVector.length * INTSIZE).order(ByteOrder.BIG_ENDIAN);
+		byteBufferTSVector.asIntBuffer().put(updateTSVector);
+		byteBufferTSVector.limit(byteBufferTSVector.capacity());
 	}
 	
 	class TSAnnounceDeathProcess implements Process {
 
-		protected final Handler handler;
-
-		TSAnnounceDeathProcess(Handler handler) {
-			this.handler = handler;
-		}
-
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- TSAnnounceDeathProcess::checkLocal(): " + this.handler);
+			if (IS_VERBOSE) System.out.println(" --- TSAnnounceDeathProcess::checkLocal(): " + self);
+			incrLocalTime();
 
 			map.shutdown(null);
 			parent.announceDeath();
@@ -497,7 +496,7 @@ final class Handler extends Command implements Runnable {
 //			
 //			// OK, we decided that the location of key is at a remote node
 //			// we can transition to CONNECT_OWNER and connect to remote node
-//			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() BEFORE " + handler.toString());
+//			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() BEFORE " + self);
 //			
 //			try {
 //				map.transferKeys(output, ConsistentHashing.hashKey(InetAddress.getLocalHost().getHostName()+":"+serverPort));
@@ -505,7 +504,7 @@ final class Handler extends Command implements Runnable {
 //				// TODO Auto-generated catch block
 //				e.printStackTrace();
 //			}
-//			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() AFTER " + handler.toString());
+//			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() AFTER " + self);
 //			
 //			if (output.get(0) == (byte)0) {
 //				// ok there is nothing left to pull from local, time to shut down the server
@@ -534,7 +533,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateOwnerQuery() {
-			if (IS_VERBOSE) System.out.println(" +++ TSAnnounceDeathProcess::generateOwnerQuery() START " + handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ TSAnnounceDeathProcess::generateOwnerQuery() START " + self);
 			output.position(0);
 			output.put(Request.CMD_TS_PUT_BULK.getCode());
 			output.put(key);
@@ -543,7 +542,7 @@ final class Handler extends Command implements Runnable {
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ TSAnnounceDeathProcess::generateOwnerQuery() COMPLETE " + handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ TSAnnounceDeathProcess::generateOwnerQuery() COMPLETE " + self);
 		}
 
 		@Override
@@ -561,30 +560,21 @@ final class Handler extends Command implements Runnable {
 	
 	class TSPutProcess extends PutProcess {
 
-		TSPutProcess(Handler handler) {
-			super(handler);
-		}
-
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- TSPutProcess::checkLocal(): " + this);
-			updateTSVector(CMDSIZE+KEYSIZE+VALUESIZE);
+			if (IS_VERBOSE) System.out.println(" --- TSPutProcess::checkLocal(): " + self);
+			mergeVector(CMDSIZE+KEYSIZE+VALUESIZE);
 			super.checkLocal();
 		}
 	}
 	
 	class PutProcess implements Process {
 
-		protected final Handler handler;
-
-		PutProcess(Handler handler) {
-			this.handler = handler;
-		}
-
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- PutProcess::checkLocal(): " + this.handler);
-
+			if (IS_VERBOSE) System.out.println(" --- PutProcess::checkLocal(): " + self);
+			incrLocalTime();
+			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			value = new byte[VALUESIZE];
@@ -617,6 +607,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
 				if(!IS_SHORT) System.out.println("--- PutProcess::checkLocal() -------------- Using remote --------------");
+				incrLocalTime();
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -641,7 +632,7 @@ final class Handler extends Command implements Runnable {
 			if (replyCode == NodeCommands.Reply.RPY_NOT_SET.getCode()) {
 				// This means that we received from owner in 
 				// RECV_OWNER and output can be directly forwarded to requester
-				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + self);
 				return;
 			}
 			
@@ -649,12 +640,12 @@ final class Handler extends Command implements Runnable {
 			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETE LOCAL " + handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ PutProcess::generateRequesterReply() COMPLETE LOCAL " + self);
 		}
 
 		@Override
 		public void generateOwnerQuery() {
-			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() START " + handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() START " + self);
 			output.position(0);
 			output.put(Request.CMD_TS_PUT.getCode());
 			output.put(key);
@@ -663,7 +654,7 @@ final class Handler extends Command implements Runnable {
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() COMPLETE " + handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ TSPutProcess::generateOwnerQuery() COMPLETE " + self);
 		}
 
 		@Override
@@ -680,7 +671,7 @@ final class Handler extends Command implements Runnable {
 					//TODO: MemebershipProtocol.incrementAndGetVector() should be performed at the receipt of OwnerResponse ??
 					//membership.incrementAndGetVector();
 					
-					if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() COMPLETE " + handler.toString());
+					if (IS_VERBOSE) System.out.println(" +++ PutProcess::recvOwner() COMPLETE " + self);
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -736,37 +727,58 @@ final class Handler extends Command implements Runnable {
 		}
 	}
 	
-	class TSGetProcess extends GetProcess {
-		
-		TSGetProcess(Handler handler) {
-			super(handler);
-		}
+	class TSPushProcess implements Process {
 
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + this.handler);
-			updateTSVector(CMDSIZE+KEYSIZE);
+			if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): " + self);
+			mergeVector(CMDSIZE+KEYSIZE);
+			output = ByteBuffer.allocate(2048);
+
+			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+		}
+		
+		@Override
+		public void generateOwnerQuery() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void generateRequesterReply() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void recvOwner() {
+			// TODO Auto-generated method stub
+			
+		}
+		
+	}
+	
+	class TSGetProcess extends GetProcess {
+		@Override
+		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- TSGetProcess::checkLocal(): " + self);
+			mergeVector(CMDSIZE+KEYSIZE);
 			super.checkLocal();
 		}
 	}
 
 	class GetProcess implements Process {
 
-		protected final Handler handler;
-
-		GetProcess(Handler handler) {
-			this.handler = handler;
-		}
-
 		@Override
 		public void checkLocal() {			
+			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + self);
+			incrLocalTime();
+
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			if (IS_VERBOSE) System.out.println(" --- GetProcess::checkLocal(): " + this.handler);
-
 			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
@@ -792,6 +804,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
 				if(!IS_SHORT) System.out.println("--- GetProcess::checkLocal() ------------ Using Remote --------------");
+				incrLocalTime();
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -817,7 +830,7 @@ final class Handler extends Command implements Runnable {
 			if (replyCode == NodeCommands.Reply.RPY_NOT_SET.getCode()) {
 				// This means that we received from owner in 
 				// RECV_OWNER and output can be directly forwarded to requester
-				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
+				if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE REMOTE " + self);
 				return;
 			}
 
@@ -827,12 +840,12 @@ final class Handler extends Command implements Runnable {
 			if (replyValue != null)
 				output.put(replyValue);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE LOCAL " + handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ GetProcess::generateRequesterReply() COMPLETE LOCAL " + self);
 		}
 
 		@Override
 		public void generateOwnerQuery() {
-			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START " + handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() START " + self);
 			output.position(0);
 			output.put(Request.CMD_TS_GET.getCode());
 			output.put(key);
@@ -843,7 +856,7 @@ final class Handler extends Command implements Runnable {
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE "+ handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ TSGetProcess::generateOwnerQuery() COMPLETE "+ self);
 		}
 
 		@Override
@@ -860,7 +873,7 @@ final class Handler extends Command implements Runnable {
 					//TODO: MemebershipProtocol.incrementAndGetVector() should be performed at the receipt of OwnerResponse
 					//membership.incrementAndGetVector();
 					
-					if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() COMPLETE "+ handler.toString());
+					if (IS_VERBOSE) System.out.println(" +++ GetProcess::recvOwner() COMPLETE "+ self);
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -894,7 +907,7 @@ final class Handler extends Command implements Runnable {
 			//				", "+NodeCommands.byteArrayAsString(key) +")" );
 			if(val == null) {
 				// NONEXISTENT -- we want to debug here
-				if (IS_VERBOSE) System.out.println(" *** GetCommand() Not Found " + handler.toString());
+				if (IS_VERBOSE) System.out.println(" *** GetCommand() Not Found " + self);
 			}
 			return val;
 		}
@@ -902,29 +915,21 @@ final class Handler extends Command implements Runnable {
 
 	class TSRemoveProcess extends RemoveProcess {
 
-		TSRemoveProcess(Handler handler) {
-			super(handler);
-		}
-		
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- TSRemoveProcess::checkLocal(): " + this.handler);
-			updateTSVector(CMDSIZE+KEYSIZE);
+			if (IS_VERBOSE) System.out.println(" --- TSRemoveProcess::checkLocal(): " + self);
+			mergeVector(CMDSIZE+KEYSIZE);
 			super.checkLocal();
 		}
 	}
 
 	class RemoveProcess implements Process {
 
-		protected final Handler handler;
-
-		RemoveProcess(Handler handler) {
-			this.handler = handler;
-		}
 		@Override
 		public void checkLocal() {
-			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::checkLocal(): " + handler.toString());
-			
+			if (IS_VERBOSE) System.out.println(" --- RemoveProcess::checkLocal(): " + self);
+			incrLocalTime();
+		
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
@@ -955,6 +960,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
 				if(!IS_SHORT) System.out.println("--- RemoveProcess::checkLocal() ------------ Using Remote --------------");
+				incrLocalTime();
 				state = State.CONNECT_OWNER;
 
 				try {
@@ -979,7 +985,7 @@ final class Handler extends Command implements Runnable {
 			if (replyCode == NodeCommands.Reply.RPY_NOT_SET.getCode()) {
 				// This means that we received from owner in 
 				// RECV_OWNER and output can be directly forwarded to requester
-				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETE REMOTE " + handler.toString());
+				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETE REMOTE " + self);
 				return;
 			}
 
@@ -987,7 +993,7 @@ final class Handler extends Command implements Runnable {
 			// the appropriate reply to requester.
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETE LOCAL "+ handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::generateRequesterReply() COMPLETE LOCAL "+ self);
 		}
 
 		@Override
@@ -1011,7 +1017,7 @@ final class Handler extends Command implements Runnable {
 //				if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() COMPLETE "+ handler.toString());
+					if (IS_VERBOSE) System.out.println(" +++ RemoveProcess::recvOwner() COMPLETE "+ self);
 					generateRequesterReply();
 					
 					state = State.SEND_REQUESTER;
@@ -1038,18 +1044,13 @@ final class Handler extends Command implements Runnable {
 
 	class UnrecogProcess implements Process {
 
-		protected final Handler handler;
-
-		UnrecogProcess(Handler handler) {
-			this.handler = handler;
-		}
-
 		@Override
 		public void checkLocal() {
+			if (IS_VERBOSE) System.out.println(" --- UnrecogProcess::checkLocal(): " + self);
+			incrLocalTime();
+
 			replyCode = NodeCommands.Reply.RPY_UNRECOGNIZED.getCode();
 			output = ByteBuffer.allocate( NodeCommands.LEN_CMD_BYTES );
-
-			if (IS_VERBOSE) System.out.println(" --- TSUnrecogProcess::checkLocal(): " + this.handler);
 
 			generateRequesterReply();
 			
@@ -1063,7 +1064,7 @@ final class Handler extends Command implements Runnable {
 			output.position(0);
 			output.put(replyCode);
 			output.flip();
-			if (IS_VERBOSE) System.out.println(" +++ UnrecogProcess::generateRequesterReply() COMPLETE "+ handler.toString());
+			if (IS_VERBOSE) System.out.println(" +++ UnrecogProcess::generateRequesterReply() COMPLETE "+ self);
 		}
 
 		@Override
