@@ -320,21 +320,23 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	/**
-	 * Method to notify MemebrshipProtocol to update the timestamp vector.
+	 * Method to notify MemebershipProtocol to update the timestamp vector.
 	 * @param node: key of the node that is to be "disabled".
 	 */
-	public void shutdown(String node){
-		if(node == null){
+	public void shutdown(ByteArrayWrapper key){
+		if(key == null){
 			membership.shutdown(null);
 			return;
 		}
 		
-		ByteArrayWrapper key = hashKey(node);
-		if(IS_DEBUG) System.out.println("     ConsistentHashing::getNodePosition()  hashKey: "+key);
+		//ByteArrayWrapper key = hashKey(node);
+		String node = new String(mapOfNodes.get(key));
+
+		if(IS_DEBUG) System.out.println("     ConsistentHashing::shutdown() key: "+node);
 		
 		int ret = listOfNodes.indexOf(key);
 		if (-1 == ret){
-			System.out.println(" ### ConsistentHashing::getNodePosition() index not found for node "+ node);
+			System.out.println(" ### ConsistentHashing::shutdown() key index not found for node "+ node );
 			return;
 		}
 		membership.shutdown(ret);
