@@ -152,6 +152,15 @@ public class TestNode implements Runnable, JoinThread {
 	}
 	
 	/**
+	 * Test Case: Test for announceDeath
+	 * @throws NoSuchAlgorithmException
+	 * @throws UnsupportedEncodingException
+	 */
+	private void populateAnnounceDeathTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		populateOneTest(NodeCommands.Request.CMD_ANNOUNCEDEATH.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+	}
+
+	/**
 	 * Test Case: Test for protocol(sanity) check.
 	 * @throws NoSuchAlgorithmException
 	 * @throws UnsupportedEncodingException
@@ -665,10 +674,12 @@ public class TestNode implements Runnable, JoinThread {
 			//populateMemoryTests();
 			
 			//Test for routing.
-			populatePutTests(); //For the node that has stored the Key-Values 11112
+			//populatePutTests(); //For the node that has stored the Key-Values 11112
 			//populateGetTests();	//For a node that did not store the Key-Values 11111
 			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
+			populateAnnounceDeathTest();
+			
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
 			DataOutputStream outToServer = null;

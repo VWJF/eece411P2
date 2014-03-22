@@ -17,6 +17,7 @@ import java.util.Queue;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
+import com.b6w7.eece411.P02.multithreaded.JoinThread;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
@@ -67,6 +68,7 @@ final class Handler extends Command implements Runnable {
 	private boolean IS_DEBUG = true;
 	
 	private final int serverPort;
+	private final JoinThread parent;
 
 	// possible states of any command
 	enum State {
@@ -80,10 +82,10 @@ final class Handler extends Command implements Runnable {
 	}
 
 
-	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort, MembershipProtocol membership) 
+	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort, MembershipProtocol membership, JoinThread parent) 
 			throws IOException {
 
-		
+		this.parent = parent;
 		this.queue = queue;
 		this.sel = sel;
 
@@ -480,35 +482,40 @@ final class Handler extends Command implements Runnable {
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSAnnounceDeathProcess::checkLocal(): " + this.handler);
 
-//			key = new byte[KEYSIZE];
-//			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-//			value = new byte[VALUESIZE];
-//			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-			hashedKey = new ByteArrayWrapper(key);
-			output = ByteBuffer.allocate(20480);
+			map.shutdown(null);
+			parent.announceDeath();
 			
-			// OK we need to send key values pairs to remote node
-			// We call our local method to fill our output buffer as much as possible
-			
-			// OK, we decided that the location of key is at a remote node
-			// we can transition to CONNECT_OWNER and connect to remote node
-			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() BEFORE " + handler.toString());
-			
-			try {
-				map.transferKeys(output, ConsistentHashing.hashKey(InetAddress.getLocalHost().getHostName()+":"+serverPort));
-			} catch (UnknownHostException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() AFTER " + handler.toString());
-			
+////			key = new byte[KEYSIZE];
+////			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+////			value = new byte[VALUESIZE];
+////			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
+//			hashedKey = new ByteArrayWrapper(key);
+//			output = ByteBuffer.allocate(20480);
+//			
+//			// OK we need to send key values pairs to remote node
+//			// We call our local method to fill our output buffer as much as possible
+//			
+//			// OK, we decided that the location of key is at a remote node
+//			// we can transition to CONNECT_OWNER and connect to remote node
+//			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() BEFORE " + handler.toString());
+//			
+//			try {
+//				map.transferKeys(output, ConsistentHashing.hashKey(InetAddress.getLocalHost().getHostName()+":"+serverPort));
+//			} catch (UnknownHostException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//			if(!IS_SHORT) System.out.println("--- TSAnnounceDeathProcess::checkLocal() AFTER " + handler.toString());
+//			
 //			if (output.get(0) == (byte)0) {
-//				output.pu
 //				// ok there is nothing left to pull from local, time to shut down the server
+//				generateOwnerQuery();
 //				
 //			} else {
 //				// ok we have some keys to send to a remote node
 //				try {
+//					InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+//
 //					// prepare the output buffer, and signal for opening a socket to remote
 //					generateOwnerQuery();
 //

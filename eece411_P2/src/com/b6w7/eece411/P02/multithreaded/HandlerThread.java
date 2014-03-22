@@ -47,4 +47,11 @@ public class HandlerThread extends Thread implements PostCommand {
 		}
 //		System.out.println("HandlerThread()::post() end");
 	}
+
+	public void kill() {
+		keepRunning = false;
+		synchronized(inQueue) {
+			inQueue.notifyAll();
+		}
+	}
 }
