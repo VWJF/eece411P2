@@ -1,7 +1,6 @@
 package com.b6w7.eece411.P02.nio;
 
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
@@ -471,6 +470,7 @@ final class Handler extends Command implements Runnable {
 	private void retryAtStateCheckingLocal(Exception e) {
 		retriesLeft --;
 		if (retriesLeft < 0) {
+			System.out.println(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft"+retriesLeft+".  <<<<<<<<<<");
 			retriesLeft = 3;
 			// we have exhausted trying to connect to this owner
 			// he is probably offline
@@ -777,6 +777,8 @@ final class Handler extends Command implements Runnable {
 	
 	class TSPushProcess implements Process {
 
+		InetSocketAddress randomNode;
+
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): " + self);
@@ -803,7 +805,9 @@ final class Handler extends Command implements Runnable {
 			} else {
 				// OK this is a request from this node that will be outbound
 				// this was triggered by a periodic local timer
-				InetSocketAddress randomNode = map.getRandomOnlineNode();
+				if (retriesLeft == 3)
+					randomNode = map.getRandomOnlineNode();
+				
 				key = (randomNode.getAddress().getHostName() + ":" + randomNode.getPort()).getBytes();
 
 				if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==["+randomNode.getAddress().getHostAddress()+","+randomNode.getPort()+"]");

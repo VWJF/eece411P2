@@ -317,7 +317,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	public static String[] nodes = 
 //			{"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11111", 
 //						"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11112"};
-//		{"Knock3-Tablet:11111", "Knock3-Tablet:11112", "Knock3-Tablet:11113", "Knock3-Tablet:11114"};
-	{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
+		{"Knock3-Tablet:11111", "Knock3-Tablet:11112", "Knock3-Tablet:11113", "Knock3-Tablet:11114"};
+//	{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
 }
 
