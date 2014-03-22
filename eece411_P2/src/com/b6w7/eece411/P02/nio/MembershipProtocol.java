@@ -42,29 +42,36 @@ public class MembershipProtocol {
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
 		synchronized (localTimestampVector) {
 			//behavior on receiving a vectorTimestamp at each node 
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.size()+") (current_node=="+current_node);
-			if(IS_DEBUG) {
-				StringBuilder s = new StringBuilder();
-				s.append(" === MembershipProtocol::mergeVector() [localTimestampVector["+localTimestampVector.size()+"]=>");
-				for (Integer element: localTimestampVector)
-					s.append(element.toString() + ",");
-				s.append("]\n");
-				s.append(" === MembershipProtocol::mergeVector()       [receivedVector["+localTimestampVector.size()+"]=>");
-				for (int element: receivedVector)
-					s.append(element + ",");
-				s.append("]");
-				System.out.println(s.toString());
-			}
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.size()+") (current_node=="+current_node +")");
+			
+//			if(IS_DEBUG) {
+//				StringBuilder s = new StringBuilder();
+//				s.append(" === MembershipProtocol::mergeVector() [localTimestampVector["+localTimestampVector.size()+"]=>");
+//				for (Integer element: localTimestampVector)
+//					s.append(element.toString() + ",");
+//				s.append("]\n");
+//				s.append(" === MembershipProtocol::mergeVector() [receivedVector["+localTimestampVector.size()+"]=>");
+//				for (int element: receivedVector)
+//					s.append(element + ",");
+//				s.append("]");
+//				System.out.println(s.toString());
+//			}
 			
 			int local = localTimestampVector.get(current_node);
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") received vect: "+Arrays.toString(receivedVector));
+			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") local vect   : "+Arrays.toString(convertListToArray(localTimestampVector)));
+
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
 			
-			int i;
+			int i, localView, remoteView;
 			int update;
 			for(i = 0; i < localTimestampVector.size() && i < receivedVector.length; i++){
 				update = localTimestampVector.get(i).intValue();
 				if(receivedVector[i] > 0 ) {
-					update = Math.max(receivedVector[i], update);;
+					localView = receivedVector[i];
+					remoteView = update;
+					update = (Math.abs(localView)>Math.abs(remoteView)) ? localView : remoteView;
+					//update = Math.max(receivedVector[i], update);;
 				}
 		///***/	update = Math.max(receivedVector[i], localTimestampVector.get(i));
 		///***/	localTimestampVector.set(i, update);
@@ -82,7 +89,6 @@ public class MembershipProtocol {
 			localTimestampVector.trimToSize();
 			//	wait(waittime);
 
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") received vect: "+Arrays.toString(receivedVector));
 			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") after merging: "+localTimestampVector);
 		}
 	}
@@ -111,7 +117,7 @@ public class MembershipProtocol {
 
 		retInteger.trimToSize();
 		int[] backingArray = convertListToArray(retInteger);
-		if(IS_DEBUG) System.out.println(" === updateSendVector() backingArray: "+Arrays.toString(backingArray));
+		if(IS_DEBUG) System.out.println(" === incrementAndGetVector() backingArray: "+Arrays.toString(backingArray));
 
 		return backingArray;
 	}
@@ -134,7 +140,7 @@ public class MembershipProtocol {
 	}
 	
 	/**
-	 * Accessor for the local Timestamp Vector.
+	 * Accessor for an index(node) the local Timestamp Vector.
 	 * @return
 	 */
 	public int getTimestamp(int nodeIndex){
@@ -161,10 +167,10 @@ public class MembershipProtocol {
 		synchronized (localTimestampVector) {
 			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
 			if(updateIndex == null){
-				localTimestampVector.set(current_node, -localTimestampVector.get(current_node));
+				localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
 			}
 			else{
-				localTimestampVector.set(updateIndex.intValue(), -localTimestampVector.get(updateIndex.intValue()));
+				localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
 			}
 			
 			if(IS_DEBUG) System.out.println(" === shutdownindex "+updateIndex.intValue());
@@ -174,19 +180,41 @@ public class MembershipProtocol {
 	/**
 	 * Helper method to convert int[] to ArrayList<Integer>
 	 * @param ints
-	 * @return ArrayList<Integer> where ints[x] < 0 are replaced with null entries in the ArrayList
+	 * @return ArrayList<Integer> where ArrayList(x) = ints[x].
 	 */
 	private ArrayList<Integer> convertArrayToList(int[] ints){
 		ArrayList<Integer> intList = new ArrayList<Integer>(ints.length);
 		
 		for (int index = 0; index < ints.length; index++)
 	    { 
-			if (ints[index] < 0){
-				intList.add(null);
-			}else{
-				intList.add(ints[index]);
-			}
+			intList.add(ints[index]);
 	    }
 		return intList;
+	}
+
+	public static void main(String[] args) {
+		int current_node = 2; 
+		int total_nodes = 3;
+		MembershipProtocol mp = new MembershipProtocol(current_node, total_nodes);
+		
+		int[] sampleForMerge = new int[total_nodes];
+		int [] sampleForReceipt = new int[total_nodes];
+		
+		for(int i = 0; i< total_nodes; i++){
+			sampleForMerge[i] = 1; 
+			sampleForReceipt[i] = 0;
+		}
+		sampleForMerge[current_node] = 0;
+		
+		System.out.println("MemebershipProtocol:Test sampleForMerge "+Arrays.toString(sampleForMerge));		
+		System.out.println("MemebershipProtocol:Test sampleForReceipt "+Arrays.toString(sampleForReceipt));
+
+		
+		mp.mergeVector(sampleForMerge);
+		sampleForReceipt = mp.incrementAndGetVector();
+		System.out.println("MemebershipProtocol:main() "+Arrays.toString(sampleForReceipt));
+		
+		mp.shutdown(null);
+		
 	}
 }
