@@ -146,7 +146,7 @@ public class MembershipProtocol {
 		do{
 			//randomIndex = (int) (Math.random() * ( total_nodes-1 - 0 )); //inclusive [0,total_nodes-1]
 			randomIndex = (rand.nextInt(total_nodes)); //[inclusive,exclusive)=[0,total_nodes)
-		}while( randomIndex == current_node && localTimestampVector.get(randomIndex) < 0);
+		}while( randomIndex == current_node || localTimestampVector.get(randomIndex) < 0);
 		
 		return randomIndex;
 	}
