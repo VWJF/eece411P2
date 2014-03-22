@@ -166,9 +166,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	public InetSocketAddress getRandomOnlineNode() {
-		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() BEFORE");
+		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode()");
 		if (mapOfNodes.isEmpty()) {
-			System.out.println("Map Of Nodes Empty.");
+			if(IS_VERBOSE) System.out.println(" ### ConsistentHashing.getRandomOnlineNode() Map of Nodes Empty.");
 			return null;
 		}
 		
@@ -178,6 +178,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper node = listOfNodes.get(randomIndex);
 
 		while (membership.getTimestamp(randomIndex++) < 0) {
+			if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CANDIDATE " + new String(mapOfNodes.get(node)));
 			if (randomIndex == listOfNodes.size())
 				randomIndex = 0;
 			
@@ -188,10 +189,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		// we found a random element
 		String nextHost = new String(mapOfNodes.get(node));
+		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CHOSEN    " + nextHost);
 
 		String addr[] = nextHost.split(":");
-
-		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() FOUND " + node);
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
 	

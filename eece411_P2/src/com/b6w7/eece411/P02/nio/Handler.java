@@ -83,6 +83,30 @@ final class Handler extends Command implements Runnable {
 		ABORT, 
 	}
 
+	Handler(Selector sel, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort, MembershipProtocol membership, JoinThread parent) 
+			throws IOException {
+
+		this.parent = parent;
+		this.queue = queue;
+		this.sel = sel;
+
+		if (null == map) 
+			throw new IllegalArgumentException("map cannot be null");
+
+		this.dbHandler = dbHandler;
+		this.map = map;
+		socketRequester = null; 
+		keyRequester = null;
+		// Optionally try first read now
+		
+		this.membership= membership;
+		this.serverPort = serverPort;
+		this.process = new TSPushProcess();
+		
+		state = State.CHECKING_LOCAL;
+		// keep reference to self so that nested classes can refer to the handler
+		self = this;
+	}
 
 	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort, MembershipProtocol membership, JoinThread parent) 
 			throws IOException {
@@ -239,7 +263,7 @@ final class Handler extends Command implements Runnable {
 				return true;
 			}
 			return false;
-			
+
 		} else if (Request.CMD_PUT.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + VALUESIZE) {
 				process = new PutProcess();
@@ -248,7 +272,7 @@ final class Handler extends Command implements Runnable {
 				return true;
 			}
 			return false;
-			
+
 		} else if (Request.CMD_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE) {
 				process = new RemoveProcess();
@@ -259,26 +283,38 @@ final class Handler extends Command implements Runnable {
 			return false;
 
 		} else if (Request.CMD_TS_GET.getCode() == cmd) {
-			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-			process = new TSGetProcess();
-			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-			input.flip();
-			return true;
-			
+			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE){
+				process = new TSGetProcess();
+				input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
+				input.flip();
+				return true;
+			}
+			return false;
+
 		} else if (Request.CMD_TS_PUT.getCode() == cmd) {
-			if (position >= CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
-			process = new TSPutProcess();
-			input.position(CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
-			input.flip();
-			return true;
-			
+			if (position >= CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE) {
+				process = new TSPutProcess();
+				input.position(CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
+				input.flip();
+				return true;
+			}
+			return false;
+
 		} else if (Request.CMD_TS_REMOVE.getCode() == cmd) {
-			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-			process = new TSRemoveProcess();
-			input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
+			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE) {
+				process = new TSRemoveProcess();
+				input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
+				input.flip();
+				return true;
+			}
+			return false;
+
+		} else if (Request.CMD_TS_PUSH.getCode() == cmd) {
+			process = new TSPushProcess();
+			input.position(CMDSIZE);
 			input.flip();
 			return true;
-			
+
 		} else if (Request.CMD_ANNOUNCEDEATH.getCode() == cmd) {
 			process = new TSAnnounceDeathProcess();
 			input.position(CMDSIZE);
@@ -411,7 +447,8 @@ final class Handler extends Command implements Runnable {
 	 */
 	private void abort(Exception e) {
 		// Unknown host.  Fatal error.  Abort this command.
-		System.out.println("*** Unknown Host. Aborting. "+e.getMessage());
+		retriesLeft = 0;
+		System.out.println("*** Handler::abort() Unknown Host. Aborting. "+e.getMessage());
 		try {
 			if (null != socketOwner) socketOwner.close();
 		} catch (IOException e1) {}
@@ -429,8 +466,8 @@ final class Handler extends Command implements Runnable {
 	 * @param e Exception that occurred
 	 */
 	private void retryAtStateCheckingLocal(Exception e) {
-		// TODO add a retry counter or time to fail?
-		System.out.println("*** Network error in connecting to remote node. "+ e.getMessage());
+		retriesLeft --;
+		System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
 		e.printStackTrace();
 		try {
 			if (null != socketOwner) socketOwner.close();
@@ -732,30 +769,104 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): " + self);
-			mergeVector(CMDSIZE+KEYSIZE);
 			output = ByteBuffer.allocate(2048);
+			incrLocalTime();
+			
+			if (input.get(0) == Request.CMD_TS_PUSH.getCode()) {
+				// OK this is a request from another node that has arrived here
+				// we need to read local timestamp and send it back
+				
+				// set replyCode as appropriate and prepare output buffer
+				if(!IS_SHORT) System.out.println("--- PutProcess::checkLocal() ------------ Using Local --------------");
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
 
-			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+				generateRequesterReply();
+
+				// signal to selector that we are ready to write
+				state = State.SEND_REQUESTER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				sel.wakeup();
+				
+			} else {
+				// OK this is a request from this node that will be outbound
+				// this was triggered by a periodic local timer
+				InetSocketAddress randomNode = map.getRandomOnlineNode();
+
+				generateOwnerQuery();
+
+				// OK, we decided that the location of key is at a remote node
+				// we can transition to CONNECT_OWNER and connect to remote node
+				if(!IS_SHORT) System.out.println("--- TSPushProcess::checkLocal()");
+				incrLocalTime();
+
+				state = State.CONNECT_OWNER;
+
+				try {
+					// prepare the output buffer, and signal for opening a socket to remote
+					generateOwnerQuery();
+
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, randomNode);
+					sel.wakeup();
+
+				} catch (IOException e) {
+					retryAtStateCheckingLocal(e);
+				}
+			}
 		}
-		
+
 		@Override
 		public void generateOwnerQuery() {
-			// TODO Auto-generated method stub
-			
+			if (IS_VERBOSE) System.out.println(" +++ TSPushProcess::generateOwnerQuery() START " + self);
+			output.position(0);
+			output.put(Request.CMD_TS_PUSH.getCode());
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSPushProcess::generateOwnerQuery() COMPLETE " + self);
 		}
 
 		@Override
 		public void generateRequesterReply() {
-			// TODO Auto-generated method stub
+			// We performed a local look up.  So we fill in input with 
+			// the appropriate reply to requester.
+			output.put(replyCode);
 			
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSPushProcess::generateRequesterReply() COMPLETE LOCAL " + self);
 		}
 
 		@Override
 		public void recvOwner() {
-			// TODO Auto-generated method stub
-			
+			output.limit(output.capacity());
+
+			// read from the socket then close the connection
+			try {
+				socketOwner.read(output);
+				
+				state = State.SEND_REQUESTER;
+				if (IS_VERBOSE) System.out.println(" +++ TSPushProcess::recvOwner() COMPLETE " + this);
+				if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
+				if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
+				if (null != socketRequester) socketRequester.close();
+				if (null != socketOwner) socketOwner.close();
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
 		}
 		
+		protected boolean recvOwnerIsComplete() {
+			output.position(RPYSIZE);
+			output.flip();
+			
+			return true;
+		}
 	}
 	
 	class TSGetProcess extends GetProcess {

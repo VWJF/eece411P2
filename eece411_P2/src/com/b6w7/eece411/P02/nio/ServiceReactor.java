@@ -56,6 +56,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 	final ServerSocketChannel serverSocket;
 	final InetAddress inetAddress;
 	final MembershipProtocol membership;
+	private Timer timer;
+	private JoinThread self;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
@@ -95,6 +97,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 		sk.attach(new Acceptor(this));
+		
+		self = this;
 	}
 
 	// code for ExecutorService obtained and modified from 
@@ -104,6 +108,24 @@ public class ServiceReactor implements Runnable, JoinThread {
 	public void run() {
 		System.out.println("Server listening on port " + serverPort + " with address: "+inetAddress);
 
+//		timer = new Timer();
+//		timer.schedule(new TimerTask() {
+//			
+//			@Override
+//			public void run() {
+//				try {
+//					System.out.println("ServiceReactor::Timer::run() Spawning new Handler");
+//					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, self);
+//					dbHandler.post(cmd);
+//				} catch (IOException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
+//				
+//			}
+//		}, 
+//		2000, 10000);
+		
 		// start handler thread
 		dbHandler.start();
 
