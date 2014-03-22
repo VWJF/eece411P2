@@ -30,7 +30,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	public static boolean IS_DEBUG = true;
-	public static boolean IS_VERBOSE = false;
+	public static boolean IS_VERBOSE = true;
 
 //	private final HashFunction hashFunction;
 //	private final int numberOfReplicas;
@@ -335,6 +335,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param node: key of the node that is to be "disabled".
 	 */
 	public void shutdown(ByteArrayWrapper key){
+		System.out.println(" *** ConsistentHashing::shutdown() CALLED ");
 		if(key == null){
 			membership.shutdown(null);
 			return;

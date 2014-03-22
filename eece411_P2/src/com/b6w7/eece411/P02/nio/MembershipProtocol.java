@@ -105,7 +105,6 @@ public class MembershipProtocol {
 	 * @return
 	 */
 	public int[] incrementAndGetVector(){
-		// TODO : We are accessing localTimestampVector from both threads, so synchronize
 		int[] retInt;
 		ArrayList<Integer> retInteger;
 		int update;

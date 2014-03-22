@@ -311,7 +311,7 @@ final class Handler extends Command implements Runnable {
 
 		} else if (Request.CMD_TS_PUSH.getCode() == cmd) {
 			process = new TSPushProcess();
-			input.position(CMDSIZE);
+			input.position(CMDSIZE + TIMESTAMPSIZE);
 			input.flip();
 			return true;
 
@@ -346,7 +346,7 @@ final class Handler extends Command implements Runnable {
 	private void connectOwner() {
 		try {
 			if(!IS_SHORT) System.out.println("     Handler::connectOwner() Waiting for connectOwner to complete");
-			try {
+//			try {
 				if (socketOwner.finishConnect())  { // {System.out.print("a");}
 					keyOwner = remote.key;
 					if (keyOwner == null) {
@@ -360,16 +360,16 @@ final class Handler extends Command implements Runnable {
 					}
 				}
 
-			} catch (ConnectException e1) {
-				if(!IS_SHORT) System.out.println(" ### Handler::connectOwner() Could not connect to to owner");
-				e1.printStackTrace();
-				// We could not contact the owner node, so reply that internal error occurred
-				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
-				process.generateRequesterReply();
-				state = State.SEND_REQUESTER;
-				if (null != keyRequester)
-					keyRequester.interestOps(SelectionKey.OP_WRITE);
-			}
+//			} catch (ConnectException e1) {
+//				if(!IS_SHORT) System.out.println(" ### Handler::connectOwner() Could not connect to to owner");
+//				e1.printStackTrace();
+//				// We could not contact the owner node, so reply that internal error occurred
+//				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+//				process.generateRequesterReply();
+//				state = State.SEND_REQUESTER;
+//				if (null != keyRequester)
+//					keyRequester.interestOps(SelectionKey.OP_WRITE);
+//			}
 
 		} catch (UnknownHostException e) {
 			abort(e);
@@ -473,7 +473,8 @@ final class Handler extends Command implements Runnable {
 		if (retriesLeft < 0) {
 			retriesLeft = 3;
 			// we have exhausted trying to connect to this owner
-			membership.shutdown(ConsistentHashing.hashKey(key));
+			// he is probably offline
+			map.shutdown(ConsistentHashing.hashKey(key));
 		}
 
 		System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
@@ -779,6 +780,8 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): " + self);
+			mergeVector(CMDSIZE);
+
 			output = ByteBuffer.allocate(2048);
 			incrLocalTime();
 			
@@ -801,6 +804,9 @@ final class Handler extends Command implements Runnable {
 				// OK this is a request from this node that will be outbound
 				// this was triggered by a periodic local timer
 				InetSocketAddress randomNode = map.getRandomOnlineNode();
+				key = (randomNode.getAddress().getHostName() + ":" + randomNode.getPort()).getBytes();
+
+				if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==["+randomNode.getAddress().getHostAddress()+","+randomNode.getPort()+"]");
 
 				generateOwnerQuery();
 
@@ -1233,7 +1239,7 @@ final class Handler extends Command implements Runnable {
 		
 		s.append("] [key=>");
 		if (null != key) {
-			for (int i=0; i<LEN_TO_STRING_OF_KEY; i++)
+			for (int i=0; i</*LEN_TO_STRING_OF_KEY*/ key.length; i++)
 				s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 		} else {
 			s.append("null");
