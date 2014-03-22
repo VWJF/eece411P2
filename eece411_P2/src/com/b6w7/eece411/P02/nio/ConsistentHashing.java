@@ -172,9 +172,12 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			return null;
 		}
 		
-		int randomIndex = membership.getRandomIndex();
+		Integer randomIndex = membership.getRandomIndex();
+		if(randomIndex == null)
+			return null;
+		
 		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() Index: "+randomIndex);
-		ByteArrayWrapper node = listOfNodes.get(randomIndex);
+		ByteArrayWrapper node = listOfNodes.get(randomIndex.intValue());
 
 		// we found a random element
 		String nextHost = new String(mapOfNodes.get(node));

@@ -140,7 +140,7 @@ public class MembershipProtocol {
 	 * Return a random index in the range of localtimestampVector that does not match the current_node
 	 * @return
 	 */
-	public int getRandomIndex(){
+	public Integer getRandomIndex(){
 		Random rand = new Random();
 		int randomIndex;
 		do{
@@ -148,7 +148,10 @@ public class MembershipProtocol {
 			randomIndex = (rand.nextInt(total_nodes)); //[inclusive,exclusive)=[0,total_nodes)
 		}while( randomIndex == current_node || localTimestampVector.get(randomIndex) < 0);
 		
-		return randomIndex;
+		if(randomIndex == current_node)
+			return null;
+		 
+		return new Integer(randomIndex);
 	}
 	private int[] convertListToArray(ArrayList<Integer> retInteger) {
 		int update;
