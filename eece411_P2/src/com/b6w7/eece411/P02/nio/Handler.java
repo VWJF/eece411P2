@@ -449,7 +449,7 @@ final class Handler extends Command implements Runnable {
 	 */
 	private void abort(Exception e) {
 		// Unknown host.  Fatal error.  Abort this command.
-		retriesLeft = 0;
+		retriesLeft = -1;
 		System.out.println("*** Handler::abort() Unknown Host. Aborting. "+e.getMessage());
 		try {
 			if (null != socketOwner) socketOwner.close();
@@ -808,8 +808,10 @@ final class Handler extends Command implements Runnable {
 				if (retriesLeft == 3)
 					randomNode = map.getRandomOnlineNode();
 				
-				if (randomNode == null)
+				if (randomNode == null) {
 					abort(new IllegalStateException("All nodes are offline"));
+					return;
+				}
 				
 				key = (randomNode.getAddress().getHostName() + ":" + randomNode.getPort()).getBytes();
 
