@@ -28,8 +28,8 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
 public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
-	public static boolean IS_DEBUG = true;
-	public static boolean IS_VERBOSE = false;
+	public static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
+	public static boolean IS_VERBOSE = true; //true: System.out enabled, false: disabled
 
 //	private final HashFunction hashFunction;
 //	private final int numberOfReplicas;
@@ -129,7 +129,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		if(IS_DEBUG) System.out.println("     ConsistentHashing::getNodePosition()  hashKey: "+key);
 		int ret = listOfNodes.indexOf(key);
 		if (-1 == ret)
-			System.out.println(" ### ConsistentHashing::getNodePosition() index not found for node "+ node);
+			if(IS_DEBUG) System.out.println(" ### ConsistentHashing::getNodePosition() index not found for node "+ node);
 		return ret;
 	}
 	
@@ -192,33 +192,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param requestedKey
 	 * @return
 	 */
-	public InetSocketAddress getNodeResponsible(ByteArrayWrapper requestedKey) {
-		if (mapOfNodes.isEmpty()) {
-			System.out.println("Map Of Nodes Empty.");
-			return null;
-		}
-
-		ByteArrayWrapper nextKey;
-		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
-		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
-
-		/**TODO: Addition get Next node responsible.
-		 * Untested.
-		 * */ 	
-		ByteArrayWrapper tempNextKey = getNextNodeTo(nextKey);
-		nextKey = tempNextKey;
-		int x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
-		while(x < 0){
-			nextKey = getNextNodeTo(nextKey);
-			if( nextKey == tempNextKey ){
-				if(IS_VERBOSE) {
-					String nextOfValue = new String(circle.get(requestedKey));
-					System.out.println("#### Get(Remote)NodeResponsible has returned localnode"+nextKey.toString()+"[value->"+nextOfValue);
-				}
-				break;
-			}		
-			x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
-		}
+	public InetSocketAddress getSocketNodeResponsible(ByteArrayWrapper requestedKey) {
+		ByteArrayWrapper nextKey = getNodeResponsible(requestedKey);
 		
 		String nextHost = new String(mapOfNodes.get(nextKey));
 		String nextOfValue = "(key,value) does not exist in circle";
@@ -232,6 +207,42 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		if(IS_VERBOSE) System.out.println("Finding InetSocketAddress.");
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
+
+	/**
+	 * @param requestedKey
+	 * @return
+	 */
+	private ByteArrayWrapper getNodeResponsible(ByteArrayWrapper requestedKey) {
+		if (mapOfNodes.isEmpty()) {
+			if(IS_DEBUG) System.out.println("Map Of Nodes Empty.");
+			return null;
+		}
+
+		ByteArrayWrapper nextKey;
+		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
+		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
+
+		/**TODO: Addition get Next node responsible.
+		 * Untested.
+		 * */ 	
+		ByteArrayWrapper tempNextKey = nextKey;
+		//ByteArrayWrapper tempNextKey = getNextNodeTo(nextKey);
+		//nextKey = tempNextKey;
+		int x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
+		while(x < 0){
+			nextKey = getNextNodeTo(nextKey);
+			if( nextKey == tempNextKey ){
+				if(IS_VERBOSE) {
+					String nextOfValue = new String(circle.get(requestedKey));
+					System.out.println("#### Get(Remote)NodeResponsible has returned localnode"+nextKey.toString()+"[value->"+nextOfValue);
+				}
+				break;
+			}		
+			x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
+		}
+		
+		return nextKey;
+	}
 	
 	/**
 	 * Obtains the closest node(IP address) on the Key-Value Store circle 
@@ -242,7 +253,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	public ByteArrayWrapper getNextNodeTo(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
-			System.out.println("Map Of Nodes Empty.");
+			if(IS_DEBUG) System.out.println("Map Of Nodes Empty.");
 			return null;
 		}
 		
@@ -344,7 +355,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		
 		//ByteArrayWrapper key = hashKey(node);
-		String node = new String(mapOfNodes.get(key));
+		String node = new String(mapOfNodes.get(getNodeResponsible(key)));
 
 		if(IS_DEBUG) System.out.println("     ConsistentHashing::shutdown() key: "+node);
 		
@@ -355,12 +366,13 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		membership.shutdown(ret);
 	}
+
 	/**
 	 * Accessor for data structure with view of the nodes in the Key-Value Store.
 	 * @return
 	 */
 	public SortedMap<ByteArrayWrapper, byte[]> getMapOfNodes() {
-		System.out.println("Size of node map @Accessor: "+mapOfNodes.size());
+		//if(IS_DEBUG) System.out.println("Size of node map @Accessor: "+mapOfNodes.size());
 		return mapOfNodes;
 	}
 	
@@ -369,7 +381,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @return
 	 */
 	public Map<ByteArrayWrapper, byte[]> getCircle() {
-		System.out.println("Size of circle @Accessor: "+circle.size());		
+		//if(IS_DEBUG) System.out.println("Size of circle @Accessor: "+circle.size());		
 		return circle;
 	}
 	

@@ -16,7 +16,7 @@ public class MembershipProtocol {
 	private final int current_node;
 	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
 	
-	private static boolean IS_DEBUG = true;
+	private static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 
 
 	public MembershipProtocol(int current_node, int total_nodes) {
@@ -24,7 +24,6 @@ public class MembershipProtocol {
 		this.total_nodes = total_nodes;
 		this.localTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		
-		// TODO debugging starting values:
 		for (int i=0; i<this.total_nodes; i++) {
 			localTimestampVector.add(1);
 		}
