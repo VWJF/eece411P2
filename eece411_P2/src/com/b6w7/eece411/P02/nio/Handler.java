@@ -529,6 +529,17 @@ final class Handler extends Command implements Runnable {
 			if (IS_VERBOSE) System.out.println(" --- TSAnnounceDeathProcess::checkLocal(): " + self);
 			incrLocalTime();
 
+			output = ByteBuffer.allocate(2048);
+
+			replyCode = Reply.RPY_SUCCESS.getCode();
+			
+			generateRequesterReply();
+
+			// signal to selector that we are ready to write
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+			
 			map.shutdown(null);
 			parent.announceDeath();
 			
@@ -595,8 +606,11 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void generateRequesterReply() {
-			// TODO Auto-generated method stub
-			
+			// We performed a local look up.  So we fill in input with 
+			// the appropriate reply to requester.
+			output.put(replyCode);
+			output.flip();
+			if (IS_VERBOSE) System.out.println(" +++ TSAnnounceDeathProcess::generateRequesterReply() COMPLETE LOCAL " + self);
 		}
 
 		@Override
