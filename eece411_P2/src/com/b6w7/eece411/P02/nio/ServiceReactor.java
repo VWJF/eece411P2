@@ -1,9 +1,12 @@
 package com.b6w7.eece411.P02.nio;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -22,6 +25,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Timer;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Logger;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
@@ -89,7 +93,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		dht.setMembership(membership);
 		
-		if(IS_VERBOSE) System.out.println(" &&& ServiceReactor() [localhost, position, totalnodes]: ["+localhost+","+position+","+ dht.getSizeAllNodes()+"]");
+		if(IS_VERBOSE) System.out.println(" &&& ServiceReactor() [localhost, position, totalnodes]: ["+localhost+", "+position+", "+ dht.getSizeAllNodes()+"]");
 		if (position <0)
 			if(IS_VERBOSE) System.out.println(" &&& Handler() position is negative! " + position);
 
@@ -205,7 +209,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 			r.run();
 	} 
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws FileNotFoundException {
 		if (args.length > 2) {
 			printUsage();
 			return;
@@ -215,6 +219,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		String participatingNodes[] = null;
 
+		
 		if (args.length == 2) {
 			String filename = args[1];
 			try {
@@ -229,7 +234,14 @@ public class ServiceReactor implements Runnable, JoinThread {
 				//return;
 			}
 		}
-		
+
+//		try{
+//			File file  = new File("~/sysout.log");
+//			file.createNewFile();
+//			PrintStream printStream = new PrintStream(new FileOutputStream(file));
+//			System.setOut(printStream);
+//		}catch(Exception e){		}
+
 		ServiceReactor service;
 		try {
 			service = new ServiceReactor(servPort, participatingNodes);
@@ -294,6 +306,14 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 	}
 	
+	/**
+	 * Creates a String[] for each line in the given file.
+	 * The file should not have an empty lines
+	 * @param filename
+	 * @return
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
 	private static String[] populateNodeList(String filename) throws FileNotFoundException, IOException{
 	    String token1;
 	    BufferedReader inFile
@@ -311,18 +331,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 	    return nodes;
 
 	}
-//	private String[] nodes = {"planetlab2.cs.ubc.ca",
-//			"cs-planetlab4.cs.surrey.sfu.ca",
-//			"planetlab03.cs.washington.edu",
-//			"pl1.csl.utoronto.ca",
-//			"pl2.rcc.uottawa.ca",
-//			"Furry.local",	//When adding/removing nodes, must change the value of NodeCommands.LEN_TIMESTAMP_BYTES accordingly.
-//			"Knock3-Tablet",
-//			InetAddress.getLocalHost().getHostName()};
+
 	public static String[] nodes = 
-//			{"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11111", 
-//						"dhcp-128-189-74-168.ubcsecure.wireless.ubc.ca:11112"};
 		{"Knock3-Tablet:11111", "Knock3-Tablet:11112", "Knock3-Tablet:11113", "Knock3-Tablet:11114"};
-//	{"Knock3-Tablet:11111", "Knock3-Tablet:11112"};
 }
 

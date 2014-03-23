@@ -66,7 +66,7 @@ final class Handler extends Command implements Runnable {
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
 	
-	private boolean IS_DEBUG = true;
+	private boolean IS_DEBUG = true; //true: System.out disabled, false: enabled
 	
 	private final int serverPort;
 	private final JoinThread parent;
@@ -349,7 +349,7 @@ final class Handler extends Command implements Runnable {
 				if (socketOwner.finishConnect())  { // {System.out.print("a");}
 					keyOwner = remote.key;
 					if (keyOwner == null) {
-						if(IS_SHORT) System.out.println("*** key is null");
+						if(!IS_SHORT) System.out.println("*** key is null");
 						sel.wakeup();
 
 					} else {
@@ -470,14 +470,14 @@ final class Handler extends Command implements Runnable {
 	private void retryAtStateCheckingLocal(Exception e) {
 		retriesLeft --;
 		if (retriesLeft < 0) {
-			System.out.println(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft: "+retriesLeft+".  <<<<<<<<<<");
+			if(IS_DEBUG) System.out.println(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft: "+retriesLeft+".  <<<<<<<<<<");
 			retriesLeft = 3;
 			// we have exhausted trying to connect to this owner
 			// he is probably offline
 			map.shutdown(ConsistentHashing.hashKey(key));
 		}
 
-		System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
+		if(IS_DEBUG) System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
 		//e.printStackTrace();
 		try {
 			if (null != socketOwner) socketOwner.close();
@@ -644,7 +644,7 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+			InetSocketAddress owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
@@ -781,7 +781,7 @@ final class Handler extends Command implements Runnable {
 
 				if(result != null) {
 					// Overwriting -- we take note
-					System.out.println("*** PutCommand() Replacing Key " + this.toString());
+					if(IS_VERBOSE) System.out.println("*** PutCommand() Replacing Key " + this.toString());
 				}
 
 				return true;
@@ -929,7 +929,7 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+			InetSocketAddress owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
 				// OK, we decided that the location of key is at local node
@@ -1085,7 +1085,7 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
+			InetSocketAddress owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
