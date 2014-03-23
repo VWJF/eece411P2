@@ -65,11 +65,14 @@ final class Handler extends Command implements Runnable {
 	private Process process;
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
-	
+	private InetSocketAddress owner;
+
+
 	private boolean IS_DEBUG = true; //true: System.out disabled, false: enabled
 	
 	private final int serverPort;
 	private final JoinThread parent;
+	
 
 	// possible states of any command
 	enum State {
@@ -474,7 +477,7 @@ final class Handler extends Command implements Runnable {
 			retriesLeft = 3;
 			// we have exhausted trying to connect to this owner
 			// he is probably offline
-			map.shutdown(ConsistentHashing.hashKey(key));
+			map.shutdown(ConsistentHashing.hashKey(owner.getHostName() + ":" + owner.getPort()));
 		}
 
 		if(IS_DEBUG) System.out.println("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. "+ e.getMessage());
@@ -644,7 +647,7 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			InetSocketAddress owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
+			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
@@ -791,8 +794,6 @@ final class Handler extends Command implements Runnable {
 	
 	class TSPushProcess implements Process {
 
-		InetSocketAddress randomNode;
-
 		@Override
 		public void checkLocal() {
 			if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): " + self);
@@ -820,16 +821,16 @@ final class Handler extends Command implements Runnable {
 				// OK this is a request from this node that will be outbound
 				// this was triggered by a periodic local timer
 				if (retriesLeft == 3)
-					randomNode = map.getRandomOnlineNode();
+					owner = map.getRandomOnlineNode();
 				
-				if (randomNode == null){
+				if (owner == null){
 					abort(new IllegalStateException("All nodes are offline"));
 					return;
 				}
 				
-				key = (randomNode.getAddress().getHostName() + ":" + randomNode.getPort()).getBytes();
+				key = (owner.getAddress().getHostName() + ":" + owner.getPort()).getBytes();
 
-				if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==["+randomNode.getAddress().getHostAddress()+","+randomNode.getPort()+"]");
+				if (IS_VERBOSE) System.out.println(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==["+owner.getAddress().getHostAddress()+","+owner.getPort()+"]");
 
 				generateOwnerQuery();
 
@@ -848,7 +849,7 @@ final class Handler extends Command implements Runnable {
 					socketOwner.configureBlocking(false);
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
-					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, randomNode);
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
 					sel.wakeup();
 
 				} catch (IOException e) {
@@ -929,7 +930,7 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			InetSocketAddress owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
+			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
 				// OK, we decided that the location of key is at local node
@@ -1085,7 +1086,7 @@ final class Handler extends Command implements Runnable {
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
-			InetSocketAddress owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
+			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
