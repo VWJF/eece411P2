@@ -195,12 +195,13 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	public InetSocketAddress getSocketNodeResponsible(ByteArrayWrapper requestedKey) {
 		ByteArrayWrapper nextKey = getNodeResponsible(requestedKey);
 		
+		
 		String nextHost = new String(mapOfNodes.get(nextKey));
 		String nextOfValue = "(key,value) does not exist in circle";
 		if(circle.get(requestedKey)!= null)
 			nextOfValue = new String(circle.get(requestedKey));
 		if(IS_VERBOSE) System.out.println("NextOf: "+requestedKey.toString()+"[value->"+nextOfValue
-				+"]"+"\nis target TargetHost: "+nextKey+" [value->"+nextHost+"]");
+				+"]"+"\nis the target TargetHost: "+nextKey+" [value->"+nextHost+"]");
 
 		String addr[] = nextHost.split(":");
 
@@ -355,11 +356,12 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		
 		//ByteArrayWrapper key = hashKey(node);
-		String node = new String(mapOfNodes.get(getNodeResponsible(key)));
+		ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
+		String node = new String(mapOfNodes.get(shutdownKeyOf));
 
 		if(IS_DEBUG) System.out.println("     ConsistentHashing::shutdown() key: "+node);
 		
-		int ret = listOfNodes.indexOf(key);
+		int ret = listOfNodes.indexOf(shutdownKeyOf);
 		if (-1 == ret){
 			System.out.println(" ### ConsistentHashing::shutdown() key index not found for node "+ node );
 			return;
