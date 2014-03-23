@@ -1,12 +1,9 @@
 package com.b6w7.eece411.P02.nio;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -20,12 +17,14 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.TimerTask;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
@@ -52,6 +51,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
 	private static boolean IS_VERBOSE = Command.IS_VERBOSE;	private static boolean IS_SHORT = Command.IS_SHORT;
+	private static Logger LOGGER = LoggerFactory.getLogger(ServiceReactor.class);
+
 
 	private final ConcurrentLinkedQueue<SocketRegisterData> registrations 
 	= new ConcurrentLinkedQueue<SocketRegisterData>();
@@ -101,7 +102,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 		sk.attach(new Acceptor(this));
-		
+
 		self = this;
 	}
 
@@ -234,17 +235,17 @@ public class ServiceReactor implements Runnable, JoinThread {
 				//return;
 			}
 		}
-
-//		try{
-//			File file  = new File("~/sysout.log");
-//			file.createNewFile();
-//			PrintStream printStream = new PrintStream(new FileOutputStream(file));
-//			System.setOut(printStream);
-//		}catch(Exception e){		}
-
+		
 		ServiceReactor service;
 		try {
 			service = new ServiceReactor(servPort, participatingNodes);
+			LOGGER.debug("debug");
+			LOGGER.trace("trace");
+			LOGGER.info("info");
+			LOGGER.warn("warn");
+			LOGGER.error("error");
+
+
 			new Thread(service).start();
 		} catch (IOException e) {
 			System.out.println("Could not start service. " + e.getMessage());
@@ -252,7 +253,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 			System.out.println("Could not start hashing service. " + e.getMessage());
 		}
 	}
-
+	
 	private static void printUsage() {
 		System.out.println("USAGE:\n"
 				+ " java -cp"
