@@ -367,7 +367,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		int ret = listOfNodes.indexOf(shutdownKeyOf);
 		if (-1 == ret){
-			log.warn(" ### ConsistentHashing::shutdown() key index not found for node {}", node );
+			log.error(" ### ConsistentHashing::shutdown() key index not found for node {}", node );
 			return;
 		}
 		membership.shutdown(ret);

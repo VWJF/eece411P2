@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 5;
+	private static int NUM_TEST_RUNNABLES = 1;
 
 	//private static int count = 0; 
 	private int myCount;

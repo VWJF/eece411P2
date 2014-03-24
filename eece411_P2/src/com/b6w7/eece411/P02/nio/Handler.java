@@ -1275,7 +1275,7 @@ final class Handler extends Command implements Runnable {
 		
 		s.append("] [key=>");
 		if (null != key) {
-			for (int i=0; i</*LEN_TO_STRING_OF_KEY*/ key.length; i++)
+			for (int i=0; i<LEN_TO_STRING_OF_KEY /*key.length*/; i++)
 				s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 		} else {
 			s.append("null");
@@ -1319,6 +1319,13 @@ final class Handler extends Command implements Runnable {
 			s.append(output.limit());
 			s.append(",");
 			s.append(output.remaining());
+		}
+		
+		if (null != owner) {
+			s.append("] [owner=>");
+			s.append(owner.getHostName());
+			s.append(":");
+			s.append(owner.getPort());
 		}
 		s.append("]");
 

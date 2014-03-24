@@ -171,7 +171,12 @@ public class MembershipProtocol {
 					break;
 				}
 				randomIndex = r.intValue();
-				test = localTimestampVector.get(randomIndex);
+				test = localTimestampVector.get(randomIndex).intValue();
+				log.debug(" === getRandomIndex() [localTimeStampVector[{}]=>{}]", randomIndex, test);
+				if (randomIndex == current_node) {
+					log.debug(" === getRandomIndex() skipping self [current_node=>{}]", randomIndex);
+					continue;
+				}
 				if(test > 0){
 					validRandomFound = true;
 					break;
@@ -180,12 +185,12 @@ public class MembershipProtocol {
 		}catch(NullPointerException npe){
 			//A valid entry does not exist.
 			//npe.printStackTrace();
-			if(IS_DEBUG) System.out.println(" === getRandomIndex() NullPointerExcept: "+npe.getLocalizedMessage());
+			log.error(" === getRandomIndex() NullPointerException: {}", npe.getLocalizedMessage());
 			randomIndex = current_node;
 		}catch(IndexOutOfBoundsException iob){
 			//A valid entry does not exist.
 			//iob.printStackTrace();
-			if(IS_DEBUG) System.out.println(" === getRandomIndex() IndexOutBndExcept: "+iob.getLocalizedMessage());
+			log.error(" === getRandomIndex() IndexOutBndExcept: {}", iob.getLocalizedMessage());
 			randomIndex = current_node;
 		}
 		log.debug(" === getRandomIndex() post: {}", randomIndex);
@@ -251,7 +256,12 @@ public class MembershipProtocol {
 			localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
 		}
 		else{
-			localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
+			if (updateIndex.intValue() != current_node)
+				localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
+			else {
+				log.error(" *** MembershipProtocol::shutdown() shutdown self attempted with index {} instead of null", updateIndex.intValue());
+				return;
+			}
 		}
 		int shutdownIndex;
 		if(updateIndex == null)
