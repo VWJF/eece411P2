@@ -670,7 +670,7 @@ public class TestNode implements Runnable, JoinThread {
 
 			//populateOneTest();
 			//populateTests();
-			//populateMemoryTests();
+			populateMemoryTests();
 			
 			//Test for routing.
 			populatePutTests(); //For the node that has stored the Key-Values 11112

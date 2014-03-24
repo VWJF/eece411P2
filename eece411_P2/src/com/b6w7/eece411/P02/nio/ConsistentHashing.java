@@ -204,12 +204,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		String nextOfValue = "(key,value) does not exist in circle";
 		if(circle.get(requestedKey)!= null)
 			nextOfValue = new String(circle.get(requestedKey));
-		if(IS_VERBOSE) System.out.println("NextOf: "+requestedKey.toString()+"[value->"+nextOfValue
-				+"]"+"\nis the target TargetHost: "+nextKey+" [value->"+nextHost+"]");
+		log.trace("NextOf: {}[value->{}]\nis the target TargetHost: {} [value->{}]", requestedKey.toString(), nextOfValue, nextKey, nextHost);
 
 		String addr[] = nextHost.split(":");
 
-		if(IS_VERBOSE) System.out.println("Finding InetSocketAddress.");
+		log.trace("Finding InetSocketAddress.");
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
 
@@ -237,9 +236,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		while(x < 0){
 			nextKey = getNextNodeTo(nextKey);
 			if( nextKey == tempNextKey ){
-				if(IS_VERBOSE) {
-					String nextOfValue = new String(circle.get(requestedKey));
-					System.out.println("#### Get(Remote)NodeResponsible has returned localnode"+nextKey.toString()+"[value->"+nextOfValue);
+				byte[] get = circle.get(requestedKey);
+				if(null != get) {
+					String nextOfValue = new String(get);
+					log.warn("#### Get(Remote)NodeResponsible has returned localnode{}[value->{}", nextKey.toString(), nextOfValue);
 				}
 				break;
 			}		
@@ -267,7 +267,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 			
 			if (tailMap.containsKey(key) ==  true) {
-				if(IS_VERBOSE) System.out.println("** Key exists in circle. "+NodeCommands.byteArrayAsString(nextKey.key) ) ;
+				log.trace("** Key exists in circle. {}", NodeCommands.byteArrayAsString(nextKey.key) ) ;
 				//if(tailMap.isEmpty() == false){
 				synchronized(mapOfNodes){
 					Iterator<Entry<ByteArrayWrapper,byte[]>> is = tailMap.entrySet().iterator();
@@ -284,8 +284,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			String nextOfValue = "(key,value) does not exist in circle";
 			if(circle.get(key)!= null)
 				nextOfValue = new String(circle.get(key));
-			if(IS_VERBOSE) System.out.println("NextOf: "+key.toString()+"[value->"+nextOfValue
-							+"]"+"\nis target TargetHost: "+nextKey+" [value->"+nextHost+"]");		
+			log.trace("NextOf: {}[value->{}]"+"\nis target TargetHost: {} [value->{}]", key.toString(), nextOfValue, nextKey, nextHost);		
 
 //			try {
 //				if(IS_VERBOSE) System.out.println("Resolving InetAddress.");
