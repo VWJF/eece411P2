@@ -39,7 +39,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 1;
+	private static int NUM_TEST_RUNNABLES = 5;
 
 	//private static int count = 0; 
 	private int myCount;
@@ -673,11 +673,11 @@ public class TestNode implements Runnable, JoinThread {
 			//populateMemoryTests();
 			
 			//Test for routing.
-			//populatePutTests(); //For the node that has stored the Key-Values 11112
-			//populateGetTests();	//For a node that did not store the Key-Values 11111
+			populatePutTests(); //For the node that has stored the Key-Values 11112
+			populateGetTests();	//For a node that did not store the Key-Values 11111
 			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
-			populateAnnounceDeathTest();
+			//populateAnnounceDeathTest();
 			
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
