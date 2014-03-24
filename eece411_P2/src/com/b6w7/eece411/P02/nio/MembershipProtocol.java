@@ -233,7 +233,7 @@ public class MembershipProtocol {
 			timestamp = localTimestampVector.get(nodeIndex);
 //		}
 		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
-		if(IS_DEBUG) System.out.println(" === getTimestampVector() "+retInteger);
+		log.trace(" === getTimestampVector() {}", retInteger);
 		
 		//return ret;
 		retInteger.trimToSize();
@@ -244,22 +244,21 @@ public class MembershipProtocol {
 		//TODO:
 		
 		if (localTimestampVector == null) 
-			System.out.println("		if (localTimestampVector == null) ");
-//		synchronized (localTimestampVector) {
-			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
-			if(updateIndex == null){
-				localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
-			}
-			else{
-				localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
-			}
-			int shutdownIndex;
-			if(updateIndex == null)
-				shutdownIndex = -1;
-			else
-				shutdownIndex = updateIndex.intValue();
-			if(IS_DEBUG) System.out.println(" === shutdownindex "+shutdownIndex +" "+ Arrays.toString(convertListToArray(localTimestampVector)));
-//		}
+			log.error(" ### localTimestampVector is null");
+
+		//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
+		if(updateIndex == null){
+			localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
+		}
+		else{
+			localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
+		}
+		int shutdownIndex;
+		if(updateIndex == null)
+			shutdownIndex = -1;
+		else
+			shutdownIndex = updateIndex.intValue();
+		if(IS_DEBUG) System.out.println(" === shutdownindex "+shutdownIndex +" "+ Arrays.toString(convertListToArray(localTimestampVector)));
 	}
 	
 	/**

@@ -353,8 +353,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param node: key of the node that is to be "disabled".
 	 */
 	public void shutdown(ByteArrayWrapper key){
-		System.out.println(" *** ConsistentHashing::shutdown() CALLED ");
+		log.debug(" *** ConsistentHashing::shutdown() CALLED ");
 		if(key == null){
+			log.info("     Shutdown of local node");
 			membership.shutdown(null);
 			return;
 		}
@@ -363,11 +364,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
 		String node = new String(mapOfNodes.get(shutdownKeyOf));
 
-		log.debug("     ConsistentHashing::shutdown() key: {}", node);
+		log.info("     Shutdown of unresponsive node {}", node);
 		
 		int ret = listOfNodes.indexOf(shutdownKeyOf);
 		if (-1 == ret){
-			System.out.println(" ### ConsistentHashing::shutdown() key index not found for node "+ node );
+			log.warn(" ### ConsistentHashing::shutdown() key index not found for node {}", node );
 			return;
 		}
 		membership.shutdown(ret);
