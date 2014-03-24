@@ -23,6 +23,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,6 +185,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 
 		log.info("All threads completed");
+		
+		LogManager.shutdown();
 	}
 
 	class Acceptor implements Runnable { // inner

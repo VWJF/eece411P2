@@ -258,7 +258,7 @@ public class MembershipProtocol {
 			shutdownIndex = -1;
 		else
 			shutdownIndex = updateIndex.intValue();
-		if(IS_DEBUG) System.out.println(" === shutdownindex "+shutdownIndex +" "+ Arrays.toString(convertListToArray(localTimestampVector)));
+		log.debug(" === shutdownindex {} {}", shutdownIndex, Arrays.toString(convertListToArray(localTimestampVector)));
 	}
 	
 	/**
