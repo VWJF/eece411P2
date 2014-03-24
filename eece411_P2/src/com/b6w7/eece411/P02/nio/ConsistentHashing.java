@@ -20,6 +20,9 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
@@ -30,6 +33,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	public static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 	public static boolean IS_VERBOSE = true; //true: System.out enabled, false: disabled
+
+	private static Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 //	private final HashFunction hashFunction;
 //	private final int numberOfReplicas;
@@ -70,26 +75,25 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		int i = 0;
 		for (String node : nodes){	
-			if(IS_DEBUG) System.out.println(i +"."+ node);
+			log.debug("{}.{}", i, node);
 			byte[] digest = md.digest(node.getBytes());
 			
-			if(IS_DEBUG) System.out.println("     ConsistentHashing() digest: "+NodeCommands.byteArrayAsString(digest));
+			log.trace("     ConsistentHashing() digest: {}", NodeCommands.byteArrayAsString(digest));
 			//ByteArrayWrapper key = hashKey(digest);
 			ByteArrayWrapper key = hashKey(node);
-			if(IS_DEBUG) System.out.println("     ConsistentHashing() hashKey: "+key);
+			log.trace("     ConsistentHashing() hashKey: {}", key);
 
 			mapOfNodes.put(key, node.getBytes()); //circle.put(key, node.getBytes());			
 			String err_msg = (null == getNode(hashKey(node))) ? " *** ConsistentHashing() Fail to get" : "     ConsistentHashing() Success returned get(): "+
 					NodeCommands.byteArrayAsString(getNode(hashKey(node)));
 			
-			if(IS_DEBUG) System.out.println(err_msg);
-			if(IS_DEBUG) System.out.println("     ConsistentHashing() Map Of Nodes Size: "+mapOfNodes.size());
-			if(IS_DEBUG) System.out.println("     ConsistentHashing() " + i +"."+ hashKey(node)+" "+new String(getNode(key)));
-			if(IS_DEBUG) System.out.println();
+			log.trace(err_msg);
+			log.debug("     ConsistentHashing() Map Of Nodes Size: {}", mapOfNodes.size());
+			log.debug("     ConsistentHashing() {}.{} {}", i, hashKey(node), new String(getNode(key)));
 			i++;
 		}
 		
-		System.out.println("     ConsistentHashing() Map of Nodes Size at Constructor: "+mapOfNodes.size());
+		log.debug("     ConsistentHashing() Map of Nodes Size at Constructor: {}", mapOfNodes.size());
 		
 		listOfNodes = new ArrayList<ByteArrayWrapper>(mapOfNodes.keySet());
 		Collections.sort(listOfNodes);
@@ -126,10 +130,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	public int getNodePosition(String node){
 		ByteArrayWrapper key = hashKey(node);
-		if(IS_DEBUG) System.out.println("     ConsistentHashing::getNodePosition()  hashKey: "+key);
+		log.debug("     ConsistentHashing::getNodePosition()  hashKey: {}", key);
 		int ret = listOfNodes.indexOf(key);
 		if (-1 == ret)
-			if(IS_DEBUG) System.out.println(" ### ConsistentHashing::getNodePosition() index not found for node "+ node);
+			log.error(" ### ConsistentHashing::getNodePosition() index not found for node {}", node);
 		return ret;
 	}
 	
@@ -165,9 +169,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	public InetSocketAddress getRandomOnlineNode() {
-		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode()");
+		log.trace("     ConsistentHashing.getRandomOnlineNode()");
 		if (mapOfNodes.isEmpty()) {
-			if(IS_VERBOSE) System.out.println(" ### ConsistentHashing.getRandomOnlineNode() Map of Nodes Empty.");
+			log.warn(" ### ConsistentHashing.getRandomOnlineNode() Map of Nodes Empty.");
 			return null;
 		}
 		
@@ -175,12 +179,12 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		if(randomIndex == null)
 			return null;
 		
-		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() Index: "+randomIndex);
+		log.trace("     ConsistentHashing.getRandomOnlineNode() Index: {}", randomIndex);
 		ByteArrayWrapper node = listOfNodes.get(randomIndex.intValue());
 
 		// we found a random element
 		String nextHost = new String(mapOfNodes.get(node));
-		if(IS_VERBOSE) System.out.println("     ConsistentHashing.getRandomOnlineNode() CHOSEN    " + nextHost);
+		log.trace("     ConsistentHashing.getRandomOnlineNode() CHOSEN    {}", nextHost);
 
 		String addr[] = nextHost.split(":");
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
@@ -215,7 +219,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	private ByteArrayWrapper getNodeResponsible(ByteArrayWrapper requestedKey) {
 		if (mapOfNodes.isEmpty()) {
-			if(IS_DEBUG) System.out.println("Map Of Nodes Empty.");
+			log.debug("Map Of Nodes Empty.");
 			return null;
 		}
 
@@ -254,7 +258,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	public ByteArrayWrapper getNextNodeTo(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
-			if(IS_DEBUG) System.out.println("Map Of Nodes Empty.");
+			log.debug("Map Of Nodes Empty.");
 			return null;
 		}
 		
@@ -359,7 +363,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
 		String node = new String(mapOfNodes.get(shutdownKeyOf));
 
-		if(IS_DEBUG) System.out.println("     ConsistentHashing::shutdown() key: "+node);
+		log.debug("     ConsistentHashing::shutdown() key: {}", node);
 		
 		int ret = listOfNodes.indexOf(shutdownKeyOf);
 		if (-1 == ret){

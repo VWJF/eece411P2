@@ -51,7 +51,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
 	private static boolean IS_VERBOSE = Command.IS_VERBOSE;	private static boolean IS_SHORT = Command.IS_SHORT;
-	private static Logger log = LoggerFactory.getLogger(ServiceReactor.class);
+	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 
 	private final ConcurrentLinkedQueue<SocketRegisterData> registrations 

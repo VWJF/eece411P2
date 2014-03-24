@@ -5,6 +5,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MembershipProtocol {
 	/**
 	 * The MembershipProtocol class can have a run() & execute().
@@ -17,6 +20,8 @@ public class MembershipProtocol {
 	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
 	
 	private static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
+
+	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 
 	public MembershipProtocol(int current_node, int total_nodes) {
@@ -42,7 +47,7 @@ public class MembershipProtocol {
 		// TODO : We are accessing localTimestampVector from both threads, so synchronize
 //		synchronized (localTimestampVector) {
 			//behavior on receiving a vectorTimestamp at each node 
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localTimestampVector.length=="+localTimestampVector.size()+") (current_node=="+current_node +")");
+			log.debug(" === mergeVector() (localTimestampVector.length=={}) (current_node=={})", localTimestampVector.size(), current_node);
 			
 //			if(IS_DEBUG) {
 //				StringBuilder s = new StringBuilder();
@@ -58,8 +63,8 @@ public class MembershipProtocol {
 //			}
 			
 			int local = localTimestampVector.get(current_node);
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") received vect: "+Arrays.toString(receivedVector));
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") local vect   : "+Arrays.toString(convertListToArray(localTimestampVector)));
+			log.debug(" === mergeVector() (localIndex={}) received vect: {}", local, Arrays.toString(receivedVector));
+			log.debug(" === mergeVector() (localIndex={}) local vect   : {}", local, Arrays.toString(convertListToArray(localTimestampVector)));
 
 			//Implied "success". Executing this method implies that a vector_timestamp was received on the wire. 
 			
@@ -103,7 +108,7 @@ public class MembershipProtocol {
 			localTimestampVector.trimToSize();
 			//	wait(waittime);
 
-			if(IS_DEBUG) System.out.println(" === mergeVector() (localIndex="+local+") after merging: "+localTimestampVector);
+			log.debug(" === mergeVector() (localIndex={}) after merging: {}", local, localTimestampVector);
 	
 	}
 
@@ -126,11 +131,11 @@ public class MembershipProtocol {
 			localTimestampVector.trimToSize();
 //		}
 		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
-		if(IS_DEBUG) System.out.println(" === incrementAndGetVector() after update: "+retInteger);
+		log.debug(" === incrementAndGetVector() after update: {}", retInteger);
 
 		retInteger.trimToSize();
 		int[] backingArray = convertListToArray(retInteger);
-		if(IS_DEBUG) System.out.println(" === incrementAndGetVector() backingArray: "+Arrays.toString(backingArray));
+		log.debug(" === incrementAndGetVector() backingArray: {}", Arrays.toString(backingArray));
 
 		return backingArray;
 	}
@@ -151,8 +156,8 @@ public class MembershipProtocol {
 		}
 		Collections.shuffle(rand);
 		
-		if(IS_DEBUG) System.out.println(" === getRandomIndex() prior");
-		if(IS_DEBUG) System.out.println(" === Random generator: shuffle: "+rand);
+		log.trace(" === getRandomIndex() prior");
+		log.trace(" === Random generator: shuffle: {}", rand);
 		
 		int test, randomIndex = current_node;
 		Integer r;
@@ -183,7 +188,7 @@ public class MembershipProtocol {
 			if(IS_DEBUG) System.out.println(" === getRandomIndex() IndexOutBndExcept: "+iob.getLocalizedMessage());
 			randomIndex = current_node;
 		}
-		if(IS_DEBUG) System.out.println(" === getRandomIndex() post: "+randomIndex);
+		log.debug(" === getRandomIndex() post: {}", randomIndex);
 
 		if(randomIndex == current_node )
 			return null;

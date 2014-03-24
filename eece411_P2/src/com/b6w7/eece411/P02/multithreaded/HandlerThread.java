@@ -2,8 +2,15 @@ package com.b6w7.eece411.P02.multithreaded;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.b6w7.eece411.P02.nio.ServiceReactor;
+
 public class HandlerThread extends Thread implements PostCommand {
 	private final ConcurrentLinkedQueue<Command> inQueue = new ConcurrentLinkedQueue<Command>();
+
+	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 	// TODO make private with accessor
 	public boolean keepRunning = true;
@@ -23,19 +30,19 @@ public class HandlerThread extends Thread implements PostCommand {
 			if (null == cmd) {
 				synchronized(inQueue) {
 					try {
-						if (IS_VERBOSE) System.out.println(" --- HandlerThread()::run() waiting on inQueue");
+						log.debug(" --- HandlerThread()::run() waiting on inQueue");
 						inQueue.wait();
 					} catch (InterruptedException e) {	/* do nothing. */ }
 				}
 
 			} else {
-				if (IS_VERBOSE) System.out.println(" --- HandlerThread::run() Issuing:  "+cmd);
+				log.debug(" --- HandlerThread::run() Issuing:  {}", cmd);
 				cmd.execute();
-				if (IS_VERBOSE) System.out.println(" --- HandlerThread::run() Complete: "+cmd+ " totalCompleted=="+Command.totalCompleted.incrementAndGet()+" map.size=="+cmd.map.size());
+				log.debug(" --- HandlerThread::run() Complete: {} totalCompleted=={} map.size=={}", cmd, Command.totalCompleted.incrementAndGet(), cmd.map.size());
 			}
 		}
 		//TODO: Not reached ......??
-		if (IS_VERBOSE) System.out.println(" --- HandlerThread()::run() end");
+		log.debug(" --- HandlerThread()::run() end");
 	}
 
 	@Override
