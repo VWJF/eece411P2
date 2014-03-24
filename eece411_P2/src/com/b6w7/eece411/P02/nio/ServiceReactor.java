@@ -51,7 +51,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
 	private static boolean IS_VERBOSE = Command.IS_VERBOSE;	private static boolean IS_SHORT = Command.IS_SHORT;
-	private static Logger LOGGER = LoggerFactory.getLogger(ServiceReactor.class);
+	private static Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 
 	private final ConcurrentLinkedQueue<SocketRegisterData> registrations 
@@ -82,7 +82,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 		selector = Selector.open();
 		serverSocket = ServerSocketChannel.open();
 
-		System.out.println("Java version is " + System.getProperty("java.version"));
+		log.info("Java version is {}", System.getProperty("java.version"));
+		
 //		if (System.getProperty("java.version").startsWith("1.7"))
 			//serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 			serverSocket.socket().setReuseAddress(true);
@@ -94,9 +95,9 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		dht.setMembership(membership);
 		
-		if(IS_VERBOSE) System.out.println(" &&& ServiceReactor() [localhost, position, totalnodes]: ["+localhost+", "+position+", "+ dht.getSizeAllNodes()+"]");
+		log.debug(" &&& ServiceReactor() [localhost, position, totalnodes]: [{}, {}, {}]", localhost, position, dht.getSizeAllNodes());
 		if (position <0)
-			if(IS_VERBOSE) System.out.println(" &&& Handler() position is negative! " + position);
+			log.warn(" &&& Handler() position is negative {}!", position);
 
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
@@ -111,7 +112,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 	@Override
 	public void run() {
-		System.out.println("Server listening on port " + serverPort + " with address: "+inetAddress);
+		log.info("Server listening on port {} with address {}", serverPort, inetAddress);
 
 		timer = new Timer();
 		timer.schedule(new TimerTask() {
@@ -119,12 +120,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 			@Override
 			public void run() {
 				try {
-					if (IS_VERBOSE) System.out.println("ServiceReactor::Timer::run() Spawning new Handler");
+					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
 					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, self);
 					dbHandler.post(cmd);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					log.debug(e.getMessage());
 				}
 				
 			}
@@ -152,12 +152,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				SocketRegisterData data;
 				while (registrations.size() > 0) {
-					if(!IS_SHORT) System.out.println("--- ServiceReactor()::run() connecting to remote host");
+					log.trace("--- ServiceReactor()::run() connecting to remote host");
 					data = registrations.poll();
 					data.key = data.sc.register(selector, data.ops, data.cmd);
 
 					data.sc.connect(data.addr);
-					if(!IS_SHORT) System.out.println("--- checkLocal() woke up selector");
 				}
 				
 			} catch (IOException ex) { /* ... */ }
@@ -168,12 +167,12 @@ public class ServiceReactor implements Runnable, JoinThread {
 			}
 		}
 		
-		System.out.println("Waiting for timer thread to stop");
+		log.debug("Waiting for timer thread to stop");
 		
 		if (null != timer) 
 				timer.cancel();
 
-		System.out.println("Waiting for handler thread to stop");
+		log.debug("Waiting for handler thread to stop");
 
 		if (null != dbHandler) {
 			dbHandler.kill();
@@ -184,7 +183,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 			} while (dbHandler.isAlive());
 		}
 
-		System.out.println("All threads completed");
+		log.info("All threads completed");
 	}
 
 	class Acceptor implements Runnable { // inner
@@ -194,7 +193,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}
 		public void run() {
 			try {
-				if(!IS_SHORT) System.out.println("*** Acceptor::Accepting Connection");
+				log.trace(" *** Acceptor::Accepting Connection");
 				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)
@@ -227,11 +226,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 				participatingNodes = populateNodeList(filename);
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
-				System.out.println("Error in reading: "+filename);
+				log.error("Error in reading: {}", filename);
 				//return;
 			} catch (IOException e1) {
 				e1.printStackTrace();
-				System.out.println("Error in reading: "+filename);
+				log.error("Error in reading: {}", filename);
 				//return;
 			}
 		}
@@ -239,28 +238,22 @@ public class ServiceReactor implements Runnable, JoinThread {
 		ServiceReactor service;
 		try {
 			service = new ServiceReactor(servPort, participatingNodes);
-			LOGGER.debug("debug");
-			LOGGER.trace("trace");
-			LOGGER.info("info");
-			LOGGER.warn("warn");
-			LOGGER.error("error");
-
 
 			new Thread(service).start();
 		} catch (IOException e) {
-			System.out.println("Could not start service. " + e.getMessage());
+			log.error("Could not start service. {}", e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
-			System.out.println("Could not start hashing service. " + e.getMessage());
+			log.error("Could not start hashing service. {}", e.getMessage());
 		}
 	}
 	
 	private static void printUsage() {
-		System.out.println("USAGE:\n"
+		log.info("USAGE:\n"
 				+ " java -cp"
 				+ " <file.jar>"
 				+ " <server port>"
 				+ " <filename>");
-		System.out.println("EXAMPLE:\n"
+		log.info("EXAMPLE:\n"
 				+ " java -cp"
 				+ " P03.jar"
 				+ " 11111"
@@ -275,7 +268,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 			
 			@Override
 			public void run() {
-				System.out.println("     announceDeath() keepRunning = false");
+				log.info("Signalling to Service to shutdown.");
 				keepRunning = false;
 				selector.wakeup();
 				t.cancel();
@@ -285,17 +278,17 @@ public class ServiceReactor implements Runnable, JoinThread {
 	
 	private void sampleDHT(){
 		try{
-			System.out.println("Getting nodes...");
+			log.debug("Getting nodes...");
 			
 			Map<ByteArrayWrapper, byte[]> mn = this.dht.getCircle();
 			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
 			
 			//Testing: Retrieval of nodes in the map.
-			System.out.println("Got nodes... "+mn.size());
+			log.debug("Got nodes... {}", mn.size());
 			synchronized(mn){
 				while(is.hasNext()){
 					Entry<ByteArrayWrapper, byte[]> e = is.next();
-					System.out.println("(Key,Value): "+e.getKey() +" "+ new String(e.getValue()) );
+					log.debug("(Key,Value): {} {}", e.getKey(), new String(e.getValue()) );
 				}
 			}
 		}catch(ConcurrentModificationException cme){
