@@ -240,9 +240,22 @@ public class ServiceReactor implements Runnable, JoinThread {
 		
 		ServiceReactor service;
 		try {
-			service = new ServiceReactor(servPort, participatingNodes);
-
-			new Thread(service).start();
+			
+			if (servPort != 0) {
+				log.info("Starting one service on local host");
+				// If server port was specified (non-zero) then we start one server
+				service = new ServiceReactor(servPort, participatingNodes);
+				new Thread(service).start();
+				
+			} else {
+				log.info("Starting multiple services on local host");
+				// If server port was special case (zero) then we start every participating
+				// node on localhost with this one launch
+				for (String node : participatingNodes) {
+					service = new ServiceReactor(Integer.valueOf(node.split(":")[1]), participatingNodes);
+					new Thread(service).start();
+				}
+			}
 		} catch (IOException e) {
 			log.error("Could not start service. {}", e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
@@ -330,6 +343,10 @@ public class ServiceReactor implements Runnable, JoinThread {
 	}
 
 	public static String[] nodes = 
-		{"Knock3-Tablet:11111", "Knock3-Tablet:11112", "Knock3-Tablet:11113", "Knock3-Tablet:11114"};
+		{
+		"Knock3-Tablet:11111", "Knock3-Tablet:11112", "Knock3-Tablet:11113", "Knock3-Tablet:11114",
+		"Knock3-Tablet:11115", "Knock3-Tablet:11116", "Knock3-Tablet:11117", "Knock3-Tablet:11118",
+		"Knock3-Tablet:11119", "Knock3-Tablet:11120", "Knock3-Tablet:11121", "Knock3-Tablet:11122"
+		};
 }
 
