@@ -789,8 +789,8 @@ final class Handler extends Command implements Runnable {
 				return false;
 
 			} else {
-				value = new byte[VALUESIZE];
-				value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
+//				value = new byte[VALUESIZE];
+//				value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 				byte[] result = map.put(hashedKey, value);
 
 				if(result != null) {

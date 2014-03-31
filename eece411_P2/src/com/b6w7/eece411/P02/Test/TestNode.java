@@ -41,7 +41,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 1;
+	private static int NUM_TEST_RUNNABLES = 5;
 
 	//private static int count = 0; 
 	private int myCount;
@@ -669,11 +669,11 @@ public class TestNode implements Runnable, JoinThread {
 			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
 			// this will randomly shut down one node, twice. 
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
+			//populateAnnounceDeathTest();
+			//populateAnnounceDeathTest();
 			
 
-			populateMemoryTests();
+			//populateMemoryTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
