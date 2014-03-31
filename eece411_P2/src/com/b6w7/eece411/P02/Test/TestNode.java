@@ -13,6 +13,8 @@ import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -62,8 +64,9 @@ public class TestNode implements Runnable, JoinThread {
 	// list of test cases, each entry representing one test case
 	private List<TestData> tests = new LinkedList<TestData>();
 
-	private final String url;
-	private final int port;
+//	private final String url;
+//	private final int port;
+	private final List<String> hosts;
 
 	private static Set<Integer> intList = new HashSet<Integer>(NUM_TEST_RUNNABLES * 100);
 
@@ -240,7 +243,6 @@ public class TestNode implements Runnable, JoinThread {
 
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAHazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAMarco", "Polo", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -436,7 +438,6 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"FFFScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"FFFIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"FFFssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"JJJi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"FFFHazlett", "Hazlett", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"FFFMarco", "Polo", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"FFFOld", "MacDonald", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -454,6 +455,7 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"GGGi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"HHHi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"IIIi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"JJJi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 	}
 	
 	/**
@@ -462,8 +464,6 @@ public class TestNode implements Runnable, JoinThread {
 	 * @throws UnsupportedEncodingException
 	 */
 		private void populatePutTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
-			// test 1: put 'Scott' => '63215065', and so on ... 
-
 			myCount = 1; //To generate Repeatable Keys
 			System.out.println(myCount);
 			
@@ -622,7 +622,7 @@ public class TestNode implements Runnable, JoinThread {
 		executor = Executors.newFixedThreadPool(NUM_THREADS_IN_POOL);
 
 		for (int i=0; i<NUM_TEST_RUNNABLES; i++)
-			list.add(new TestNode(serverURL, serverPort));
+			list.add(new TestNode(com.b6w7.eece411.P02.nio.ServiceReactor.nodes));
 
 		if (!IS_BREVITY) System.out.println("-------------- Start Running Tests --------------");
 
@@ -645,9 +645,10 @@ public class TestNode implements Runnable, JoinThread {
 		if (!IS_BREVITY) System.out.println("-------------- Complete Running Tests --------------");
 }
 
-	public TestNode(String url, int port) {
-		this.url = url;
-		this.port = port;
+	public TestNode(String[] nodes) {
+		hosts = new LinkedList<String>();
+		for (String node : nodes)
+			hosts.add(node);
 	}
 
 	@Override
@@ -655,26 +656,13 @@ public class TestNode implements Runnable, JoinThread {
 		Socket clientSocket = null;
 
 		try {
-			// There may be multiple IP addresses; but we only need one
-			// so calling .getByName() is sufficient over .getAllByName()
-			InetAddress address = InetAddress.getByName(url);
-			if (!IS_BREVITY) System.out.println(
-					"Connecting to: " 
-							+ address.toString().replaceAll("/", " == ") 
-							+ " on port " 
-							+ port);
-
-			// create a TCP socket to the server
-			// Set a timeout on read operation as 3 seconds
-			//			clientSocket = new Socket(serverURL, serverPort);
-
 			//populateOneTest();
 			//populateTests();
 			populateMemoryTests();
 			
 			//Test for routing.
-			populatePutTests(); //For the node that has stored the Key-Values 11112
-			populateGetTests();	//For a node that did not store the Key-Values 11111
+			//populatePutTests(); //For the node that has stored the Key-Values 11112
+			//populateGetTests();	//For a node that did not store the Key-Values 11111
 			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
 			//populateAnnounceDeathTest();
@@ -689,6 +677,9 @@ public class TestNode implements Runnable, JoinThread {
 			String replyString = null;
 			boolean isPass;
 			String failMessage = null;
+			String[] hostSplit;
+			int port;
+			InetAddress address;
 
 			int thisTestPassed = 0;
 			int thisTestFailed = 0;
@@ -707,6 +698,19 @@ public class TestNode implements Runnable, JoinThread {
 					try {
 						//Thread.sleep(1000);
 						if (IS_VERBOSE) System.out.print("\t-Writing Test.");
+						
+						// Choose a node at random to connect with, and extract its address, port
+						Collections.shuffle(hosts);
+						hostSplit = hosts.get(0).split(":", 2);
+						address = InetAddress.getByName(hostSplit[0]);
+						port = Integer.valueOf(hostSplit[1]);
+
+						if (!IS_BREVITY) System.out.println(
+								"Connecting to: " 
+										+ address.toString().replaceAll("/", " == ") 
+										+ " on port " 
+										+ port);
+
 						// initiate test with node by sending the test command
 						clientSocket = new Socket(address, port);
 						
@@ -833,9 +837,6 @@ public class TestNode implements Runnable, JoinThread {
 			System.out.println("-------------- Passed/Fail = "+ testPassed.addAndGet(thisTestPassed)+"/"+testFailed.addAndGet(thisTestFailed) +" ------------------");
 			if (IS_VERBOSE) System.out.println("-------------- Finished Running Tests --------------");
 
-		} catch (UnknownHostException e) {
-			System.out.println("Unknown Host.");
-			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Unknown IO Exception.");
 			e.printStackTrace();
