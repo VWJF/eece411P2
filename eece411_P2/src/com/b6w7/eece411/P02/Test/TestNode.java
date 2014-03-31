@@ -160,6 +160,9 @@ public class TestNode implements Runnable, JoinThread {
 	 * @throws UnsupportedEncodingException
 	 */
 	private void populateAnnounceDeathTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// choose a random node, and shut it down
+		// we must also remove that node from furture test
+		// and that will be handled during the test when the special case of ANNOUNCEDEATH is received
 		populateOneTest(NodeCommands.Request.CMD_ANNOUNCEDEATH.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 	}
 
@@ -665,8 +668,13 @@ public class TestNode implements Runnable, JoinThread {
 			//populateGetTests();	//For a node that did not store the Key-Values 11111
 			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
-			//populateAnnounceDeathTest();
+			// this will randomly shut down one node, twice. 
+			populateAnnounceDeathTest();
+			populateAnnounceDeathTest();
 			
+
+			populateMemoryTests();
+
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
 			DataOutputStream outToServer = null;
@@ -677,6 +685,9 @@ public class TestNode implements Runnable, JoinThread {
 			String replyString = null;
 			boolean isPass;
 			String failMessage = null;
+			
+			// variables used for parsing the host from hosts
+			String host;
 			String[] hostSplit;
 			int port;
 			InetAddress address;
@@ -701,7 +712,8 @@ public class TestNode implements Runnable, JoinThread {
 						
 						// Choose a node at random to connect with, and extract its address, port
 						Collections.shuffle(hosts);
-						hostSplit = hosts.get(0).split(":", 2);
+						host = hosts.get(0);
+						hostSplit = host.split(":", 2);
 						address = InetAddress.getByName(hostSplit[0]);
 						port = Integer.valueOf(hostSplit[1]);
 
@@ -797,6 +809,13 @@ public class TestNode implements Runnable, JoinThread {
 							System.out.println("Thread: "+myCount+"\n### TEST FAILED - " + failMessage );
 							thisTestFailed++;
 						}
+						
+						// catch special case that the instruction was an ANNOUNCEDEATH cmd
+						// if it was successful then we can assume that the node is no longer running, and so we must 
+						// remove the node from hosts
+						if (NodeCommands.Request.CMD_ANNOUNCEDEATH.getCode() == test.cmd) 
+							hosts.remove(host);
+						
 					} catch (BindException e) {
 						if (clientSocket != null) {  
 							try {
