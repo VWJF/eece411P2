@@ -1201,7 +1201,7 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void generateOwnerQuery() {
 			output.position(0);
-			output.put(cmd);
+			output.put(Request.CMD_TS_REMOVE.getCode());
 			output.put(key);
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
