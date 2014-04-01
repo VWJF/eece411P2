@@ -34,6 +34,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	public static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 	public static boolean IS_VERBOSE = true; //true: System.out enabled, false: disabled
 
+	private static int num_replicas = NodeCommands.REPLICATION_FACTOR; //Can be instantiated through the constructor
+
 	private static Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 //	private final HashFunction hashFunction;
@@ -43,8 +45,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * The structure used to maintain the view of the pairs (key,value) & participating nodes.
 	 * Should be initialized to MAX_MEMORY*(1/load_factor), to limit the number of keys & avoid resizing.
 	 */
-	private HashMap<ByteArrayWrapper, byte[]> circle; //new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2))
-	//private final SortedMap<ByteArrayWrapper, byte[]> circle; // = new TreeMap<ByteArrayWrapper, byte[]>();
+	private HashMap<ByteArrayWrapper, byte[]> circle;
 	
 	/**
 	 * The structure used to maintain the view of the participating nodes. 
@@ -60,15 +61,19 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.
 	 */
 	private PriorityQueue<ByteArrayWrapper> orderedKeys;
+	
+	/**
+	 * Variable used to maintain identity of the key for the localhost(local ServiceReactor).
+	 * TODO: Ideally, a final variable.
+	 */
+	private static ByteArrayWrapper localNode;
 
 	private MembershipProtocol membership;
 	private static MessageDigest md;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
-//		for (T node : nodes) {
-//			add(node);
-//		}
+
 		this.circle = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
 		this.mapOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
 		this.md = MessageDigest.getInstance("SHA-1");
@@ -98,23 +103,33 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		listOfNodes = new ArrayList<ByteArrayWrapper>(mapOfNodes.keySet());
 		Collections.sort(listOfNodes);
 
-		orderedKeys = new PriorityQueue<ByteArrayWrapper>((int) (40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
-		orderedKeys.addAll(circle.keySet());
 		// circle has been initialized with the pairs of (Node, hostname).
 		// Create a new view containing only the existing nodes.
-		// mapOfNodes.putAll( circle.tailMap(circle.firstKey()) );
+		orderedKeys = new PriorityQueue<ByteArrayWrapper>((int) (40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
+		orderedKeys.addAll(circle.keySet());
 	}
 	
 	public void setMembership(MembershipProtocol membership) {
 		this.membership = membership;
 	}
 	
+	public void setLocalNode(String key) {
+		localNode = getOwner(hashKey(key));
+		
+		log.debug("setLocalNode(): {} {}",key, localNode);		
+	}
+	
+	public ByteArrayWrapper getLocalNode() {
+		return localNode;
+	}
+	
 	private byte[] addNode(ByteArrayWrapper key, byte[] value) {
 		
-		// Additional Checking unnecessary since the thread that
+		// Additional Synchronization checking unnecessary since the thread that
 		// uses the Map should impose additional restrictions.
 		return mapOfNodes.put(key, value);
 	}
+	
 	public byte[] getNode(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
 			return null;
@@ -168,6 +183,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		return circle.get(key);
 	}
 	
+	/**
+	 * Obtains the InetSocketAddress of a random node that MemebrshipProtocol views online.
+	 * Returns null if one cannot be found.
+	 * @return
+	 */
 	public InetSocketAddress getRandomOnlineNode() {
 		log.trace("     ConsistentHashing.getRandomOnlineNode()");
 		if (mapOfNodes.isEmpty()) {
@@ -193,6 +213,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * Obtains the node(IP address) that is responsible for the requested key in the Key-Value Store circle 
 	 * The keys that a node is responsible for are (previousNode:exclusive, currentNode:inclusive].
+	 * ..Similar to using getOwner() + getSockAddress() successively.
 	 * @param requestedKey
 	 * @return
 	 */
@@ -211,8 +232,82 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		log.trace("Finding InetSocketAddress.");
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
+	
+	/**
+	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors)
+	 * @param requestedKey
+	 * @return
+	 */
+	public List<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey) {
+		List<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
+		InetSocketAddress sockAddress = null;
+		
+		ByteArrayWrapper owner = getOwner(requestedKey);
+
+		sockAddress = getSockAddress(owner);
+		replicas.add(sockAddress);
+		
+		StringBuilder logtraceString = new StringBuilder();
+		logtraceString.append("owner: "+owner.toString()+"[reqeuestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
+
+		log.trace("owner: {}[reqeuestedKey->{}] SocketAddress", owner.toString(), requestedKey, sockAddress.toString() );
+
+		ByteArrayWrapper nextKey = owner;
+
+		for(int i = 1; i <= num_replicas; i++){
+			nextKey = getNextNodeTo(nextKey);
+			sockAddress =getSockAddress(nextKey);
+			replicas.add(sockAddress);
+			
+			logtraceString.append("replica "+i+" : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
+		}
+		
+		logtraceString.trimToSize();
+		log.trace(logtraceString.toString());
+		
+		System.out.println("All Replicas:\n"+logtraceString);
+		
+		assert replicas.size() == num_replicas + 1;
+		
+		System.out.println("Local key: "+localNode);
+		replicas.remove(getSockAddress(localNode));
+		
+		//TODO: Check corner cases .... mapOfNodes.size < num_replicas + 1
+
+		return replicas;
+	}
+	
+	/**
+	 * Helper method to obtain the InetSocketAddress for a key(that represents a node entry)
+	 * @param node
+	 * @return
+	 */
+	private InetSocketAddress getSockAddress(ByteArrayWrapper node){
+		String addr[] = (new String(mapOfNodes.get(node))).split(":");
+		
+		log.trace("Finding InetSocketAddress.");
+		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
+	}
 
 	/**
+	 * Helper method that obtain the owner of requested key
+	 * @param requestedKey
+	 * @return
+	 */
+	private ByteArrayWrapper getOwner(ByteArrayWrapper requestedKey){
+		if (mapOfNodes.isEmpty()) {
+			log.debug("Map Of Nodes Empty.");
+			return null;
+		}
+
+		ByteArrayWrapper nextKey;
+		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
+		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
+		
+		return nextKey;
+	}
+	
+	/** Helper method that obtains the node responsible/owner of a requested key with a valid timestamp
 	 * @param requestedKey
 	 * @return
 	 */
@@ -226,9 +321,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
 		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 
-		/**TODO: Addition get Next node responsible.
-		 * Untested.
-		 * */ 	
+		
 		ByteArrayWrapper tempNextKey = nextKey;
 		//ByteArrayWrapper tempNextKey = getNextNodeTo(nextKey);
 		//nextKey = tempNextKey;
@@ -286,14 +379,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				nextOfValue = new String(circle.get(key));
 			log.trace("NextOf: {}[value->{}]"+"\nis target TargetHost: {} [value->{}]", key.toString(), nextOfValue, nextKey, nextHost);		
 
-//			try {
-//				if(IS_VERBOSE) System.out.println("Resolving InetAddress.");
-//				return InetAddress.getByName(nextHost);
-//			} catch (UnknownHostException e) {
-//				System.out.println("## getNext node in circle exception. " + e.getLocalizedMessage());
-//				e.printStackTrace();
-//			}
-//		return null;
 		return nextKey;
 
 	}
@@ -487,20 +572,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		return circle.keySet();
 	}
 
-
-/*	@Override
-	public byte[] put(Object key, Object value) {
-		
-		byte[] fromPut = null;
-		try{
-			fromPut = put((ByteArrayWrapper) key, (byte[]) value);
-		}catch(ClassCastException cce){
-			cce.printStackTrace();
-		}
-		return fromPut;
-	}
-*/
-
 	@Override
 	public void putAll(Map<? extends ByteArrayWrapper, ? extends byte[]> m) {
 		try{
@@ -538,11 +609,12 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		System.out.println("Testing ConsistentHashing.\nStarting...");
 
-		String[] nodes = {"planetlab2.cs.ubc.ca",
-				"cs-planetlab4.cs.surrey.sfu.ca",
-				"planetlab03.cs.washington.edu",
-				"pl1.csl.utoronto.ca",
-				"pl2.rcc.uottawa.ca"};
+		String[] nodes = {"planetlab2.cs.ubc.ca:11111",
+				"cs-planetlab4.cs.surrey.sfu.ca:11111",
+				"planetlab03.cs.washington.edu:11111",
+				"pl1.csl.utoronto.ca:11111",
+				"Furry.local:11111",
+				"pl2.rcc.uottawa.ca:11111"};
 				
 		System.out.println();
 		
@@ -550,6 +622,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		try {
 			 ch = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
+			 ch.setLocalNode("Furry.local:11111");
+			 
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();
 			 System.out.println("Consistent Hash created of node map size: "+ch.getMapOfNodes().size());
@@ -577,7 +651,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				}
 			}
 			// Testing: given a provided key, locate the subsequent("next") key.
-			String looking_for_next_of = "cs-planetlab4.cs.surrey.sfu.ca";
+			String looking_for_next_of = "cs-planetlab4.cs.surrey.sfu.ca:11111";
 										//"pl1.csl.utoronto.ca";
 										//"planetlab03.cs.washington.edu";
 			
@@ -596,9 +670,14 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 						System.out.println("Current Key & NextOfTarget key are the same.");
 					System.out.println("From node (Key,Value): "+e.getKey() +" [value->"+ new String(e.getValue()) +"]");
 					System.out.println("Neighbour:"+ch.getNextNodeTo( hashKey(looking_for_next_of) ) );
+					
+					List<InetSocketAddress> list = ch.getReplicaList(e.getKey());
+					System.out.println("Replicas main(): "+list);
 					System.out.println();
 				}
 			}
+			
+			//List<InetSocketAddress> list = ch.getSocketReplicaList(requestedKey);
 			
 			//Membership.Current_Node = ch.getClosestNodeTo( hashKey(InetAddress.getLocalHost()) );
 		}

@@ -922,18 +922,13 @@ public class TestNode implements Runnable, JoinThread {
 			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
 			// this will randomly shut down one node, twice. 
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
+			//populateAnnounceDeathTest();
 			populateAnnounceDeathTest();
 			
+			for(int i = 0; i< 50; i++){
+				populateAnnounceDeathTest();
+			}		
+						
 //			populateDelayOneSecond();
 //			populateDelayOneSecond();
 //			populateDelayOneSecond();
