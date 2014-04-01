@@ -86,7 +86,6 @@ final class Handler extends Command implements Runnable {
 		SEND_OWNER,
 		RECV_OWNER,
 		SEND_REQUESTER, 
-		ABORT, 
 		DO_NOTHING, 
 	}
 
@@ -193,15 +192,6 @@ final class Handler extends Command implements Runnable {
 				log.debug(" --- run(): SEND_REQUESTER {}", this);
 				sendRequester();
 				log.trace("MapSize: {}", map.size());
-				break;
-				
-			case ABORT:
-				// TODO fill in
-				output.position(0);
-				output.put(NodeCommands.Reply.RPY_INTERNAL_FAILURE.getCode());
-				output.flip();
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
-				state = State.SEND_REQUESTER;
 				break;
 				
 			case DO_NOTHING:
@@ -423,27 +413,36 @@ final class Handler extends Command implements Runnable {
 				return;
 			}
 
-			log.debug(" +++ Common::sendRequester() BEFORE {}", this);
+			log.trace(" +++ Common::sendRequester() BEFORE {}", this);
 			socketRequester.write(output);
-			log.debug(" +++ Common::sendRequester() AFTER {}", this);
+			log.trace(" +++ Common::sendRequester() AFTER {}", this);
 
 			if (outputIsComplete()) {
 				log.debug(" +++ Common::sendRequester() COMPLETE {}", this);
-				log.debug("{}", this);
-				if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
-				if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
-				if (null != socketRequester) socketRequester.close();
-				if (null != socketOwner) socketOwner.close();
+				deallocateNetworkResources();
+				state = State.DO_NOTHING;
 			}
+			
 		} catch (IOException e) {
-			// dont retry
-			// retryAtStateCheckingLocal(e);
-		} finally {
-			if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
-			if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
+			deallocateNetworkResources();
+			state = State.DO_NOTHING;
 		}
 	}
-	
+
+	private void deallocateNetworkResources() {
+		if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
+		if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
+		if (null != socketRequester) {
+			try {
+				socketRequester.close();
+			} catch (IOException e) {}
+		}
+		if (null != socketOwner) {
+			try {
+				socketOwner.close();
+			} catch (IOException e) {}
+		}
+	}
 	/**
 	 * Unrecoverable network error occurred.  Deallocate all network resources and
 	 * abort by transitioning to state ABORT
@@ -452,12 +451,9 @@ final class Handler extends Command implements Runnable {
 	private void abort(Exception e) {
 		// Unknown host.  Fatal error.  Abort this command.
 		retriesLeft = -1;
-		log.debug("*** Handler::abort() Unknown Host. Aborting. {}", e.getMessage());
-		try {
-			if (null != socketOwner) socketOwner.close();
-		} catch (IOException e1) {}
-		if (null != keyOwner) keyOwner.cancel();
-		state = State.ABORT;
+		log.debug(" *** Handler::abort() {}", e.getMessage());
+		deallocateNetworkResources();
+		state = State.DO_NOTHING;
 	}
 
 	/**
@@ -481,11 +477,7 @@ final class Handler extends Command implements Runnable {
 
 		log.debug("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. {}", e.getMessage());
 		//e.printStackTrace();
-		try {
-			if (null != socketOwner) socketOwner.close();
-		} catch (IOException e2) {}
-		if (null != keyOwner) keyOwner.cancel();
-		if (null != keyRequester) keyRequester.interestOps(0);
+		deallocateNetworkResources();
 		state = State.CHECKING_LOCAL;
 		input.position(0);
 		processRecvRequester();
