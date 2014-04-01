@@ -53,6 +53,9 @@ final class Handler extends Command implements Runnable {
 	ByteBuffer byteBufferTSVector = ByteBuffer.allocate(TIMESTAMPSIZE).order(ByteOrder.BIG_ENDIAN);
 	//ByteBuffer byteBufferTSVector;
 	
+	// when set to false, db will always reply to future requests with RPY_INTERNAL_FAILURE
+	private boolean keepRunning = true;
+
 	private int retriesLeft = MAX_TCP_RETRIES;
 
 	private final MembershipProtocol membership;
@@ -72,8 +75,6 @@ final class Handler extends Command implements Runnable {
 	private InetSocketAddress owner;
 
 
-	private boolean IS_DEBUG = true; //true: System.out disabled, false: enabled
-	
 	private final int serverPort;
 	private final JoinThread parent;
 	
@@ -133,14 +134,7 @@ final class Handler extends Command implements Runnable {
 		keyRequester.attach(this);
 		keyRequester.interestOps(SelectionKey.OP_READ);
 		sel.wakeup();
-		
-//		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
-//		int position = map.getNodePosition(localhost+":"+serverPort);
-//
-//		log.debug(" &&& Handler() [localhost, position, totalnodes]: ["+localhost+","+position+","+ map.getSizeAllNodes()+"]");
-//		if (position <0)
-//			log.debug(" &&& Handler() position is negative! " + position);
-		
+
 		this.membership= membership;
 
 		this.serverPort = serverPort;
@@ -210,7 +204,6 @@ final class Handler extends Command implements Runnable {
 
 		case CHECKING_LOCAL:
 			log.debug(" --- execute(): CHECKING_LOCAL {}", this);
-			//TODO: membership....
 			process.checkLocal();
 			break;
 
@@ -235,9 +228,9 @@ final class Handler extends Command implements Runnable {
 	// operation.  This can be called multiple times until enough bytes are received.
 	private void recvRequester() throws IOException {
 		// read from the socket
-		//log.debug(" +++ Common::recvRequester() BEFORE input.position()=="+input.position()+" input.limit()=="+input.limit());
+		log.trace(" +++ Common::recvRequester() BEFORE input.position()=="+input.position()+" input.limit()=="+input.limit());
 		socketRequester.read(input);
-		//log.debug(" +++ Common::recvRequester() AFTER input.position()=="+input.position()+" input.limit()=="+input.limit());
+		log.trace(" +++ Common::recvRequester() AFTER input.position()=="+input.position()+" input.limit()=="+input.limit());
 
 		if (requesterInputIsComplete()) {
 			log.debug(" +++ Common::recvRequester() COMPLETE {}", this.toString());
@@ -389,6 +382,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		if (outputIsComplete()) {
+			log.trace("     common::sendOwner() outputIsComplete() {}", this);
 			state = State.RECV_OWNER;
 			keyOwner.interestOps(SelectionKey.OP_READ);
 			output.position(0); // need to set to zero before entering RECV_OWNER!
@@ -521,9 +515,11 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSAnnounceDeathProcess::checkLocal(): {}", self);
-			incrLocalTime();
+			keepRunning = false;
 
 			output = ByteBuffer.allocate(2048);
+
+			incrLocalTime();
 
 			replyCode = Reply.RPY_SUCCESS.getCode();
 			
@@ -536,52 +532,6 @@ final class Handler extends Command implements Runnable {
 			
 			map.shutdown(null);
 			parent.announceDeath();
-			
-////			key = new byte[KEYSIZE];
-////			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-////			value = new byte[VALUESIZE];
-////			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-//			hashedKey = new ByteArrayWrapper(key);
-//			output = ByteBuffer.allocate(20480);
-//			
-//			// OK we need to send key values pairs to remote node
-//			// We call our local method to fill our output buffer as much as possible
-//			
-//			// OK, we decided that the location of key is at a remote node
-//			// we can transition to CONNECT_OWNER and connect to remote node
-//			log.debug("--- TSAnnounceDeathProcess::checkLocal() BEFORE " + self);
-//			
-//			try {
-//				map.transferKeys(output, ConsistentHashing.hashKey(InetAddress.getLocalHost().getHostName()+":"+serverPort));
-//			} catch (UnknownHostException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			log.debug("--- TSAnnounceDeathProcess::checkLocal() AFTER " + self);
-//			
-//			if (output.get(0) == (byte)0) {
-//				// ok there is nothing left to pull from local, time to shut down the server
-//				generateOwnerQuery();
-//				
-//			} else {
-//				// ok we have some keys to send to a remote node
-//				try {
-//					InetSocketAddress owner = map.getNodeResponsible(ConsistentHashing.hashKey(key));
-//
-//					// prepare the output buffer, and signal for opening a socket to remote
-//					generateOwnerQuery();
-//
-//					socketOwner = SocketChannel.open();
-//					socketOwner.configureBlocking(false);
-//					// Send message to selector and wake up selector to process the message.
-//					// There is no need to set interestOps() because selector will check its queue.
-//					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
-//					sel.wakeup();
-//
-//				} catch (IOException e) {
-//					retryAtStateCheckingLocal(e);
-//				}
-//			}
 		}
 
 		@Override
@@ -619,9 +569,6 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSPutProcess::checkLocal(): {}", self);
-			mergeVector(CMDSIZE+KEYSIZE+VALUESIZE);
-//			super.checkLocal();
-			incrLocalTime();
 			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
@@ -629,6 +576,16 @@ final class Handler extends Command implements Runnable {
 			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
+
+			if (!keepRunning) {
+				// we reply with internal failure.  This node should no longer be servicing connections.
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+				generateRequesterReply();
+				return;
+			}
+
+			mergeVector(CMDSIZE+KEYSIZE+VALUESIZE);
+			incrLocalTime();
 
 			// OK, we decided that the location of key is at local node
 			// perform appropriate action with database
@@ -656,7 +613,6 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			log.debug(" --- PutProcess::checkLocal(): {}", self);
-			incrLocalTime();
 			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
@@ -664,7 +620,15 @@ final class Handler extends Command implements Runnable {
 			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
+
+			if (!keepRunning) {
+				// we reply with internal failure.  This node should no longer be servicing connections.
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+				generateRequesterReply();
+				return;
+			}
 			
+			incrLocalTime();
 			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
@@ -746,14 +710,11 @@ final class Handler extends Command implements Runnable {
 
 			// read from the socket
 			try {
-//				log.debug(" +++ PutProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				log.trace(" +++ PutProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				socketOwner.read(output);
-//				log.debug(" +++ PutProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
+				log.trace(" +++ PutProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					//TODO: MemebershipProtocol.incrementAndGetVector() should be performed at the receipt of OwnerResponse ??
-					//membership.incrementAndGetVector();
-					
 					log.debug(" +++ PutProcess::recvOwner() COMPLETE {}", self);
 					generateRequesterReply();
 					
@@ -807,9 +768,16 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSPushProcess::checkLocal(): {}", self);
-			mergeVector(CMDSIZE);
-
+			
+			if (!keepRunning) {
+				state = State.DO_NOTHING;
+				deallocateNetworkResources();
+				return;
+			}
+			
 			output = ByteBuffer.allocate(2048);
+
+			mergeVector(CMDSIZE);
 			incrLocalTime();
 			
 			if (input.get(0) == Request.CMD_TS_PUSH.getCode()) {
@@ -925,15 +893,21 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSGetProcess::checkLocal(): {}", self);
-			mergeVector(CMDSIZE+KEYSIZE);
-			//super.checkLocal();
-			incrLocalTime();
 
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 
+			if (!keepRunning) {
+				// we reply with internal failure.  This node should no longer be servicing connections.
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+				generateRequesterReply();
+				return;
+			}
+
+			mergeVector(CMDSIZE+KEYSIZE);
+			incrLocalTime();
 			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 
 			// OK, we decided that the location of key is at local node
@@ -963,13 +937,20 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {			
 			log.debug(" --- GetProcess::checkLocal(): {}", self);
-			incrLocalTime();
 
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
+			if (!keepRunning) {
+				// we reply with internal failure.  This node should no longer be servicing connections.
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+				generateRequesterReply();
+				return;
+			}
+
+			incrLocalTime();
 			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
@@ -1040,9 +1021,6 @@ final class Handler extends Command implements Runnable {
 			output.position(0);
 			output.put(Request.CMD_TS_GET.getCode());
 			output.put(key);
-			//TODO: Seems like missing output.put(value);
-			//TODO: output.put(replyValue);
-			// Scott: This is the Get to the owner, and the owner has the value, so at this point 'replyValue' is still unknown
 			
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);
@@ -1056,14 +1034,11 @@ final class Handler extends Command implements Runnable {
 
 			// read from the socket
 			try {
-//				log.debug(" +++ GetProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				log.trace(" +++ GetProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				socketOwner.read(output);
-//				log.debug(" +++ GetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
+				log.trace(" +++ GetProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
-					//TODO: MemebershipProtocol.incrementAndGetVector() should be performed at the receipt of OwnerResponse
-					//membership.incrementAndGetVector();
-					
 					log.debug(" +++ GetProcess::recvOwner() COMPLETE {}", self);
 					generateRequesterReply();
 					
@@ -1094,8 +1069,6 @@ final class Handler extends Command implements Runnable {
 
 		protected byte[] get(){
 			byte[] val = map.get( hashedKey );
-			//		System.out.println("(key.length, get key bytes): ("+key.length+
-			//				", "+NodeCommands.byteArrayAsString(key) +")" );
 			if(val == null) {
 				// NONEXISTENT -- we want to debug here
 				log.debug(" *** GetCommand() Not Found {}", self);
@@ -1109,15 +1082,22 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSRemoveProcess::checkLocal(): {}", self);
-			mergeVector(CMDSIZE+KEYSIZE);
-			// super.checkLocal();
-			incrLocalTime();
 			
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
+			if (!keepRunning) {
+				// we reply with internal failure.  This node should no longer be servicing connections.
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+				generateRequesterReply();
+				return;
+			}
+
+			mergeVector(CMDSIZE+KEYSIZE);
+			incrLocalTime();
+
 			// OK, we decided that the location of key is at local node
 			// perform appropriate action with database
 			// we can transition to SEND_REQUESTER
@@ -1143,13 +1123,20 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void checkLocal() {
 			log.debug(" --- RemoveProcess::checkLocal(): {}", self);
-			incrLocalTime();
-		
+
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			hashedKey = new ByteArrayWrapper(key);
 			output = ByteBuffer.allocate(2048);
 			
+			if (!keepRunning) {
+				// we reply with internal failure.  This node should no longer be servicing connections.
+				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+				generateRequesterReply();
+				return;
+			}
+
+			incrLocalTime();
 			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
@@ -1227,9 +1214,9 @@ final class Handler extends Command implements Runnable {
 
 			// read from the socket
 			try {
-//				log.debug(" +++ RemoveProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				log.trace(" +++ RemoveProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
 				socketOwner.read(output);
-//				log.debug(" +++ RemoveProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
+				log.trace(" +++ RemoveProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
 
 				if (recvOwnerIsComplete()) {
 					log.debug(" +++ RemoveProcess::recvOwner() COMPLETE {}", self);
@@ -1251,8 +1238,6 @@ final class Handler extends Command implements Runnable {
 		}
 
 		protected byte[] remove(){
-			//		System.out.println("(key.length, get key bytes): ("+key.length+
-			//				", "+NodeCommands.byteArrayAsString(key) +")" );
 			return map.remove(hashedKey);
 		}
 	}
@@ -1312,6 +1297,7 @@ final class Handler extends Command implements Runnable {
 		StringBuilder s = new StringBuilder();
 		boolean isMatch = false;
 		
+		s.append("["+this.membership.current_node+":"+serverPort+"]"); 
 		s.append("[command=>");
 		MATCH_CMD: for (Request req: Request.values()) {
 			if (req.getCode() == cmd) {

@@ -16,7 +16,7 @@ public class MembershipProtocol {
 	 * 		the vector received from a remote node [currently method receiveVector()]
 	 */
 	private final int total_nodes;
-	private final int current_node;
+	public final int current_node;
 	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
 	
 	private static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
@@ -120,22 +120,19 @@ public class MembershipProtocol {
 		int[] retInt;
 		ArrayList<Integer> retInteger;
 		int update;
+
+		update = localTimestampVector.get(current_node).intValue();
+		if(update > 0)
+			update++;
 		
-//		synchronized (localTimestampVector) {
-			update = localTimestampVector.get(current_node).intValue();
-			if(update > 0)
-				update++;
-			localTimestampVector.set(current_node, update);
-			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
-			retInteger = new ArrayList<Integer>(localTimestampVector);
-			localTimestampVector.trimToSize();
-//		}
-		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
-		log.debug(" === incrementAndGetVector() after update: {}", retInteger);
+		localTimestampVector.set(current_node, update);
+		retInteger = new ArrayList<Integer>(localTimestampVector);
+		localTimestampVector.trimToSize();
+		log.trace(" === incrementAndGetVector() after update: {}", retInteger);
 
 		retInteger.trimToSize();
 		int[] backingArray = convertListToArray(retInteger);
-		log.debug(" === incrementAndGetVector() backingArray: {}", Arrays.toString(backingArray));
+		log.trace(" === incrementAndGetVector() backingArray: {}", Arrays.toString(backingArray));
 
 		return backingArray;
 	}
@@ -195,10 +192,10 @@ public class MembershipProtocol {
 		}
 		log.debug(" === getRandomIndex() post: {}", randomIndex);
 
-		if(randomIndex == current_node )
-			return null;
+		if(validRandomFound)
+			return new Integer(randomIndex);
 		 
-		return new Integer(randomIndex);
+		return null;
 	}
 	/**
 	 * Helper method to obtain a int[] from an ArrayList<Integer>.
@@ -232,15 +229,10 @@ public class MembershipProtocol {
 
 		int[] retInt;
 		ArrayList<Integer> retInteger;
-//		synchronized (localTimestampVector) {
-			//retInt = Arrays.copyOf(localTimestampVector, localTimestampVector.length);
-			retInteger = new ArrayList<Integer>(localTimestampVector);
-			timestamp = localTimestampVector.get(nodeIndex);
-//		}
-		//if(IS_DEBUG) System.out.println(" === updateSendVector() after update: "+Arrays.toString(ret));
+		retInteger = new ArrayList<Integer>(localTimestampVector);
+		timestamp = localTimestampVector.get(nodeIndex);
 		log.trace(" === getTimestampVector() {}", retInteger);
-		
-		//return ret;
+
 		retInteger.trimToSize();
 		return timestamp.intValue();
 	}

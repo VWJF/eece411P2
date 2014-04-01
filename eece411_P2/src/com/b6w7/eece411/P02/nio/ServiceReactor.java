@@ -12,18 +12,13 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,19 +34,13 @@ import com.b6w7.eece411.P02.multithreaded.JoinThread;
  * A node in a Distributed Hash Table
  */
 public class ServiceReactor implements Runnable, JoinThread {
-	private static final int MAX_ACTIVE_TCP_CONNECTIONS = 512;
-	/** ... 
-	private final Map<ByteArrayWrapper, byte[]> dht = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2));
-	... */
 	private final ConsistentHashing<ByteArrayWrapper, byte[]> dht;
 
 	private final HandlerThread dbHandler = new HandlerThread();
 
 	public final int serverPort;
 	private boolean keepRunning = true;
-	private Integer threadSem = new Integer(MAX_ACTIVE_TCP_CONNECTIONS);
 
-	private static boolean IS_VERBOSE = Command.IS_VERBOSE;	private static boolean IS_SHORT = Command.IS_SHORT;
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 
@@ -87,7 +76,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		
 //		if (System.getProperty("java.version").startsWith("1.7"))
 			//serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-			serverSocket.socket().setReuseAddress(true);
+		serverSocket.socket().setReuseAddress(true);
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
 		int position = dht.getNodePosition(localhost+":"+serverPort);
@@ -135,9 +124,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 		// start handler thread
 		dbHandler.start();
 
-		// we are listening, so now allocated a ThreadPool to handle new sockets connections
-//		executor = Executors.newFixedThreadPool(MAX_ACTIVE_TCP_CONNECTIONS);
-
 		while (keepRunning) {
 			try {
 				// block until a key has non-blocking operation available
@@ -150,8 +136,9 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				// clear the key set in preparation for next invocation of .select()
 				keySet.clear(); 
-				
+
 				SocketRegisterData data;
+//				synchronized (registrations) {
 				while (registrations.size() > 0) {
 					log.trace("--- ServiceReactor()::run() connecting to remote host");
 					data = registrations.poll();
@@ -159,12 +146,10 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 					data.sc.connect(data.addr);
 				}
-				
-			} catch (IOException ex) { /* ... */ }
-			finally{
-				//TODO: Show contents of DHT when complete.
-				if (false)
-					sampleDHT();
+//				}
+
+			} catch (IOException ex) { 
+				log.error(ex.getMessage());
 			}
 		}
 		
@@ -293,29 +278,30 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}, 2000);
 	}
 	
-	private void sampleDHT(){
-		try{
-			log.debug("Getting nodes...");
-			
-			Map<ByteArrayWrapper, byte[]> mn = this.dht.getCircle();
-			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
-			
-			//Testing: Retrieval of nodes in the map.
-			log.debug("Got nodes... {}", mn.size());
-			synchronized(mn){
-				while(is.hasNext()){
-					Entry<ByteArrayWrapper, byte[]> e = is.next();
-					log.debug("(Key,Value): {} {}", e.getKey(), new String(e.getValue()) );
-				}
-			}
-		}catch(ConcurrentModificationException cme){
-			// synchronized(){......} should occur before using the iterator for ConsistentHashing.java
-			cme.printStackTrace();
-		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
-	}
+	// Ishan: Not sure if you want this still, so I kept it here in comments
+//	private void sampleDHT(){
+//		try{
+//			log.debug("Getting nodes...");
+//			
+//			Map<ByteArrayWrapper, byte[]> mn = this.dht.getCircle();
+//			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
+//			
+//			//Testing: Retrieval of nodes in the map.
+//			log.debug("Got nodes... {}", mn.size());
+//			synchronized(mn){
+//				while(is.hasNext()){
+//					Entry<ByteArrayWrapper, byte[]> e = is.next();
+//					log.debug("(Key,Value): {} {}", e.getKey(), new String(e.getValue()) );
+//				}
+//			}
+//		}catch(ConcurrentModificationException cme){
+//			// synchronized(){......} should occur before using the iterator for ConsistentHashing.java
+//			cme.printStackTrace();
+//		}
+//		catch(Exception e){
+//			e.printStackTrace();
+//		}
+//	}
 	
 	/**
 	 * Creates a String[] for each line in the given file.
