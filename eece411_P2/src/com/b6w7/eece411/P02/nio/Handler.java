@@ -620,7 +620,34 @@ final class Handler extends Command implements Runnable {
 		public void checkLocal() {
 			log.debug(" --- TSPutProcess::checkLocal(): {}", self);
 			mergeVector(CMDSIZE+KEYSIZE+VALUESIZE);
-			super.checkLocal();
+//			super.checkLocal();
+			incrLocalTime();
+			
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			value = new byte[VALUESIZE];
+			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
+			hashedKey = new ByteArrayWrapper(key);
+			output = ByteBuffer.allocate(2048);
+
+			// OK, we decided that the location of key is at local node
+			// perform appropriate action with database
+			// we can transition to SEND_REQUESTER
+			
+			// set replyCode as appropriate and prepare output buffer
+			log.debug("--- PutProcess::checkLocal() ------------ Using Local --------------");
+			if( put() )
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
+
+			generateRequesterReply();
+
+			// signal to selector that we are ready to write
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+
 		}
 	}
 	
@@ -758,7 +785,7 @@ final class Handler extends Command implements Runnable {
 			return true;
 		}
 
-		private boolean put(){
+		protected boolean put(){
 			if(map.size() == MAX_MEMORY && map.containsKey(hashedKey) == false ){
 				return false;
 
@@ -898,7 +925,35 @@ final class Handler extends Command implements Runnable {
 		public void checkLocal() {
 			log.debug(" --- TSGetProcess::checkLocal(): {}", self);
 			mergeVector(CMDSIZE+KEYSIZE);
-			super.checkLocal();
+			//super.checkLocal();
+			incrLocalTime();
+
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			hashedKey = new ByteArrayWrapper(key);
+			output = ByteBuffer.allocate(2048);
+
+			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
+
+			// OK, we decided that the location of key is at local node
+			// perform appropriate action with database
+			// we can transition to SEND_REQUESTER
+			log.debug("--- GetProcess::checkLocal() ------------ Using Local --------------");
+
+			// set replyCode as appropriate and prepare output buffer
+			replyValue = get();
+			if( replyValue != null )  
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_INEXISTENT.getCode();
+
+			generateRequesterReply();
+
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
+
+
 		}
 	}
 
@@ -1036,7 +1091,7 @@ final class Handler extends Command implements Runnable {
 			return true;
 		}
 
-		private byte[] get(){
+		protected byte[] get(){
 			byte[] val = map.get( hashedKey );
 			//		System.out.println("(key.length, get key bytes): ("+key.length+
 			//				", "+NodeCommands.byteArrayAsString(key) +")" );
