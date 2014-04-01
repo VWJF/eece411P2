@@ -91,6 +91,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		
 		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
 		int position = dht.getNodePosition(localhost+":"+serverPort);
+		dht.setLocalNode(localhost+":"+serverPort);
 
 		membership = new MembershipProtocol(position, dht.getSizeAllNodes());
 
