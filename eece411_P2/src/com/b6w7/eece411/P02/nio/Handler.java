@@ -921,6 +921,7 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	class TSGetProcess extends GetProcess {
+
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSGetProcess::checkLocal(): {}", self);
@@ -1109,7 +1110,31 @@ final class Handler extends Command implements Runnable {
 		public void checkLocal() {
 			log.debug(" --- TSRemoveProcess::checkLocal(): {}", self);
 			mergeVector(CMDSIZE+KEYSIZE);
-			super.checkLocal();
+			// super.checkLocal();
+			incrLocalTime();
+			
+			key = new byte[KEYSIZE];
+			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+			hashedKey = new ByteArrayWrapper(key);
+			output = ByteBuffer.allocate(2048);
+			
+			// OK, we decided that the location of key is at local node
+			// perform appropriate action with database
+			// we can transition to SEND_REQUESTER
+			log.debug("--- RemoveProcess::checkLocal() ------------ Using Local --------------");
+
+			// set replyCode as appropriate and prepare output buffer
+			replyValue = remove();
+			if( replyValue != null ) 
+				replyCode = Reply.RPY_SUCCESS.getCode(); 
+			else
+				replyCode = Reply.RPY_INEXISTENT.getCode();
+
+			generateRequesterReply();
+
+			state = State.SEND_REQUESTER;
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			sel.wakeup();
 		}
 	}
 
@@ -1225,7 +1250,7 @@ final class Handler extends Command implements Runnable {
 			return true;
 		}
 
-		private byte[] remove(){
+		protected byte[] remove(){
 			//		System.out.println("(key.length, get key bytes): ("+key.length+
 			//				", "+NodeCommands.byteArrayAsString(key) +")" );
 			return map.remove(hashedKey);

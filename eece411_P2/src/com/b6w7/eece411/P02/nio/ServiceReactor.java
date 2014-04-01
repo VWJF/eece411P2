@@ -186,7 +186,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		log.info("All threads completed");
 		
-		LogManager.shutdown();
+		// This will shut it down for all JVM's running, so comment out for now
+		//LogManager.shutdown();
 	}
 
 	class Acceptor implements Runnable { // inner
