@@ -359,30 +359,18 @@ final class Handler extends Command implements Runnable {
 	private void connectOwner() {
 		try {
 			log.debug("     Handler::connectOwner() Waiting for connectOwner to complete");
-//			try {
-				if (socketOwner.finishConnect())  { // {System.out.print("a");}
-					keyOwner = remote.key;
-					if (keyOwner == null) {
-						log.debug("*** key is null");
-						sel.wakeup();
+			if (socketOwner.finishConnect())  { // {System.out.print("a");}
+				keyOwner = remote.key;
+				if (keyOwner == null) {
+					log.debug(" ### key is null");
+					sel.wakeup();
 
-					} else {
-						state = State.SEND_OWNER;
-						keyOwner.interestOps(SelectionKey.OP_WRITE);
-						sel.wakeup();
-					}
+				} else {
+					state = State.SEND_OWNER;
+					keyOwner.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
 				}
-
-//			} catch (ConnectException e1) {
-//				log.debug(" ### Handler::connectOwner() Could not connect to to owner");
-//				e1.printStackTrace();
-//				// We could not contact the owner node, so reply that internal error occurred
-//				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
-//				process.generateRequesterReply();
-//				state = State.SEND_REQUESTER;
-//				if (null != keyRequester)
-//					keyRequester.interestOps(SelectionKey.OP_WRITE);
-//			}
+			}
 
 		} catch (UnknownHostException e) {
 			abort(e);
@@ -779,18 +767,10 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean put(){
-			//		System.out.println(" --- put(): input.position()==" + input.position());
-			//		System.out.println(" --- put(): input.limit()==" + input.limit());
-			//		System.out.println(" --- put(): input.capacity()==" + input.capacity());
-
 			if(map.size() == MAX_MEMORY && map.containsKey(hashedKey) == false ){
-				//System.out.println("reached MAX MEMORY "+MAX_MEMORY+" with: ("+k.toString()+", "+s.toString()+")");
-				//replyCode = NodeCommands.RPY_OUT_OF_SPACE;
 				return false;
 
 			} else {
-//				value = new byte[VALUESIZE];
-//				value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
 				byte[] result = map.put(hashedKey, value);
 
 				if(result != null) {

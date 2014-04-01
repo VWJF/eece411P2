@@ -685,10 +685,9 @@ public class TestNode implements Runnable, JoinThread {
 			
 			for(int i = 0; i< 50; i++){
 				populateAnnounceDeathTest();
-			}
-			
+			}		
 
-			//populateMemoryTests();
+			populateMemoryTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

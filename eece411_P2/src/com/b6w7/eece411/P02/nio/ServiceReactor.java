@@ -324,7 +324,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	 * @throws FileNotFoundException
 	 * @throws IOException
 	 */
-	private static String[] populateNodeList(String filename) throws FileNotFoundException, IOException{
+	public static String[] populateNodeList(String filename) throws FileNotFoundException, IOException{
 	    String token1;
 	    BufferedReader inFile
 	    = new BufferedReader(new FileReader(filename));

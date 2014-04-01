@@ -43,8 +43,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * The structure used to maintain the view of the pairs (key,value) & participating nodes.
 	 * Should be initialized to MAX_MEMORY*(1/load_factor), to limit the number of keys & avoid resizing.
 	 */
-	private HashMap<ByteArrayWrapper, byte[]> circle; //new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2))
-	//private final SortedMap<ByteArrayWrapper, byte[]> circle; // = new TreeMap<ByteArrayWrapper, byte[]>();
+	private HashMap<ByteArrayWrapper, byte[]> circle;
 	
 	/**
 	 * The structure used to maintain the view of the participating nodes. 
@@ -66,9 +65,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
-//		for (T node : nodes) {
-//			add(node);
-//		}
+
 		this.circle = new HashMap<ByteArrayWrapper, byte[]>((int)(40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
 		this.mapOfNodes = new TreeMap<ByteArrayWrapper, byte[]>();
 		this.md = MessageDigest.getInstance("SHA-1");
@@ -98,11 +95,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		listOfNodes = new ArrayList<ByteArrayWrapper>(mapOfNodes.keySet());
 		Collections.sort(listOfNodes);
 
-		orderedKeys = new PriorityQueue<ByteArrayWrapper>((int) (40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
-		orderedKeys.addAll(circle.keySet());
 		// circle has been initialized with the pairs of (Node, hostname).
 		// Create a new view containing only the existing nodes.
-		// mapOfNodes.putAll( circle.tailMap(circle.firstKey()) );
+		orderedKeys = new PriorityQueue<ByteArrayWrapper>((int) (40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
+		orderedKeys.addAll(circle.keySet());
 	}
 	
 	public void setMembership(MembershipProtocol membership) {
@@ -115,6 +111,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		// uses the Map should impose additional restrictions.
 		return mapOfNodes.put(key, value);
 	}
+	
 	public byte[] getNode(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
 			return null;
@@ -226,9 +223,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
 		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 
-		/**TODO: Addition get Next node responsible.
-		 * Untested.
-		 * */ 	
+		
 		ByteArrayWrapper tempNextKey = nextKey;
 		//ByteArrayWrapper tempNextKey = getNextNodeTo(nextKey);
 		//nextKey = tempNextKey;
@@ -286,14 +281,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				nextOfValue = new String(circle.get(key));
 			log.trace("NextOf: {}[value->{}]"+"\nis target TargetHost: {} [value->{}]", key.toString(), nextOfValue, nextKey, nextHost);		
 
-//			try {
-//				if(IS_VERBOSE) System.out.println("Resolving InetAddress.");
-//				return InetAddress.getByName(nextHost);
-//			} catch (UnknownHostException e) {
-//				System.out.println("## getNext node in circle exception. " + e.getLocalizedMessage());
-//				e.printStackTrace();
-//			}
-//		return null;
 		return nextKey;
 
 	}
@@ -486,20 +473,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	public Set<ByteArrayWrapper> keySet() {
 		return circle.keySet();
 	}
-
-
-/*	@Override
-	public byte[] put(Object key, Object value) {
-		
-		byte[] fromPut = null;
-		try{
-			fromPut = put((ByteArrayWrapper) key, (byte[]) value);
-		}catch(ClassCastException cce){
-			cce.printStackTrace();
-		}
-		return fromPut;
-	}
-*/
 
 	@Override
 	public void putAll(Map<? extends ByteArrayWrapper, ? extends byte[]> m) {
