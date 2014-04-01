@@ -2,18 +2,17 @@ package com.b6w7.eece411.P02.Test;
 
 import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -28,6 +27,7 @@ import com.b6w7.eece411.P02.multithreaded.JoinThread;
 //import com.b6w7.eece411.P02.Node;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.Service;
+import com.b6w7.eece411.P02.nio.ServiceReactor;
 /**
  * A test class for testing {@link Service}
  * 
@@ -41,7 +41,7 @@ public class TestNode implements Runnable, JoinThread {
 
 	private static final int NUM_THREADS_IN_POOL = 40;
 
-	private static int NUM_TEST_RUNNABLES = 5;
+	private static int NUM_TEST_RUNNABLES = 1;
 
 	//private static int count = 0; 
 	private int myCount;
@@ -598,21 +598,33 @@ public class TestNode implements Runnable, JoinThread {
 	public static void main(String[] args) {
 
 		// If the command line arguments are missing, or invalid, then nothing to do
-		if ( args.length != 2 ) {
+		if ( args.length != 3 ) {
 			printUsage();
 			return;
 		}
 
 		String serverURL = args[0];		
 		int serverPort = -1;
+		String filename = args[2];
 
+		String[] participatingNodes = {};
+		
 		try {
 			serverPort = Integer.parseInt(args[1]);
+			participatingNodes = ServiceReactor.populateNodeList(filename);
 		} catch (NumberFormatException e1) {
-			System.err.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
 			System.out.println("Invalid input.  Server Port and Student ID must be numerical digits only.");
 			printUsage();
 			return;
+			
+		} catch (FileNotFoundException e) {
+			System.out.println("Could not open file " + filename +".");
+			printUsage();
+			return;
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 
 		
@@ -625,7 +637,7 @@ public class TestNode implements Runnable, JoinThread {
 		executor = Executors.newFixedThreadPool(NUM_THREADS_IN_POOL);
 
 		for (int i=0; i<NUM_TEST_RUNNABLES; i++)
-			list.add(new TestNode(com.b6w7.eece411.P02.nio.ServiceReactor.nodes));
+			list.add(new TestNode(participatingNodes));
 
 		if (!IS_BREVITY) System.out.println("-------------- Start Running Tests --------------");
 
@@ -670,7 +682,10 @@ public class TestNode implements Runnable, JoinThread {
 
 			// this will randomly shut down one node, twice. 
 			//populateAnnounceDeathTest();
-			//populateAnnounceDeathTest();
+			
+			for(int i = 0; i< 50; i++){
+				populateAnnounceDeathTest();
+			}
 			
 
 			//populateMemoryTests();
