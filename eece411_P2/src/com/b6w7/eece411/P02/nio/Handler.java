@@ -1358,4 +1358,24 @@ final class Handler extends Command implements Runnable {
 
 		return s.toString();
 	}
+	
+	   @Override
+	    public boolean equals(Object other)
+	    {
+	        if (!(other instanceof Handler))
+	        {
+	            return false;
+	        }
+	        return hashedKey.equals(((Handler)other).hashedKey);
+	    }
+
+	    @Override
+	    public int hashCode()
+	    {
+	    	return hashedKey.hashCode();
+	    }
+	    
+		public int compareTo(Handler arg0) {
+			return hashedKey.compareTo(arg0.hashedKey);
+		}
 }

@@ -16,6 +16,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -603,6 +604,32 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		return circle.values();
 	}
 	
+	class ReplicaHandling {
+		private Queue<Handler> replicate;
+		
+		/**
+		 * (Alt 1): Given a Handler that is a replica Process, add to the queue for processing.
+		 * (Alt 2): Given a Handler, instantiate the necessary number of replica Processes and add to the queue for processing.
+		 * @param h
+		 */
+		public void registerReplica(Handler h){
+			//TODO: Where will REPLICATION_FACTOR number of Handlers be instantiated?
+			
+			List<Handler> reps = new ArrayList<Handler>();
+			Collections.addAll(reps, h);
+			
+			if (replicate.contains(h))
+				replicate.removeAll(reps);
+			
+			// by caller, then
+			//   replicate.add(Handler);
+			// by this method, then instantiate REPLICATION_FACTOR number of Handlers. 
+			// for (Handler h : Collections<Handler>(of size REPLICATION_FACTOR)) 
+			//    replicate.add()
+			
+			replicate.add(h);
+		}
+	}
 	
 	public static void main(String[] args) {
 		//Testing: ConsistentHashing class.
