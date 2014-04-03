@@ -12,12 +12,14 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +55,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 	final MembershipProtocol membership;
 	private Timer timer;
 	private JoinThread self;
+
+	private final long READ_TIMEOUT = 2000;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
@@ -127,14 +131,30 @@ public class ServiceReactor implements Runnable, JoinThread {
 
 		while (keepRunning) {
 			try {
-				// block until a key has non-blocking operation available
-				selector.select();
 				
+				// block until a key has non-blocking operation available
+				selector.select(100);
+//				selector.select();
+
 				// iterate and dispatch each key in set 
 				Set<SelectionKey> keySet = selector.selectedKeys();
 				for (SelectionKey key : keySet)
 					dispatch(key);
 				
+
+				for (SelectionKey key: selector.keys()) {
+					if (key.isValid() && key.interestOps() == SelectionKey.OP_READ) {
+						Handler handler = ((Handler)key.attachment());
+						long now = new Date().getTime(); 
+						if (now - handler.timeStart - READ_TIMEOUT  > 0) {
+							log.trace(" %%% OP_READ timeout {}", now - handler.timeStart - READ_TIMEOUT);
+							// too much time has passed whilst waiting for reply from owner, so enforce timeout
+							if ( handler.state == Handler.State.RECV_OWNER )
+								handler.retryAtStateCheckingLocal(new TimeoutException());
+						}
+					}
+				}
+
 				// clear the key set in preparation for next invocation of .select()
 				keySet.clear(); 
 
@@ -145,6 +165,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 					data = registrations.poll();
 					data.key = data.sc.register(selector, data.ops, data.cmd);
 
+					data.sc.socket().setSoTimeout(2000);
 					data.sc.connect(data.addr);
 				}
 //				}
@@ -153,6 +174,10 @@ public class ServiceReactor implements Runnable, JoinThread {
 				log.error(ex.getMessage());
 			}
 		}
+		
+		try {
+			selector.close();
+		} catch (IOException e1) {}
 		
 		log.debug("Waiting for timer thread to stop");
 		
@@ -276,7 +301,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 				selector.wakeup();
 				t.cancel();
 			}
-		}, 2000);
+		}, 0);
 	}
 	
 	// Ishan: Not sure if you want this still, so I kept it here in comments

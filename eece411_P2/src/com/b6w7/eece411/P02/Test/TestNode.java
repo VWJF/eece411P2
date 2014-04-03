@@ -914,33 +914,32 @@ public class TestNode implements Runnable, JoinThread {
 			
 			//populateOneTest();
 //			populateTests();
-//			populateMemoryTests();
+			populateMemoryTests();
 			
 			//Test for routing.
 			//populatePutTests(); //For the node that has stored the Key-Values 11112
 			//populateGetTests();	//For a node that did not store the Key-Values 11111
 			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
-			// this will randomly shut down one node, twice. 
 			//populateAnnounceDeathTest();
-			populateAnnounceDeathTest();
 			
-			for(int i = 0; i< 50; i++){
+//			for(int i = 0; i< 10; i++){
+//				populateDelayOneSecond();
+//			}
+
+			for(int i = 0; i< 9; i++){
 				populateAnnounceDeathTest();
 			}		
-						
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//			populateDelayOneSecond();
-//
-//			populateMemoryTests();
+
+//			for(int i = 0; i< 10; i++){
+//				populateDelayOneSecond();
+//			}
+
+//			for(int i = 0; i< 60; i++){
+//				populateDelayOneSecond();
+//			}
+
+			populateMemoryTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
@@ -991,6 +990,9 @@ public class TestNode implements Runnable, JoinThread {
 						address = InetAddress.getByName(hostSplit[0]);
 						port = Integer.valueOf(hostSplit[1]);
 
+						// If address was supplied, then use the supplied host instead of a random one
+						
+						
 						if (!IS_BREVITY) System.out.println(
 								"Connecting to: " 
 										+ address.toString().replaceAll("/", " == ") 

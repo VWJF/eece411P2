@@ -11,6 +11,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Queue;
 
 import org.slf4j.Logger;
@@ -57,7 +58,8 @@ final class Handler extends Command implements Runnable {
 	private boolean keepRunning = true;
 
 	private int retriesLeft = MAX_TCP_RETRIES;
-
+	public long timeStart = Long.MAX_VALUE;
+	
 	private final MembershipProtocol membership;
 	private final PostCommand dbHandler;
 
@@ -375,6 +377,8 @@ final class Handler extends Command implements Runnable {
 	 * retry at CHECKING_LOCAL state.
 	 */
 	private void sendOwner() {
+		log.debug(" *** *** common::sendOwner() START {}", this);
+
 		try {
 			socketOwner.write(output);
 		} catch (IOException e) {
@@ -382,6 +386,15 @@ final class Handler extends Command implements Runnable {
 		}
 
 		if (outputIsComplete()) {
+			if (!socketOwner.isConnected()) {
+				log.trace(" %%% sendOwner(); socketOwner.isConnected() == false!");
+				retryAtStateCheckingLocal(new IllegalStateException("socket should be connected after having just written to it"));
+			}
+			if (!socketOwner.isOpen()) {
+				log.trace(" %%% sendOwner(); socketOwner.isOpen() == false!");
+				retryAtStateCheckingLocal(new IllegalStateException("socket should be open after having just written to it"));
+			}
+			
 			log.trace("     common::sendOwner() outputIsComplete() {}", this);
 			state = State.RECV_OWNER;
 			keyOwner.interestOps(SelectionKey.OP_READ);
@@ -413,29 +426,24 @@ final class Handler extends Command implements Runnable {
 
 			if (outputIsComplete()) {
 				log.debug(" +++ Common::sendRequester() COMPLETE {}", this);
-				deallocateNetworkResources();
+				deallocateInternalNetworkResources();
+				deallocateExternalNetworkResources();
 				state = State.DO_NOTHING;
 			}
 			
 		} catch (IOException e) {
-			deallocateNetworkResources();
+			deallocateInternalNetworkResources();
 			state = State.DO_NOTHING;
 		}
 	}
 
-	private void deallocateNetworkResources() {
-		if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
-		if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
-		if (null != socketRequester) {
-			try {
-				socketRequester.close();
-			} catch (IOException e) {}
-		}
+	private void deallocateInternalNetworkResources() {
 		if (null != socketOwner) {
 			try {
 				socketOwner.close();
 			} catch (IOException e) {}
 		}
+		if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
 	}
 	/**
 	 * Unrecoverable network error occurred.  Deallocate all network resources and
@@ -446,10 +454,20 @@ final class Handler extends Command implements Runnable {
 		// Unknown host.  Fatal error.  Abort this command.
 		retriesLeft = -1;
 		log.debug(" *** Handler::abort() {}", e.getMessage());
-		deallocateNetworkResources();
+		deallocateInternalNetworkResources();
+		deallocateExternalNetworkResources();
 		state = State.DO_NOTHING;
 	}
 
+	private void deallocateExternalNetworkResources() {
+		if (null != socketRequester) {
+			try {
+				socketRequester.close();
+			} catch (IOException e) {}
+		}
+		if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
+	}
+	
 	/**
 	 * Network error occurred.  Deallocate all network resources with remote and
 	 * try again from state CHECK_LOCAL.  Also remove interestOps with requester.
@@ -459,7 +477,9 @@ final class Handler extends Command implements Runnable {
 	 * into it during RECV_OWNER.
 	 * @param e Exception that occurred
 	 */
-	private void retryAtStateCheckingLocal(Exception e) {
+	public void retryAtStateCheckingLocal(Exception e) {
+		log.debug(">>>>>>>> *** *** retryAtStateCheckingLocal() START {} [retries=>{}] [process=>{}] <<<<<<<<<<", this, retriesLeft, process.getClass().toString());
+
 		retriesLeft --;
 		if (retriesLeft < 0) {
 			log.debug(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft: {}.  <<<<<<<<<<", retriesLeft);
@@ -471,7 +491,7 @@ final class Handler extends Command implements Runnable {
 
 		log.debug("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. {}", e.getMessage());
 		//e.printStackTrace();
-		deallocateNetworkResources();
+		deallocateInternalNetworkResources();
 		state = State.CHECKING_LOCAL;
 		input.position(0);
 		processRecvRequester();
@@ -603,6 +623,7 @@ final class Handler extends Command implements Runnable {
 			// signal to selector that we are ready to write
 			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			timeStart = new Date().getTime();
 			sel.wakeup();
 
 		}
@@ -666,6 +687,7 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					timeStart = new Date().getTime();
 					sel.wakeup();
 
 				} catch (IOException e) {
@@ -771,7 +793,7 @@ final class Handler extends Command implements Runnable {
 			
 			if (!keepRunning) {
 				state = State.DO_NOTHING;
-				deallocateNetworkResources();
+				deallocateInternalNetworkResources();
 				return;
 			}
 			
@@ -811,8 +833,6 @@ final class Handler extends Command implements Runnable {
 
 				log.debug(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==[{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
 
-				generateOwnerQuery();
-
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
 				log.debug("--- TSPushProcess::checkLocal()");
@@ -829,6 +849,7 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					timeStart = new Date().getTime();
 					sel.wakeup();
 
 				} catch (IOException e) {
@@ -863,6 +884,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void recvOwner() {
+			log.debug(" *** *** TSPushProcess::recvOwner() START {}", this);
 			output.limit(output.capacity());
 
 			// read from the socket then close the connection
@@ -871,10 +893,8 @@ final class Handler extends Command implements Runnable {
 				
 				state = State.SEND_REQUESTER;
 				log.debug(" +++ TSPushProcess::recvOwner() COMPLETE {}", this);
-				if (null != keyRequester && keyRequester.isValid()) { keyRequester.cancel(); }
-				if (null != keyOwner && keyOwner.isValid()) { keyOwner.cancel(); }
-				if (null != socketRequester) socketRequester.close();
-				if (null != socketOwner) socketOwner.close();
+				deallocateInternalNetworkResources();
+				
 			} catch (IOException e) {
 				retryAtStateCheckingLocal(e);
 			}
@@ -926,6 +946,7 @@ final class Handler extends Command implements Runnable {
 
 			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			timeStart = new Date().getTime();
 			sel.wakeup();
 
 
@@ -988,6 +1009,7 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					timeStart = new Date().getTime();
 					sel.wakeup();
 
 				} catch (IOException e) {
@@ -1114,6 +1136,7 @@ final class Handler extends Command implements Runnable {
 
 			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
+			timeStart = new Date().getTime();
 			sel.wakeup();
 		}
 	}
@@ -1174,6 +1197,7 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					timeStart = new Date().getTime();
 					sel.wakeup();
 
 				} catch (IOException e) {
