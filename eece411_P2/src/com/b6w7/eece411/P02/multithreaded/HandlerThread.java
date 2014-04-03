@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.b6w7.eece411.P02.nio.ServiceReactor;
 
-public class HandlerThread extends Thread implements PostCommand {
+public class HandlerThread extends Thread implements PostCommand<Command> {
 	private final ConcurrentLinkedQueue<Command> inQueue = new ConcurrentLinkedQueue<Command>();
 
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
@@ -55,6 +55,7 @@ public class HandlerThread extends Thread implements PostCommand {
 //		System.out.println("HandlerThread()::post() end");
 	}
 
+	@Override
 	public void kill() {
 		keepRunning = false;
 		synchronized(inQueue) {

@@ -56,7 +56,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Timer timer;
 	private JoinThread self;
 
-	private final long READ_TIMEOUT = 2000;
+	private final long READ_TIMEOUT = 150;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
@@ -126,6 +126,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 		}, 
 		2000, 10000);
 		
+		ReplicaThread replicaThread = new ReplicaThread();
+		replicaThread.start();
 		// start handler thread
 		dbHandler.start();
 
