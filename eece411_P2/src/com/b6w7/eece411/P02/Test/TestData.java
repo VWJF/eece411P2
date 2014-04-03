@@ -4,7 +4,6 @@ import java.nio.ByteBuffer;
 
 import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
-import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 
 /**
  * Immutable class which contains the data for one iteration of test with {@link Node}
