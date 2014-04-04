@@ -720,7 +720,7 @@ final class Handler extends Command implements Runnable {
 				replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
 
 			
-//			spawnReplicaPut();
+			spawnReplicaPut();
 			
 			generateRequesterReply();
 
@@ -763,6 +763,7 @@ final class Handler extends Command implements Runnable {
 
 			if (retriesLeft == 3) {
 				if (replicaList.size() == 0) {
+					log.trace(" *** PutProcess::checkLocal() All replicas offline"); 
 					// we have ran out of nodes to connect to, so internal error
 					replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
 					generateRequesterReply();
@@ -775,8 +776,12 @@ final class Handler extends Command implements Runnable {
 				}
 				
 				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+					log.trace("     PutProcess::checkLocal() replica considering {}", owner); 
+
 					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
 						owner = addr;
+						log.trace(" *** PutProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
+
 						if (!replicaList.remove(addr)) 
 							log.error(" ### PutProcess::checkLocal() Corrupted database {}", addr); 
 						break SEARCH_FOR_LOCAL;
@@ -784,6 +789,11 @@ final class Handler extends Command implements Runnable {
 				}
 			}
 			
+			if (owner == null)
+				owner = replicaList.remove(0);
+			
+			log.trace("     PutProcess::checkLocal() replica using {}", owner); 
+
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
@@ -1338,7 +1348,9 @@ final class Handler extends Command implements Runnable {
 				}
 			}
 			
-			
+			if (owner == null)
+				owner = replicaList.remove(0);
+
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
