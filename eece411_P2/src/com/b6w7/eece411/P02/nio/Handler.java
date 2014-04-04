@@ -1342,8 +1342,8 @@ final class Handler extends Command implements Runnable {
 					return;
 				}
 	
-				log.trace("     GetProcess::checkLocal() replica considering {}", owner); 
 				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+					log.trace("     GetProcess::checkLocal() replica considering {}", addr); 
 					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
 						owner = addr;
 						log.trace(" *** GetProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
