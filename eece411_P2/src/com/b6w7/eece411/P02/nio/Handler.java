@@ -199,7 +199,7 @@ final class Handler extends Command implements Runnable {
 
 		this.membership = other.membership;
 		this.serverPort = other.serverPort;
-		this.process = new TSReplicaPutProcess();
+		this.process = process;
 		
 		this.owner = owner;
 		this.key = other.key;
@@ -386,6 +386,15 @@ final class Handler extends Command implements Runnable {
 		} else if (Request.CMD_TS_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE) {
 				process = new TSRemoveProcess();
+				input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
+				input.flip();
+				return true;
+			}
+			return false;
+
+		} else if (Request.CMD_TS_REPLICA_REMOVE.getCode() == cmd) {
+			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE) {
+				process = new TSReplicaRemoveProcess();
 				input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
 				input.flip();
 				return true;
@@ -916,10 +925,7 @@ final class Handler extends Command implements Runnable {
 		}
 	}
 	
-//	class TSReplicaRemoveProcess implements Process {
-//		
-//	}
-
+	
 	class TSReplicaPutProcess extends PutProcess {
 
 		@Override
@@ -1098,10 +1104,14 @@ final class Handler extends Command implements Runnable {
 	private void spawnReplicaRemove() {
 		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey);
 		Collection<Handler> replicaSet = new HashSet<Handler>();
-		
-//		for (InetSocketAddress replica : replicaList)
-//			replicaSet.add(new Handler(this, replica, new TSReplicaRemoveProcess()));
 
+		log.debug("spawnReplicaRemove() [replicaList=>{}]", replicaList);
+		for (InetSocketAddress replica : replicaList) {
+			assert( replica != null);
+			
+			log.debug("spawnReplicaRemove() [replica=>{}]", replica);
+			replicaSet.add(new Handler(this, replica, new TSReplicaRemoveProcess()));
+		}
 		replicaHandler.post(replicaSet);
 	}
 	
@@ -1537,6 +1547,8 @@ final class Handler extends Command implements Runnable {
 				else
 					replyCode = Reply.RPY_INEXISTENT.getCode();
 
+				spawnReplicaRemove();
+				
 				generateRequesterReply();
 
 				state = State.SEND_REQUESTER;
@@ -1634,6 +1646,153 @@ final class Handler extends Command implements Runnable {
 		}
 	}
 
+	class TSReplicaRemoveProcess extends RemoveProcess {
+
+		@Override
+		public void checkLocal() {
+			log.debug(" --- TSReplicaRemoveProcess::checkLocal(): {}", self);
+			
+			output = ByteBuffer.allocate(2048);
+			
+			if (retriesLeft < 0) {
+				doNothing();
+				return;
+			}
+			
+			if (!keepRunning) {
+				doNothing();
+				return;
+			}
+			
+			mergeVector(CMDSIZE+KEYSIZE);
+			incrLocalTime();
+			
+			if (cmd == Request.CMD_TS_REPLICA_REMOVE.getCode()) {
+				// OK this is a request from another node that has arrived here
+				// we need to read local timestamp and send it back
+				
+				key = new byte[KEYSIZE];
+				key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+				hashedKey = new ByteArrayWrapper(key);
+
+				// set replyCode as appropriate and prepare output buffer
+				// set replyCode as appropriate and prepare output buffer
+				replyValue = remove();
+				if( replyValue != null ) 
+					replyCode = Reply.RPY_SUCCESS.getCode(); 
+				else
+					replyCode = Reply.RPY_INEXISTENT.getCode();
+
+				generateRequesterReply();
+
+				// signal to selector that we are ready to write
+				state = State.SEND_REQUESTER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				timeStart = new Date().getTime();
+				sel.wakeup();
+				
+			} else {
+				// OK this is a request from this node that will be outbound
+				// this was triggered by a periodic local timer
+				if (owner == null){
+					abort(new IllegalStateException(" ### should not have null for TSReplicaRemoveProcess::owner"));
+					return;
+				}
+				
+				log.debug(" --- TSReplicaRemoveProcess::checkLocal(): owner==[{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
+
+				incrLocalTime();
+				try {
+					// prepare the output buffer, and signal for opening a socket to remote
+					generateOwnerQuery();
+
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					
+					state = State.CONNECT_OWNER;
+					timeStart = new Date().getTime();
+					sel.wakeup();
+
+				} catch (IOException e) {
+					retryAtStateCheckingLocal(e);
+				}
+			}
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			log.debug(" +++ TSReplicaRemoveProcess::generateOwnerQuery() START {}", self);
+			output.position(0);
+			output.put(Request.CMD_TS_REPLICA_REMOVE.getCode());
+			output.put(key);
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			log.debug(" +++ TSReplicaRemoveProcess::generateOwnerQuery() COMPLETE {}", self);
+		}
+
+		@Override
+		public void generateRequesterReply() {
+			// We performed a local look up.  So we fill in input with 
+			// the appropriate reply to requester.
+			output.put(replyCode);
+			output.flip();
+			log.debug(" +++ TSReplicaRemoveProcess::generateRequesterReply() COMPLETE LOCAL {}", self);
+		}
+
+		@Override
+		public void recvOwner() {
+			output.limit(output.capacity());
+
+			// read from the socket
+			try {
+				log.trace(" +++ TSReplicaRemoveProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				socketOwner.read(output);
+				log.trace(" +++ TSReplicaRemoveProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
+
+				if (recvOwnerIsComplete()) {
+					log.debug(" +++ TSReplicaRemoveProcess::recvOwner() COMPLETE {}", self);
+					
+					deallocateInternalNetworkResources();
+					doNothing();
+				}
+
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
+		}
+		
+		/**
+		 * Checks that enough bytes are input to create a valid reply from owner.
+		 * If so, assign output to input.  This saves a buffer copy when we forward
+		 * the owner's reply to the requester.
+		 * side effects:
+		 * Both output and input will reference what was previously input
+		 * position set to 0, limit set to N
+		 * replyCode is set accordingly.
+		 * @return true if enough bytes read; false otherwise.
+		 */
+		private boolean recvOwnerIsComplete() {
+			output.position(RPYSIZE);
+			output.flip();
+			
+			return true;
+		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			return false;
+		}
+
+		protected byte[] remove(){
+			return map.remove(hashedKey);
+		}
+	}
+	
 	class UnrecogProcess implements Process {
 
 		@Override
