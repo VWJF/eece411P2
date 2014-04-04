@@ -181,6 +181,7 @@ public class TestNode implements Runnable, JoinThread {
 	 */
 	@SuppressWarnings("unused")
 	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		int myCount = 1;
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -912,9 +913,9 @@ public class TestNode implements Runnable, JoinThread {
 			
 //			populatePutGetRemoveGet();
 			
-			//populateOneTest();
+			populateOneTest();
 //			populateTests();
-			populateMemoryTests();
+//			populateMemoryTests();
 			
 			//Test for routing.
 			//populatePutTests(); //For the node that has stored the Key-Values 11112
@@ -927,9 +928,9 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-			for(int i = 0; i< 9; i++){
-				populateAnnounceDeathTest();
-			}		
+//			for(int i = 0; i< 19; i++){
+//				populateAnnounceDeathTest();
+//			}		
 
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
@@ -939,7 +940,7 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-			populateMemoryTests();
+//			populateMemoryTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
@@ -992,6 +993,8 @@ public class TestNode implements Runnable, JoinThread {
 
 						// If address was supplied, then use the supplied host instead of a random one
 						
+						// hack
+						port = 11114;
 						
 						if (!IS_BREVITY) System.out.println(
 								"Connecting to: " 

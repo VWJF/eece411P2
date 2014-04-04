@@ -10,9 +10,10 @@ import java.nio.IntBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 
@@ -63,7 +64,8 @@ final class Handler extends Command implements Runnable {
 	public long timeStart = Long.MAX_VALUE;
 	
 	private final MembershipProtocol membership;
-	private final PostCommand dbHandler;
+	private final PostCommand<Command> dbHandler;
+	private final PostCommand<Handler> replicaHandler;
 
 	/**
 	 * The state of this {@link Command} used as a FSM
@@ -77,7 +79,6 @@ final class Handler extends Command implements Runnable {
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
 	private InetSocketAddress owner;
-
 
 	private final int serverPort;
 	private final JoinThread parent;
@@ -94,7 +95,20 @@ final class Handler extends Command implements Runnable {
 		DO_NOTHING, 
 	}
 
-	Handler(Selector sel, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort, MembershipProtocol membership, JoinThread parent) 
+	/**
+	 * Called by TSPushProcess timer
+	 * @param sel
+	 * @param dbHandler
+	 * @param map
+	 * @param queue
+	 * @param serverPort
+	 * @param membership
+	 * @param parent
+	 * @throws IOException
+	 */
+	Handler(Selector sel, PostCommand<Command> dbHandler, PostCommand<Handler> replicaHandler
+			, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort
+			, MembershipProtocol membership, JoinThread parent) 
 			throws IOException {
 
 		this.parent = parent;
@@ -108,18 +122,35 @@ final class Handler extends Command implements Runnable {
 		this.map = map;
 		socketRequester = null; 
 		keyRequester = null;
-		// Optionally try first read now
 		
 		this.membership= membership;
 		this.serverPort = serverPort;
 		this.process = new TSPushProcess();
+		this.replicaHandler = replicaHandler;
 		
 		state = State.CHECKING_LOCAL;
 		// keep reference to self so that nested classes can refer to the handler
 		self = this;
+		input.position(0);
+		input.put((byte)-1);
+		input.position(0);
 	}
 
-	Handler(Selector sel, SocketChannel c, PostCommand dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort, MembershipProtocol membership, JoinThread parent) 
+	/**
+	 * Constructor
+	 * @param sel
+	 * @param c
+	 * @param dbHandler
+	 * @param map
+	 * @param queue
+	 * @param serverPort
+	 * @param membership
+	 * @param parent
+	 * @throws IOException
+	 */
+	Handler(Selector sel, SocketChannel c, PostCommand<Command> dbHandler, PostCommand<Handler> replicaHandler
+			, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort
+			, MembershipProtocol membership, JoinThread parent) 
 			throws IOException {
 
 		this.parent = parent;
@@ -130,10 +161,11 @@ final class Handler extends Command implements Runnable {
 			throw new IllegalArgumentException("map cannot be null");
 
 		this.dbHandler = dbHandler;
+		this.replicaHandler = replicaHandler;
 		this.map = map;
 		socketRequester = c; 
 		c.configureBlocking(false);
-		// Optionally try first read now
+
 		keyRequester = socketRequester.register(sel, 0);
 		keyRequester.attach(this);
 		keyRequester.interestOps(SelectionKey.OP_READ);
@@ -144,6 +176,43 @@ final class Handler extends Command implements Runnable {
 		this.serverPort = serverPort;
 		// keep reference to self so that nested classes can refer to the handler
 		self = this;
+		input.position(0);
+		input.put((byte)-1);
+		input.position(0);
+	}
+
+	/**
+	 * TSReplica Constructor
+	 * @param other
+	 * @param owner
+	 * @param process
+	 */
+	public Handler(Handler other, InetSocketAddress owner, Process process) {
+
+		this.parent = other.parent;
+		this.queue = other.queue;
+		this.sel = other.sel;
+		this.dbHandler = other.dbHandler;
+		this.replicaHandler = other.replicaHandler;
+		this.map = other.map;
+		socketRequester = null; 
+		keyRequester = null;
+
+		this.membership = other.membership;
+		this.serverPort = other.serverPort;
+		this.process = new TSReplicaPutProcess();
+		
+		this.owner = owner;
+		this.key = other.key;
+		this.value = other.value;
+		this.hashedKey = other.hashedKey;
+ 
+		state = State.CHECKING_LOCAL;
+		// keep reference to self so that nested classes can refer to the handler
+		self = this;
+		input.position(0);
+		input.put((byte)-1);
+		input.position(0);
 	}
 
 	/**
@@ -306,6 +375,15 @@ final class Handler extends Command implements Runnable {
 			}
 			return false;
 
+		} else if (Request.CMD_TS_REPLICA_PUT.getCode() == cmd) {
+			if (position >= CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE) {
+				process = new TSReplicaPutProcess();
+				input.position(CMDSIZE + KEYSIZE + VALUESIZE + TIMESTAMPSIZE);
+				input.flip();
+				return true;
+			}
+			return false;
+
 		} else if (Request.CMD_TS_REMOVE.getCode() == cmd) {
 			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE) {
 				process = new TSRemoveProcess();
@@ -435,15 +513,19 @@ final class Handler extends Command implements Runnable {
 
 			if (outputIsComplete()) {
 				log.debug(" +++ Common::sendRequester() COMPLETE {}", this);
-				deallocateInternalNetworkResources();
-				deallocateExternalNetworkResources();
-				state = State.DO_NOTHING;
+				doNothing();
 			}
 			
 		} catch (IOException e) {
-			deallocateInternalNetworkResources();
-			state = State.DO_NOTHING;
+			doNothing();
 		}
+	}
+
+	private void doNothing() {
+		deallocateInternalNetworkResources();
+		deallocateExternalNetworkResources();
+		state = State.DO_NOTHING;
+		return;
 	}
 
 	private void deallocateInternalNetworkResources() {
@@ -463,9 +545,7 @@ final class Handler extends Command implements Runnable {
 		// Unknown host.  Fatal error.  Abort this command.
 		retriesLeft = -1;
 		log.debug(" *** Handler::abort() {}", e.getMessage());
-		deallocateInternalNetworkResources();
-		deallocateExternalNetworkResources();
-		state = State.DO_NOTHING;
+		doNothing();
 	}
 
 	private void deallocateExternalNetworkResources() {
@@ -490,12 +570,13 @@ final class Handler extends Command implements Runnable {
 		log.debug(">>>>>>>> *** *** retryAtStateCheckingLocal() START {} [retries=>{}] [process=>{}] <<<<<<<<<<", this, retriesLeft, process.getClass().toString());
 
 		retriesLeft --;
+
 		if (retriesLeft < 0) {
 			log.debug(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft: {}.  <<<<<<<<<<", retriesLeft);
-			retriesLeft = 3;
-			// we have exhausted trying to connect to this owner
-			// he is probably offline
 			map.shutdown(ConsistentHashing.hashKey(owner.getHostName() + ":" + owner.getPort()));
+
+			if (process.iterativeRepeat())
+				retriesLeft = 3;
 		}
 
 		log.debug("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. {}", e.getMessage());
@@ -590,6 +671,11 @@ final class Handler extends Command implements Runnable {
 		public void recvOwner() {
 			throw new UnsupportedOperationException(" ### should not call TSAnnounceDeathProcess::recvOwner()");
 		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			throw new IllegalStateException(" ### should not call TSAnnounceDeathProcess::iterativeRepeat()");
+		}
 		
 	}
 	
@@ -607,9 +693,7 @@ final class Handler extends Command implements Runnable {
 			output = ByteBuffer.allocate(2048);
 
 			if (!keepRunning) {
-				// we reply with internal failure.  This node should no longer be servicing connections.
-				replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
-				generateRequesterReply();
+				doNothing();
 				return;
 			}
 
@@ -621,12 +705,15 @@ final class Handler extends Command implements Runnable {
 			// we can transition to SEND_REQUESTER
 			
 			// set replyCode as appropriate and prepare output buffer
-			log.debug("--- PutProcess::checkLocal() ------------ Using Local --------------");
+			log.debug("--- TSPutProcess::checkLocal() ------------ Using Local --------------");
 			if( put() )
 				replyCode = Reply.RPY_SUCCESS.getCode(); 
 			else
 				replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
 
+			
+//			spawnReplicaPut();
+			
 			generateRequesterReply();
 
 			// signal to selector that we are ready to write
@@ -639,7 +726,7 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	class PutProcess implements Process {
-
+		
 		@Override
 		public void checkLocal() {
 			log.debug(" --- PutProcess::checkLocal(): {}", self);
@@ -673,6 +760,8 @@ final class Handler extends Command implements Runnable {
 				else
 					replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
 
+				spawnReplicaPut();
+
 				generateRequesterReply();
 
 				// signal to selector that we are ready to write
@@ -685,7 +774,6 @@ final class Handler extends Command implements Runnable {
 				// we can transition to CONNECT_OWNER and connect to remote node
 				log.debug("--- PutProcess::checkLocal() -------------- Using remote --------------");
 				incrLocalTime();
-				state = State.CONNECT_OWNER;
 
 				try {
 					// prepare the output buffer, and signal for opening a socket to remote
@@ -696,6 +784,8 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+
+					state = State.CONNECT_OWNER;
 					timeStart = new Date().getTime();
 					sel.wakeup();
 
@@ -792,6 +882,200 @@ final class Handler extends Command implements Runnable {
 				return true;
 			}
 		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			return true;
+		}
+	}
+	
+//	class TSReplicaRemoveProcess implements Process {
+//		
+//	}
+
+	class TSReplicaPutProcess extends PutProcess {
+
+		@Override
+		public void checkLocal() {
+			log.debug(" --- TSReplicaPutProcess::checkLocal(): {}", self);
+			
+			output = ByteBuffer.allocate(2048);
+			
+			if (retriesLeft < 0) {
+				doNothing();
+				return;
+			}
+			
+			if (!keepRunning) {
+				doNothing();
+				return;
+			}
+			
+			mergeVector(CMDSIZE+KEYSIZE+VALUESIZE);
+			incrLocalTime();
+			
+			if (cmd == Request.CMD_TS_REPLICA_PUT.getCode()) {
+				// OK this is a request from another node that has arrived here
+				// we need to read local timestamp and send it back
+				
+				key = new byte[KEYSIZE];
+				key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
+				value = new byte[VALUESIZE];
+				value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
+				hashedKey = new ByteArrayWrapper(key);
+
+				// set replyCode as appropriate and prepare output buffer
+				log.debug("--- TSReplicaPutProcess::checkLocal() ------------ Using Local --------------");
+				if( put() )
+					replyCode = Reply.RPY_SUCCESS.getCode(); 
+				else
+					replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
+
+				generateRequesterReply();
+
+				// signal to selector that we are ready to write
+				state = State.SEND_REQUESTER;
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
+				timeStart = new Date().getTime();
+				sel.wakeup();
+				
+			} else {
+				// OK this is a request from this node that will be outbound
+				// this was triggered by a periodic local timer
+				if (owner == null){
+					abort(new IllegalStateException(" ### should not have null for TSReplicaPutProcess::owner"));
+					return;
+				}
+				
+				log.debug(" --- TSReplicaPutProcess::checkLocal(): owner==[{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
+
+				incrLocalTime();
+				try {
+					// prepare the output buffer, and signal for opening a socket to remote
+					generateOwnerQuery();
+
+					socketOwner = SocketChannel.open();
+					socketOwner.configureBlocking(false);
+					// Send message to selector and wake up selector to process the message.
+					// There is no need to set interestOps() because selector will check its queue.
+					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+					
+					state = State.CONNECT_OWNER;
+					timeStart = new Date().getTime();
+					sel.wakeup();
+
+				} catch (IOException e) {
+					retryAtStateCheckingLocal(e);
+				}
+			}
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			log.debug(" +++ TSReplicaPutProcess::generateOwnerQuery() START {}", self);
+			output.position(0);
+			output.put(Request.CMD_TS_REPLICA_PUT.getCode());
+			output.put(key);
+			output.put(value);
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			log.debug(" +++ TSReplicaPutProcess::generateOwnerQuery() COMPLETE {}", self);
+		}
+
+		@Override
+		public void generateRequesterReply() {
+			// We performed a local look up.  So we fill in input with 
+			// the appropriate reply to requester.
+			output.put(replyCode);
+			output.flip();
+			log.debug(" +++ TSReplicaPutProcess::generateRequesterReply() COMPLETE LOCAL {}", self);
+		}
+
+		@Override
+		public void recvOwner() {
+			output.limit(output.capacity());
+
+			// read from the socket
+			try {
+				log.trace(" +++ TSReplicaPutProcess::recvOwner() BEFORE output.position()=="+output.position()+" output.limit()=="+output.limit());
+				socketOwner.read(output);
+				log.trace(" +++ TSReplicaPutProcess::recvOwner() AFTER output.position()=="+output.position()+" output.limit()=="+output.limit());
+
+				if (recvOwnerIsComplete()) {
+					log.debug(" +++ TSReplicaPutProcess::recvOwner() COMPLETE {}", self);
+					
+					deallocateInternalNetworkResources();
+					doNothing();
+				}
+
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
+		}
+		
+		/**
+		 * Checks that enough bytes are input to create a valid reply from owner.
+		 * If so, assign output to input.  This saves a buffer copy when we forward
+		 * the owner's reply to the requester.
+		 * side effects:
+		 * Both output and input will reference what was previously input
+		 * position set to 0, limit set to N
+		 * replyCode is set accordingly.
+		 * @return true if enough bytes read; false otherwise.
+		 */
+		private boolean recvOwnerIsComplete() {
+			output.position(RPYSIZE);
+			output.flip();
+			
+			return true;
+		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			return false;
+		}
+
+		protected boolean put(){
+			if(map.size() == MAX_MEMORY && map.containsKey(hashedKey) == false ){
+				return false;
+
+			} else {
+				byte[] result = map.put(hashedKey, value);
+
+				if(result != null) {
+					// Overwriting -- we take note
+					if(IS_VERBOSE) System.out.println("*** PutCommand() Replacing Key " + this.toString());
+				}
+
+				return true;
+			}
+		}
+	}
+	
+	private void spawnReplicaPut() {
+		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey);
+		Collection<Handler> replicaSet = new HashSet<Handler>();
+		
+		log.debug("spawnReplicaPut() [replicaList=>{}]", replicaList);
+		for (InetSocketAddress replica : replicaList) {
+			assert( replica != null);
+			
+			log.debug("spawnReplicaPut() [replica=>{}]", replica);
+			replicaSet.add(new Handler(this, replica, new TSReplicaPutProcess()));
+		}
+		replicaHandler.post(replicaSet);
+	}
+	
+	private void spawnReplicaRemove() {
+		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey);
+		Collection<Handler> replicaSet = new HashSet<Handler>();
+		
+//		for (InetSocketAddress replica : replicaList)
+//			replicaSet.add(new Handler(this, replica, new TSReplicaRemoveProcess()));
+
+		replicaHandler.post(replicaSet);
 	}
 	
 	class TSPushProcess implements Process {
@@ -801,8 +1085,7 @@ final class Handler extends Command implements Runnable {
 			log.debug(" --- TSPushProcess::checkLocal(): {}", self);
 			
 			if (!keepRunning) {
-				state = State.DO_NOTHING;
-				deallocateInternalNetworkResources();
+				doNothing();
 				return;
 			}
 			
@@ -811,7 +1094,7 @@ final class Handler extends Command implements Runnable {
 			mergeVector(CMDSIZE);
 			incrLocalTime();
 			
-			if (input.get(0) == Request.CMD_TS_PUSH.getCode()) {
+			if (cmd == Request.CMD_TS_PUSH.getCode()) {
 				// OK this is a request from another node that has arrived here
 				// we need to read local timestamp and send it back
 				
@@ -847,8 +1130,6 @@ final class Handler extends Command implements Runnable {
 				log.debug("--- TSPushProcess::checkLocal()");
 				incrLocalTime();
 
-				state = State.CONNECT_OWNER;
-
 				try {
 					// prepare the output buffer, and signal for opening a socket to remote
 					generateOwnerQuery();
@@ -858,6 +1139,8 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+
+					state = State.CONNECT_OWNER;
 					timeStart = new Date().getTime();
 					sel.wakeup();
 
@@ -899,20 +1182,26 @@ final class Handler extends Command implements Runnable {
 			// read from the socket then close the connection
 			try {
 				socketOwner.read(output);
-				
-				state = State.SEND_REQUESTER;
-				log.debug(" +++ TSPushProcess::recvOwner() COMPLETE {}", this);
-				deallocateInternalNetworkResources();
-				
+
+				if (recvOwnerIsComplete()) {
+					log.debug(" +++ TSPushProcess::recvOwner() COMPLETE {}", this);
+					deallocateInternalNetworkResources();
+					doNothing();
+				}
 			} catch (IOException e) {
 				retryAtStateCheckingLocal(e);
 			}
 		}
-		
+
 		protected boolean recvOwnerIsComplete() {
 			output.position(RPYSIZE);
 			output.flip();
 			
+			return true;
+		}
+
+		@Override
+		public boolean iterativeRepeat() {
 			return true;
 		}
 	}
@@ -953,8 +1242,9 @@ final class Handler extends Command implements Runnable {
 
 			generateRequesterReply();
 
-			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
+
+			state = State.SEND_REQUESTER;
 			timeStart = new Date().getTime();
 			sel.wakeup();
 
@@ -1007,7 +1297,6 @@ final class Handler extends Command implements Runnable {
 				// we can transition to CONNECT_OWNER and connect to remote node
 				log.debug("--- GetProcess::checkLocal() ------------ Using Remote --------------");
 				incrLocalTime();
-				state = State.CONNECT_OWNER;
 
 				try {
 					// prepare the output buffer, and signal for opening a socket to remote
@@ -1018,6 +1307,8 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+
+					state = State.CONNECT_OWNER;
 					timeStart = new Date().getTime();
 					sel.wakeup();
 
@@ -1106,6 +1397,11 @@ final class Handler extends Command implements Runnable {
 			}
 			return val;
 		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			return true;
+		}
 	}
 
 	class TSRemoveProcess extends RemoveProcess {
@@ -1143,8 +1439,9 @@ final class Handler extends Command implements Runnable {
 
 			generateRequesterReply();
 
-			state = State.SEND_REQUESTER;
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
+
+			state = State.SEND_REQUESTER;
 			timeStart = new Date().getTime();
 			sel.wakeup();
 		}
@@ -1195,7 +1492,6 @@ final class Handler extends Command implements Runnable {
 				// we can transition to CONNECT_OWNER and connect to remote node
 				log.debug("--- RemoveProcess::checkLocal() ------------ Using Remote --------------");
 				incrLocalTime();
-				state = State.CONNECT_OWNER;
 
 				try {
 					// prepare the output buffer, and signal for opening a socket to remote
@@ -1206,6 +1502,8 @@ final class Handler extends Command implements Runnable {
 					// Send message to selector and wake up selector to process the message.
 					// There is no need to set interestOps() because selector will check its queue.
 					registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+
+					state = State.CONNECT_OWNER;
 					timeStart = new Date().getTime();
 					sel.wakeup();
 
@@ -1273,6 +1571,11 @@ final class Handler extends Command implements Runnable {
 		protected byte[] remove(){
 			return map.remove(hashedKey);
 		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			return true;
+		}
 	}
 
 	class UnrecogProcess implements Process {
@@ -1308,6 +1611,11 @@ final class Handler extends Command implements Runnable {
 		@Override
 		public void recvOwner() {
 			throw new UnsupportedOperationException(" ### should not call UnrecogProcess::recvOwner()");
+		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			throw new IllegalStateException(" ### should not call UnrecogProcess::iterativeRepeat()");
 		}
 	}
 
@@ -1424,6 +1732,8 @@ final class Handler extends Command implements Runnable {
 	@Override
 	public int hashCode()
 	{
+		assert(hashedKey!=null);
+		
 		return hashedKey.hashCode() + owner.hashCode();
 	}
 

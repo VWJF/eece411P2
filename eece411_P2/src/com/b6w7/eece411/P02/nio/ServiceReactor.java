@@ -39,6 +39,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private final ConsistentHashing<ByteArrayWrapper, byte[]> dht;
 
 	private final HandlerThread dbHandler = new HandlerThread();
+	private final ReplicaThread replicaHandler;
 
 	public final int serverPort;
 	private boolean keepRunning = true;
@@ -56,7 +57,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Timer timer;
 	private JoinThread self;
 
-	private final long READ_TIMEOUT = 2000;
+	private final long READ_TIMEOUT = 100;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
@@ -93,6 +94,8 @@ public class ServiceReactor implements Runnable, JoinThread {
 		log.debug(" &&& ServiceReactor() [localhost, position, totalnodes]: [{}, {}, {}]", localhost, position, dht.getSizeAllNodes());
 		if (position <0)
 			log.warn(" &&& Handler() position is negative {}!", position);
+		
+		replicaHandler = new ReplicaThread(dbHandler);
 
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
@@ -110,24 +113,26 @@ public class ServiceReactor implements Runnable, JoinThread {
 		log.info("Server listening on port {} with address {}", serverPort, inetAddress);
 
 		timer = new Timer();
-		timer.schedule(new TimerTask() {
-			
-			@Override
-			public void run() {
-				try {
-					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
-					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, self);
-					dbHandler.post(cmd);
-				} catch (IOException e) {
-					log.debug(e.getMessage());
-				}
-				
-			}
-		}, 
-		2000, 10000);
+//		timer.schedule(new TimerTask() {
+//			
+//			@Override
+//			public void run() {
+//				try {
+//					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
+//					Command cmd = new Handler(selector, dbHandler, replicaHandler, dht, registrations, serverPort, membership, self);
+//					dbHandler.post(cmd);
+//				} catch (IOException e) {
+//					log.debug(e.getMessage());
+//				}
+//				
+//			}
+//		}, 
+//		2000, 10000);
 		
 		// start handler thread
 		dbHandler.start();
+
+		replicaHandler.start();
 
 		while (keepRunning) {
 			try {
@@ -194,7 +199,15 @@ public class ServiceReactor implements Runnable, JoinThread {
 				} catch (InterruptedException e) { /* do nothing */ }
 			} while (dbHandler.isAlive());
 		}
-
+		if (null != replicaHandler) {
+			replicaHandler.kill();
+			do {
+				try {
+					replicaHandler.join();
+				} catch (InterruptedException e) { /* do nothing */ }
+			} while (replicaHandler.isAlive());
+		}
+		
 		log.info("All threads completed");
 		
 		// This will shut it down for all JVM's running, so comment out for now
@@ -212,7 +225,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				SocketChannel c = serverSocket.accept();
 				if (c != null)
-					new Handler(selector, c, dbHandler, dht, registrations, serverPort, membership, parent);
+					new Handler(selector, c, dbHandler, replicaHandler, dht, registrations, serverPort, membership, parent);
 				
 			} catch(IOException ex) { /* ... */ }
 		} 

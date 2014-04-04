@@ -1,5 +1,6 @@
 package com.b6w7.eece411.P02.multithreaded;
 
+import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
@@ -7,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.b6w7.eece411.P02.nio.ServiceReactor;
 
-public class HandlerThread extends Thread implements PostCommand {
+public class HandlerThread extends Thread implements PostCommand<Command> {
 	private final ConcurrentLinkedQueue<Command> inQueue = new ConcurrentLinkedQueue<Command>();
 
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
@@ -55,10 +56,16 @@ public class HandlerThread extends Thread implements PostCommand {
 //		System.out.println("HandlerThread()::post() end");
 	}
 
+	@Override
 	public void kill() {
 		keepRunning = false;
 		synchronized(inQueue) {
 			inQueue.notifyAll();
 		}
+	}
+
+	@Override
+	public void post(Collection<? extends Command> multipleHandlers) {
+		throw new UnsupportedOperationException();
 	}
 }

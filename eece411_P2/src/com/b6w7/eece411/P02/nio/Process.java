@@ -37,4 +37,11 @@ public interface Process {
 	 * repeatedly until enough bytes are read for a valid reply.
 	 */
 	public abstract void recvOwner();
+
+	/**
+	 * true if this process should seek another node if the first node chosen appears offline,
+	 * false if this process should quit after being unsuccessful to connect to first node chosen.
+	 */
+	public abstract boolean iterativeRepeat();
+
 }
