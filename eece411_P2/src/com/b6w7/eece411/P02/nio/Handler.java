@@ -200,7 +200,7 @@ final class Handler extends Command implements Runnable {
 
 		this.membership = other.membership;
 		this.serverPort = other.serverPort;
-		this.process = process;
+		this.process = new TSReplicaPutProcess();
 		
 		this.owner = owner;
 		this.key = other.key;
@@ -721,7 +721,7 @@ final class Handler extends Command implements Runnable {
 				replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
 
 			
-//			spawnReplicaPut();
+			spawnReplicaPut();
 			
 			generateRequesterReply();
 
@@ -760,7 +760,7 @@ final class Handler extends Command implements Runnable {
 			
 			// Instantiate owner list
 			if (ownerList == null)
-				ownerList = map.getReplicaList(hashedKey);
+				ownerList = map.getReplicaList(hashedKey, false);
 
 			if (retriesLeft == 3) {
 				if (ownerList.size() == 0) {
@@ -1085,7 +1085,7 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	private void spawnReplicaPut() {
-		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey);
+		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey, true);
 		Collection<Handler> replicaSet = new HashSet<Handler>();
 		
 		log.debug("spawnReplicaPut() [replicaList=>{}]", replicaList);
@@ -1099,7 +1099,7 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	private void spawnReplicaRemove() {
-		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey);
+		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey, true);
 		Collection<Handler> replicaSet = new HashSet<Handler>();
 
 		log.debug("spawnReplicaRemove() [replicaList=>{}]", replicaList);
