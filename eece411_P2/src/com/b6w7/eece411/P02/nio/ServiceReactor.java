@@ -57,7 +57,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Timer timer;
 	private JoinThread self;
 
-	private final long READ_TIMEOUT = 100;
+	private final long READ_TIMEOUT = 200;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 

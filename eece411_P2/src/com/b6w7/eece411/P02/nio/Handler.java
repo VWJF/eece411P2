@@ -274,7 +274,7 @@ final class Handler extends Command implements Runnable {
 				break;
 				
 			case DO_NOTHING:
-				log.error("     Handler::run() DO_NOTHING should not be processed");
+				log.debug("     Handler::run() DO_NOTHING should not be processed");
 				// do nothing
 				break;
 			}
