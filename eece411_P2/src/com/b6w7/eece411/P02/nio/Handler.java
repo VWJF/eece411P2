@@ -199,7 +199,11 @@ final class Handler extends Command implements Runnable {
 
 		this.membership = other.membership;
 		this.serverPort = other.serverPort;
-		this.process = new TSReplicaPutProcess();
+		
+		if(process instanceof TSReplicaPutProcess)
+			this.process = new TSReplicaPutProcess();
+		else if(process instanceof TSReplicaRemoveProcess)
+			this.process = new TSReplicaRemoveProcess();
 		
 		this.owner = owner;
 		this.key = other.key;
