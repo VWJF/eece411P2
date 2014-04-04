@@ -248,7 +248,9 @@ final class Handler extends Command implements Runnable {
 				break;
 
 			case CHECKING_LOCAL:
-				throw new IllegalStateException(" ### CHECKING_LOCAL should not be called in run()");
+				log.debug(" *** CHECKING_LOCAL should not be called in run()");
+//				throw new IllegalStateException(" ### CHECKING_LOCAL should not be called in run()");
+				break;
 
 			case CONNECT_OWNER:
 				log.debug(" --- run(): CONNECT_OWNER {}", this);
@@ -317,8 +319,8 @@ final class Handler extends Command implements Runnable {
 
 		if (requesterInputIsComplete()) {
 			log.debug(" +++ Common::recvRequester() COMPLETE {}", this.toString());
-			state = State.CHECKING_LOCAL;
 			keyRequester.interestOps(0);
+			state = State.CHECKING_LOCAL;
 			processRecvRequester(); 
 		}
 	}
@@ -495,9 +497,9 @@ final class Handler extends Command implements Runnable {
 			}
 			
 			log.trace("     common::sendOwner() outputIsComplete() {}", this);
+			output.position(0); // need to set to zero before entering RECV_OWNER!
 			state = State.RECV_OWNER;
 			keyOwner.interestOps(SelectionKey.OP_READ);
-			output.position(0); // need to set to zero before entering RECV_OWNER!
 			sel.wakeup();
 		}
 	}
@@ -534,9 +536,9 @@ final class Handler extends Command implements Runnable {
 	}
 
 	private void doNothing() {
+		state = State.DO_NOTHING;
 		deallocateInternalNetworkResources();
 		deallocateExternalNetworkResources();
-		state = State.DO_NOTHING;
 		return;
 	}
 
@@ -594,8 +596,8 @@ final class Handler extends Command implements Runnable {
 		log.debug("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. {}", e.getMessage());
 		//e.printStackTrace();
 		deallocateInternalNetworkResources();
-		state = State.CHECKING_LOCAL;
 		input.position(0);
+		state = State.CHECKING_LOCAL;
 		processRecvRequester();
 	}
 
@@ -730,8 +732,8 @@ final class Handler extends Command implements Runnable {
 
 			// signal to selector that we are ready to write
 			state = State.SEND_REQUESTER;
-			keyRequester.interestOps(SelectionKey.OP_WRITE);
 			timeStart = new Date().getTime();
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
 			sel.wakeup();
 
 		}
@@ -926,7 +928,7 @@ final class Handler extends Command implements Runnable {
 
 				if(result != null) {
 					// Overwriting -- we take note
-					if(IS_VERBOSE) System.out.println("*** PutCommand() Replacing Key " + this.toString());
+					log.debug("     PutCommand::put() Replacing Key {}", this.toString());
 				}
 
 				return true;
@@ -982,8 +984,8 @@ final class Handler extends Command implements Runnable {
 
 				// signal to selector that we are ready to write
 				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				timeStart = new Date().getTime();
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
 				
 			} else {
@@ -1293,10 +1295,9 @@ final class Handler extends Command implements Runnable {
 
 			generateRequesterReply();
 
-			keyRequester.interestOps(SelectionKey.OP_WRITE);
-
 			state = State.SEND_REQUESTER;
 			timeStart = new Date().getTime();
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
 			sel.wakeup();
 
 
@@ -1523,10 +1524,9 @@ final class Handler extends Command implements Runnable {
 
 			generateRequesterReply();
 
-			keyRequester.interestOps(SelectionKey.OP_WRITE);
-
 			state = State.SEND_REQUESTER;
 			timeStart = new Date().getTime();
+			keyRequester.interestOps(SelectionKey.OP_WRITE);
 			sel.wakeup();
 		}
 	}
@@ -1741,8 +1741,8 @@ final class Handler extends Command implements Runnable {
 
 				// signal to selector that we are ready to write
 				state = State.SEND_REQUESTER;
-				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				timeStart = new Date().getTime();
+				keyRequester.interestOps(SelectionKey.OP_WRITE);
 				sel.wakeup();
 				
 			} else {
