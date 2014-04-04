@@ -243,11 +243,11 @@ public class TestNode implements Runnable, JoinThread {
 
 	@SuppressWarnings("unused")
 	private void populatePutGetRemoveGet() throws NoSuchAlgorithmException, UnsupportedEncodingException {
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		int myCount = 1;
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-
+//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 	}
 	
 	/**
@@ -911,9 +911,9 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 			
-//			populatePutGetRemoveGet();
+			populatePutGetRemoveGet();
 			
-			populateOneTest();
+//			populateOneTest();
 //			populateTests();
 //			populateMemoryTests();
 			

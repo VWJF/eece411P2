@@ -1337,10 +1337,12 @@ final class Handler extends Command implements Runnable {
 					sel.wakeup();
 					return;
 				}
-				
+	
+				log.trace("     GetProcess::checkLocal() replica considering {}", owner); 
 				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
 					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
 						owner = addr;
+						log.trace(" *** GetProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
 						if (!replicaList.remove(addr)) 
 							log.error(" ### GetProcess::checkLocal() Corrupted database {}", addr); 
 						break SEARCH_FOR_LOCAL;
@@ -1553,7 +1555,7 @@ final class Handler extends Command implements Runnable {
 
 			if (retriesLeft == 3) {
 				if (replicaList.size() == 0) {
-					log.trace(" *** PutProcess::checkLocal() All replicas offline"); 
+					log.trace(" *** RemoveProcess::checkLocal() All replicas offline"); 
 					// we have ran out of nodes to connect to, so internal error
 					replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
 					generateRequesterReply();
@@ -1566,14 +1568,14 @@ final class Handler extends Command implements Runnable {
 				}
 				
 				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
-					log.trace("     PutProcess::checkLocal() replica considering {}", owner); 
+					log.trace("     RemoveProcess::checkLocal() replica considering {}", owner); 
 
 					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
 						owner = addr;
-						log.trace(" *** PutProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
+						log.trace(" *** RemoveProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
 
 						if (!replicaList.remove(addr)) 
-							log.error(" ### PutProcess::checkLocal() Corrupted database {}", addr); 
+							log.error(" ### RemoveProcess::checkLocal() Corrupted database {}", addr); 
 						break SEARCH_FOR_LOCAL;
 					}
 				}
