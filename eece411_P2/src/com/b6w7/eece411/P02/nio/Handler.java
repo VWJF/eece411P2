@@ -46,7 +46,6 @@ final class Handler extends Command implements Runnable {
 	private static final int INTSIZE = 4;
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
-	
 	byte cmd = Request.CMD_NOT_SET.getCode();
 	byte[] key;
 	ByteArrayWrapper hashedKey;
@@ -727,7 +726,7 @@ final class Handler extends Command implements Runnable {
 	
 	class PutProcess implements Process {
 		
-		private List<InetSocketAddress> ownerList;
+		private List<InetSocketAddress> replicaList;
 
 		@Override
 		public void checkLocal() {
@@ -750,11 +749,11 @@ final class Handler extends Command implements Runnable {
 			incrLocalTime();
 			
 			// Instantiate owner list
-			if (ownerList == null)
-				ownerList = map.getReplicaList(hashedKey);
+			if (replicaList == null)
+				replicaList = map.getReplicaList(hashedKey);
 
 			if (retriesLeft == 3) {
-				if (ownerList.size() == 0) {
+				if (replicaList.size() == 0) {
 					// we have ran out of nodes to connect to, so internal error
 					replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
 					generateRequesterReply();
@@ -766,11 +765,15 @@ final class Handler extends Command implements Runnable {
 					return;
 				}
 				
-				// Get the next owner to try to connect to
-				owner = ownerList.remove(0);
+				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
+						owner = addr;
+						if (!replicaList.remove(addr)) 
+							log.error(" ### PutProcess::checkLocal() Corrupted database {}", addr); 
+						break SEARCH_FOR_LOCAL;
+					}
+				}
 			}
-			
-//			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
@@ -1278,6 +1281,8 @@ final class Handler extends Command implements Runnable {
 
 	class GetProcess implements Process {
 
+		private List<InetSocketAddress> replicaList;
+
 		@Override
 		public void checkLocal() {			
 			log.debug(" --- GetProcess::checkLocal(): {}", self);
@@ -1295,7 +1300,34 @@ final class Handler extends Command implements Runnable {
 			}
 
 			incrLocalTime();
-			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
+			
+			// Instantiate owner list
+			if (replicaList == null)
+				replicaList = map.getReplicaList(hashedKey);
+
+			if (retriesLeft == 3) {
+				if (replicaList.size() == 0) {
+					// we have ran out of nodes to connect to, so internal error
+					replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+					generateRequesterReply();
+
+					// signal to selector that we are ready to write
+					state = State.SEND_REQUESTER;
+					keyRequester.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
+					return;
+				}
+				
+				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
+						owner = addr;
+						if (!replicaList.remove(addr)) 
+							log.error(" ### GetProcess::checkLocal() Corrupted database {}", addr); 
+						break SEARCH_FOR_LOCAL;
+					}
+				}
+			}
+			
 			
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
 				// OK, we decided that the location of key is at local node
