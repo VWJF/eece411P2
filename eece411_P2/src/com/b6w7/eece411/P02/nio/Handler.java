@@ -736,6 +736,8 @@ final class Handler extends Command implements Runnable {
 	
 	class PutProcess implements Process {
 		
+		private List<InetSocketAddress> ownerList;
+
 		@Override
 		public void checkLocal() {
 			log.debug(" --- PutProcess::checkLocal(): {}", self);
@@ -755,9 +757,31 @@ final class Handler extends Command implements Runnable {
 			}
 			
 			incrLocalTime();
-			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
-			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
+			// Instantiate owner list
+			if (ownerList == null)
+				ownerList = map.getReplicaList(hashedKey);
+
+			if (retriesLeft == 3) {
+				if (ownerList.size() == 0) {
+					// we have ran out of nodes to connect to, so internal error
+					replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+					generateRequesterReply();
+
+					// signal to selector that we are ready to write
+					state = State.SEND_REQUESTER;
+					keyRequester.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
+					return;
+				}
+				
+				// Get the next owner to try to connect to
+				owner = ownerList.remove(0);
+			}
+			
+//			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
+			
+			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -1478,7 +1502,7 @@ final class Handler extends Command implements Runnable {
 			incrLocalTime();
 			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 			
-			if (owner.getPort() == serverPort && ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
+			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER

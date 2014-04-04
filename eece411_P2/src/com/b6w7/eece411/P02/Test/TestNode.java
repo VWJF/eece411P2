@@ -994,7 +994,7 @@ public class TestNode implements Runnable, JoinThread {
 						// If address was supplied, then use the supplied host instead of a random one
 						
 						// hack
-						port = 11114;
+						port = 11111;
 						
 						if (!IS_BREVITY) System.out.println(
 								"Connecting to: " 
