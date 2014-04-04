@@ -1,5 +1,6 @@
 package com.b6w7.eece411.P02.multithreaded;
 
+import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
@@ -61,5 +62,10 @@ public class HandlerThread extends Thread implements PostCommand<Command> {
 		synchronized(inQueue) {
 			inQueue.notifyAll();
 		}
+	}
+
+	@Override
+	public void post(Collection<? extends Command> multipleHandlers) {
+		throw new UnsupportedOperationException();
 	}
 }

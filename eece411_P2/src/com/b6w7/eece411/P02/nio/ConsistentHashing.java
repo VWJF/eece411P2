@@ -690,10 +690,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		catch(Exception e){
 			e.printStackTrace();
 		}
-
-		ReplicaHandler rh = new ReplicaHandler();
-		
-		
 	}
 
 //	class ReplicaHandling {
