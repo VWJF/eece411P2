@@ -13,6 +13,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Queue;
 
 import org.slf4j.Logger;
@@ -1398,7 +1399,14 @@ final class Handler extends Command implements Runnable {
 			s.append(owner.getPort());
 		}
 		s.append("]");
-
+		
+//		if(hashedKey != null){
+//			List<InetSocketAddress> reps = map.getReplicaList(hashedKey);
+//			s.append("]\n[Replicas: ");
+//			s.append(reps);
+//		}
+//		s.append("]");
+		
 		return s.toString();
 	}
 
