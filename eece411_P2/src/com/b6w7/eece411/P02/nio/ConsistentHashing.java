@@ -238,9 +238,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors)
 	 * @param requestedKey
+	 * @param removeSelf TODO
 	 * @return
 	 */
-	public List<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey) {
+	public List<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
 		List<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
 		InetSocketAddress sockAddress = null;
 		
@@ -273,7 +274,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		log.debug("Local key: {}", localNode);
 		log.debug("Local key SocketAddress: {}", getSocketAddress(localNode));
-		replicas.remove(getSocketAddress(localNode));
+		
+		if(removeSelf) replicas.remove(getSocketAddress(localNode));
 		
 		//TODO: Check corner cases .... mapOfNodes.size < num_replicas + 1
 
@@ -674,7 +676,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 					System.out.println("From node (Key,Value): "+e.getKey() +" [value->"+ new String(e.getValue()) +"]");
 					System.out.println("Neighbour:"+ch.getNextNodeTo( hashKey(looking_for_next_of) ) );
 					
-					List<InetSocketAddress> list = ch.getReplicaList(e.getKey());
+					List<InetSocketAddress> list = ch.getReplicaList(e.getKey(), false);
 					System.out.println("Replicas main(): "+list);
 					System.out.println();
 				}

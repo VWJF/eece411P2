@@ -199,7 +199,7 @@ final class Handler extends Command implements Runnable {
 
 		this.membership = other.membership;
 		this.serverPort = other.serverPort;
-		this.process = process;
+		this.process = new TSReplicaPutProcess();
 		
 		this.owner = owner;
 		this.key = other.key;
@@ -759,7 +759,7 @@ final class Handler extends Command implements Runnable {
 			
 			// Instantiate owner list
 			if (replicaList == null)
-				replicaList = map.getReplicaList(hashedKey);
+				replicaList = map.getReplicaList(hashedKey, false);
 
 			if (retriesLeft == 3) {
 				if (replicaList.size() == 0) {
@@ -1098,7 +1098,7 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	private void spawnReplicaPut() {
-		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey);
+		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey, true);
 		Collection<Handler> replicaSet = new HashSet<Handler>();
 		
 		log.debug("spawnReplicaPut() [replicaList=>{}]", replicaList);
@@ -1112,7 +1112,7 @@ final class Handler extends Command implements Runnable {
 	}
 	
 	private void spawnReplicaRemove() {
-		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey);
+		List<InetSocketAddress> replicaList = map.getReplicaList(hashedKey, true);
 		Collection<Handler> replicaSet = new HashSet<Handler>();
 
 		log.debug("spawnReplicaRemove() [replicaList=>{}]", replicaList);
@@ -1323,7 +1323,7 @@ final class Handler extends Command implements Runnable {
 			
 			// Instantiate owner list
 			if (replicaList == null)
-				replicaList = map.getReplicaList(hashedKey);
+				replicaList = map.getReplicaList(hashedKey, false);
 
 			if (retriesLeft == 3) {
 				if (replicaList.size() == 0) {
@@ -1527,6 +1527,8 @@ final class Handler extends Command implements Runnable {
 
 	class RemoveProcess implements Process {
 
+		private List<InetSocketAddress> replicaList;
+
 		@Override
 		public void checkLocal() {
 			log.debug(" --- RemoveProcess::checkLocal(): {}", self);
@@ -1544,7 +1546,41 @@ final class Handler extends Command implements Runnable {
 			}
 
 			incrLocalTime();
-			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
+
+			// Instantiate owner list
+			if (replicaList == null)
+				replicaList = map.getReplicaList(hashedKey, false);
+
+			if (retriesLeft == 3) {
+				if (replicaList.size() == 0) {
+					log.trace(" *** PutProcess::checkLocal() All replicas offline"); 
+					// we have ran out of nodes to connect to, so internal error
+					replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
+					generateRequesterReply();
+
+					// signal to selector that we are ready to write
+					state = State.SEND_REQUESTER;
+					keyRequester.interestOps(SelectionKey.OP_WRITE);
+					sel.wakeup();
+					return;
+				}
+				
+				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+					log.trace("     PutProcess::checkLocal() replica considering {}", owner); 
+
+					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
+						owner = addr;
+						log.trace(" *** PutProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
+
+						if (!replicaList.remove(addr)) 
+							log.error(" ### PutProcess::checkLocal() Corrupted database {}", addr); 
+						break SEARCH_FOR_LOCAL;
+					}
+				}
+			}
+			
+			if (owner == null)
+				owner = replicaList.remove(0);
 			
 			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
