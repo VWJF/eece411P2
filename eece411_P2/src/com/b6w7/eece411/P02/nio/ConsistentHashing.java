@@ -246,33 +246,34 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 		ByteArrayWrapper owner = getOwner(requestedKey);
 
-		sockAddress = getSockAddress(owner);
+		sockAddress = getSocketAddress(owner);
 		replicas.add(sockAddress);
 		
 		StringBuilder logtraceString = new StringBuilder();
 		logtraceString.append("owner: "+owner.toString()+"[reqeuestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
 
-		log.trace("owner: {}[reqeuestedKey->{}] SocketAddress", owner.toString(), requestedKey, sockAddress.toString() );
+		log.trace("All Replicas:\nowner: {}[reqeuestedKey->{}] SocketAddress", owner.toString(), requestedKey, sockAddress.toString() );
 
 		ByteArrayWrapper nextKey = owner;
 
 		for(int i = 1; i <= num_replicas; i++){
 			nextKey = getNextNodeTo(nextKey);
-			sockAddress =getSockAddress(nextKey);
+			sockAddress =getSocketAddress(nextKey);
 			replicas.add(sockAddress);
 			
 			logtraceString.append("replica "+i+" : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
 		}
 		
 		logtraceString.trimToSize();
-		log.trace(logtraceString.toString());
+		log.trace("{}",logtraceString.toString());
 		
-		System.out.println("All Replicas:\n"+logtraceString);
+//		System.out.println("All Replicas:\n"+logtraceString);
 		
 		assert replicas.size() == num_replicas + 1;
 		
-		System.out.println("Local key: "+localNode);
-		replicas.remove(getSockAddress(localNode));
+		log.debug("Local key: {}", localNode);
+		log.debug("Local key SocketAddress: {}", getSocketAddress(localNode));
+		replicas.remove(getSocketAddress(localNode));
 		
 		//TODO: Check corner cases .... mapOfNodes.size < num_replicas + 1
 
@@ -284,7 +285,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param node
 	 * @return
 	 */
-	private InetSocketAddress getSockAddress(ByteArrayWrapper node){
+	private InetSocketAddress getSocketAddress(ByteArrayWrapper node){
 		String addr[] = (new String(mapOfNodes.get(node))).split(":");
 		
 		log.trace("Finding InetSocketAddress.");

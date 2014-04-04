@@ -1731,7 +1731,14 @@ final class Handler extends Command implements Runnable {
 			s.append(owner.getPort());
 		}
 		s.append("]");
-
+		
+//		if(hashedKey != null){
+//			List<InetSocketAddress> reps = map.getReplicaList(hashedKey);
+//			s.append("]\n[Replicas: ");
+//			s.append(reps);
+//		}
+//		s.append("]");
+		
 		return s.toString();
 	}
 
