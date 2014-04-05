@@ -57,7 +57,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Timer timer;
 	private JoinThread self;
 
-	private final long READ_TIMEOUT = 200;
+	private final long READ_TIMEOUT = 700;
 
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
@@ -113,21 +113,21 @@ public class ServiceReactor implements Runnable, JoinThread {
 		log.info("Server listening on port {} with address {}", serverPort, inetAddress);
 
 		timer = new Timer();
-//		timer.schedule(new TimerTask() {
-//			
-//			@Override
-//			public void run() {
-//				try {
-//					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
-//					Command cmd = new Handler(selector, dbHandler, replicaHandler, dht, registrations, serverPort, membership, self);
-//					dbHandler.post(cmd);
-//				} catch (IOException e) {
-//					log.debug(e.getMessage());
-//				}
-//				
-//			}
-//		}, 
-//		2000, 10000);
+		timer.schedule(new TimerTask() {
+			
+			@Override
+			public void run() {
+				try {
+					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
+					Command cmd = new Handler(selector, dbHandler, replicaHandler, dht, registrations, serverPort, membership, self);
+					dbHandler.post(cmd);
+				} catch (IOException e) {
+					log.debug(e.getMessage());
+				}
+				
+			}
+		}, 
+		2000, 10000);
 		
 		// start handler thread
 		dbHandler.start();

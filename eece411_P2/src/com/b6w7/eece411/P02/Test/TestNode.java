@@ -182,7 +182,9 @@ public class TestNode implements Runnable, JoinThread {
 	@SuppressWarnings("unused")
 	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		int myCount = 1;
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -225,8 +227,8 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"ssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Scott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
-		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Ishan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Frank", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"Smith", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"localhost", "137.82.52.29", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
@@ -244,8 +246,8 @@ public class TestNode implements Runnable, JoinThread {
 	@SuppressWarnings("unused")
 	private void populatePutGetRemoveGet() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		int myCount = 1;
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 	}
@@ -911,26 +913,36 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 			
-			populatePutGetRemoveGet();
+//			populatePutGetRemoveGet();
 			
 //			populateOneTest();
 //			populateTests();
 //			populateMemoryTests();
 			
 			//Test for routing.
-			//populatePutTests(); //For the node that has stored the Key-Values 11112
-			//populateGetTests();	//For a node that did not store the Key-Values 11111
-			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
+			populatePutTests(); //For the node that has stored the Key-Values 11112
+			populateGetTests();
+//			populateRemoveTests();
+			
+			for(int i = 0; i< 10; i++){
+				populateDelayOneSecond();
+			}
+
+			for(int i = 0; i< 1; i++){
+				populateAnnounceDeathTest();
+			}		
+			for(int i = 0; i< 10; i++){
+				populateDelayOneSecond();
+			}
+
+//			populateOneTest();
+
+//			populatePutTests();
+			populateGetTests();	//For a node that did not store the Key-Values 11111
+//			populateRemoveTests();	//For a node that did not store the Key-Values 11111
 
 			//populateAnnounceDeathTest();
-			
-//			for(int i = 0; i< 10; i++){
-//				populateDelayOneSecond();
-//			}
-
-//			for(int i = 0; i< 19; i++){
-//				populateAnnounceDeathTest();
-//			}		
+	
 
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
@@ -994,7 +1006,7 @@ public class TestNode implements Runnable, JoinThread {
 						// If address was supplied, then use the supplied host instead of a random one
 						
 						// hack
-						//port = 11114;
+						//port = 11113;
 						
 						if (!IS_BREVITY) System.out.println(
 								"Connecting to: " 
