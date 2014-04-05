@@ -199,16 +199,7 @@ public class MembershipProtocol {
 	 * @return
 	 */
 	public int getTimestamp(int nodeIndex){
-		// TODO : We are accessing localTimestampVector from both threads, so synchronize
-		Integer timestamp;
-
-		ArrayList<Integer> retInteger;
-		retInteger = new ArrayList<Integer>(localTimestampVector);
-		timestamp = localTimestampVector.get(nodeIndex);
-		log.trace(" === getTimestampVector() {}", retInteger);
-
-		retInteger.trimToSize();
-		return timestamp.intValue();
+		return localTimestampVector.get(nodeIndex).intValue();
 	}
 	
 	public void shutdown(Integer updateIndex){
@@ -224,7 +215,7 @@ public class MembershipProtocol {
 			if (updateIndex.intValue() != current_node)
 				localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
 			else {
-				log.error(" *** MembershipProtocol::shutdown() shutdown self attempted with index {} instead of null", updateIndex.intValue());
+				log.trace(" *** MembershipProtocol::shutdown() shutdown self attempted with index {} instead of null", updateIndex.intValue());
 				return;
 			}
 		}
