@@ -68,10 +68,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * Variable used to maintain identity of the key for the localhost(local ServiceReactor).
 	 * TODO: Ideally, a final variable.
 	 */
-	private static ByteArrayWrapper localNode;
+	private ByteArrayWrapper localNode;
 
 	private MembershipProtocol membership;
-	private static MessageDigest md;
+	private MessageDigest md;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
@@ -259,7 +259,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 		for(int i = 1; i <= num_replicas; i++){
 			nextKey = getNextNodeTo(nextKey);
-			sockAddress =getSocketAddress(nextKey);
+			sockAddress = getSocketAddress(nextKey);
+			
+			if (membership.getTimestamp(listOfNodes.indexOf(nextKey)) < 0)
+				continue;
+			
 			replicas.add(sockAddress);
 			
 			logtraceString.append("replica "+i+" : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
@@ -270,7 +274,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		
 //		System.out.println("All Replicas:\n"+logtraceString);
 		
-		assert replicas.size() == num_replicas + 1;
+//		assert replicas.size() == num_replicas + 1;
 		
 		log.debug("Local key: {}", localNode);
 		log.debug("Local key SocketAddress: {}", getSocketAddress(localNode));
@@ -437,6 +441,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		out.flip();	
 	}
 	
+	
+//	public void shutdown(InetSocketAddress owner){
+//		
+//	}
+	
 	/**
 	 * Method to notify MemebershipProtocol to update the timestamp vector.
 	 * @param node: key of the node that is to be "disabled".
@@ -487,11 +496,17 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param byte[] node
 	 * @return
 	 */
-	public static ByteArrayWrapper hashKey(byte[] node){
+	public ByteArrayWrapper hashKey(byte[] node){
 		ByteArrayWrapper key;
 		byte[] digest;
 
-		digest = md.digest(node);
+		assert (node.length>0);
+		try {
+			digest = md.digest(node);
+		} catch (ArrayIndexOutOfBoundsException e){
+			e.printStackTrace();
+			throw e;
+		}
 		
 		if (digest.length > NodeCommands.LEN_KEY_BYTES) {
 			key = new ByteArrayWrapper(Arrays.copyOfRange(digest, 0, NodeCommands.LEN_KEY_BYTES));
@@ -507,7 +522,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param String node
 	 * @return
 	 */
-	public static ByteArrayWrapper hashKey(String node){
+	public ByteArrayWrapper hashKey(String node){
 	
 		try {
 			return hashKey(node.getBytes("UTF-8"));
@@ -668,13 +683,13 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				while(is.hasNext()){
 					System.out.println("Locating the Neighbour IP address of a given key. " 
 							+ looking_for_next_of
-							+ " " + hashKey(looking_for_next_of)+"]"
+							+ " " + ch.hashKey(looking_for_next_of)+"]"
 							);
 					Entry<ByteArrayWrapper, byte[]> e = is.next();
-					if( hashKey(looking_for_next_of).equals(e.getKey()) ) 
+					if( ch.hashKey(looking_for_next_of).equals(e.getKey()) ) 
 						System.out.println("Current Key & NextOfTarget key are the same.");
 					System.out.println("From node (Key,Value): "+e.getKey() +" [value->"+ new String(e.getValue()) +"]");
-					System.out.println("Neighbour:"+ch.getNextNodeTo( hashKey(looking_for_next_of) ) );
+					System.out.println("Neighbour:"+ch.getNextNodeTo( ch.hashKey(looking_for_next_of) ) );
 					
 					List<InetSocketAddress> list = ch.getReplicaList(e.getKey(), false);
 					System.out.println("Replicas main(): "+list);

@@ -587,10 +587,12 @@ final class Handler extends Command implements Runnable {
 
 		if (retriesLeft < 0) {
 			log.debug(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft: {}.  <<<<<<<<<<", retriesLeft);
-			map.shutdown(ConsistentHashing.hashKey(owner.getHostName() + ":" + owner.getPort()));
-
+			
+			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
+//			map.shutdown(owner);
+			
 			if (process.iterativeRepeat())
-				retriesLeft = 3;
+				retriesLeft = MAX_TCP_RETRIES;
 		}
 
 		log.debug("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. {}", e.getMessage());
@@ -767,7 +769,7 @@ final class Handler extends Command implements Runnable {
 			if (replicaList == null)
 				replicaList = map.getReplicaList(hashedKey, false);
 
-			if (retriesLeft == 3) {
+			if (retriesLeft == MAX_TCP_RETRIES) {
 				if (replicaList.size() == 0) {
 					log.trace(" *** PutProcess::checkLocal() All replicas offline"); 
 					// we have ran out of nodes to connect to, so internal error
@@ -780,27 +782,25 @@ final class Handler extends Command implements Runnable {
 					sel.wakeup();
 					return;
 				}
-				
-				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
-					log.trace("     PutProcess::checkLocal() replica considering {}", owner); 
 
-					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
-						owner = addr;
-						log.trace(" *** PutProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
-
-						if (!replicaList.remove(addr)) 
-							log.error(" ### PutProcess::checkLocal() Corrupted database {}", addr); 
-						break SEARCH_FOR_LOCAL;
-					}
-				}
-			}
-			
-			if (owner == null)
 				owner = replicaList.remove(0);
-			
-			log.trace("     PutProcess::checkLocal() replica using {}", owner); 
 
-			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
+//				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+//					log.trace("     PutProcess::checkLocal() replica considering {}", owner); 
+//
+//					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
+//						owner = addr;
+//						log.trace(" *** PutProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
+//
+//						if (!replicaList.remove(addr)) 
+//							log.error(" ### PutProcess::checkLocal() Corrupted database {}", addr); 
+//						break SEARCH_FOR_LOCAL;
+//					}
+//				}
+			}
+
+//			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
+			if (isLocalhost()) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -1095,7 +1095,7 @@ final class Handler extends Command implements Runnable {
 
 				if(result != null) {
 					// Overwriting -- we take note
-					if(IS_VERBOSE) System.out.println("*** PutCommand() Replacing Key " + this.toString());
+					log.debug(" *** PutCommand() Replacing Key {}", this.toString());
 				}
 
 				return true;
@@ -1165,7 +1165,7 @@ final class Handler extends Command implements Runnable {
 			} else {
 				// OK this is a request from this node that will be outbound
 				// this was triggered by a periodic local timer
-				if (retriesLeft == 3)
+				if (retriesLeft == MAX_TCP_RETRIES)
 					owner = map.getRandomOnlineNode();
 				
 				if (owner == null){
@@ -1174,8 +1174,6 @@ final class Handler extends Command implements Runnable {
 					return;
 				}
 				
-				key = (owner.getAddress().getHostName() + ":" + owner.getPort()).getBytes();
-
 				log.debug(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==[{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
 
 				// OK, we decided that the location of key is at a remote node
@@ -1279,7 +1277,6 @@ final class Handler extends Command implements Runnable {
 
 			mergeVector(CMDSIZE+KEYSIZE);
 			incrLocalTime();
-			owner = map.getSocketNodeResponsible(ConsistentHashing.hashKey(key));
 
 			// OK, we decided that the location of key is at local node
 			// perform appropriate action with database
@@ -1330,7 +1327,7 @@ final class Handler extends Command implements Runnable {
 			if (replicaList == null)
 				replicaList = map.getReplicaList(hashedKey, false);
 
-			if (retriesLeft == 3) {
+			if (retriesLeft == MAX_TCP_RETRIES) {
 				if (replicaList.size() == 0) {
 					// we have ran out of nodes to connect to, so internal error
 					replyCode = Reply.RPY_INTERNAL_FAILURE.getCode();
@@ -1342,26 +1339,32 @@ final class Handler extends Command implements Runnable {
 					sel.wakeup();
 					return;
 				}
-	
-				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
-					log.trace("     GetProcess::checkLocal() replica considering {}", addr); 
-					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
-						owner = addr;
-						log.trace(" *** GetProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
-						if (!replicaList.remove(addr)) 
-							log.error(" ### GetProcess::checkLocal() Corrupted database {}", addr); 
-						break SEARCH_FOR_LOCAL;
-					}
-				}
-			}
-			
-			if (owner == null)
+				
 				owner = replicaList.remove(0);
 
-			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
+				//				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+//					log.trace("     GetProcess::checkLocal() replica considering {}", addr); 
+//					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
+//						owner = addr;
+//						log.trace(" *** GetProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
+//						if (!replicaList.remove(addr)) 
+//							log.error(" ### GetProcess::checkLocal() Corrupted database {}", addr); 
+//						break SEARCH_FOR_LOCAL;
+//					}
+//				}
+			}
+			
+			
+//			if (owner == null)
+//				owner = replicaList.remove(0);
+
+
+//			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
+			if (isLocalhost()) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
+
 				log.debug("--- GetProcess::checkLocal() ------------ Using Local --------------");
 				
 				// set replyCode as appropriate and prepare output buffer
@@ -1557,7 +1560,7 @@ final class Handler extends Command implements Runnable {
 			if (replicaList == null)
 				replicaList = map.getReplicaList(hashedKey, false);
 
-			if (retriesLeft == 3) {
+			if (retriesLeft == MAX_TCP_RETRIES) {
 				if (replicaList.size() == 0) {
 					log.trace(" *** RemoveProcess::checkLocal() All replicas offline"); 
 					// we have ran out of nodes to connect to, so internal error
@@ -1571,24 +1574,30 @@ final class Handler extends Command implements Runnable {
 					return;
 				}
 				
-				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
-					log.trace("     RemoveProcess::checkLocal() replica considering {}", owner); 
+				owner = replicaList.remove(0);
 
-					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
-						owner = addr;
-						log.trace(" *** RemoveProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
-
-						if (!replicaList.remove(addr)) 
-							log.error(" ### RemoveProcess::checkLocal() Corrupted database {}", addr); 
-						break SEARCH_FOR_LOCAL;
-					}
-				}
+				//				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
+//					log.trace("     RemoveProcess::checkLocal() replica considering {}", owner); 
+//
+//					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
+//						owner = addr;
+//						log.trace(" *** RemoveProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
+//
+//						if (!replicaList.remove(addr)) 
+//							log.error(" ### RemoveProcess::checkLocal() Corrupted database {}", addr); 
+//						break SEARCH_FOR_LOCAL;
+//					}
+//				}
 			}
 			
-			if (owner == null)
-				owner = replicaList.remove(0);
 			
-			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
+//			if (owner == null)
+//				owner = replicaList.remove(0);
+
+			
+
+			if (isLocalhost()) {
+//			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -2037,4 +2046,19 @@ final class Handler extends Command implements Runnable {
 	        return compare;
 	    }
 	}
+	
+
+	private boolean isLocalhost() {
+		ByteArrayWrapper hashkey = map.hashKey(owner.getAddress().getHostName() + ":" + owner.getPort());
+		ByteArrayWrapper localNode = map.getLocalNode();
+
+		log.trace(" ^^^ [owner=>{}] [hashkey(owner)=>{}] [map.getLocalNode()=>{}] {}", owner, hashkey, localNode, self);
+		if (hashkey.equals(localNode)) {
+			log.trace(" ^^^ hashkey DOES equal localNode {}", self);
+			return true;
+		}
+		log.trace(" ^^^ hashkey DOES NOT equal localNode {}", self);
+		return false; 
+	}
+
 }
