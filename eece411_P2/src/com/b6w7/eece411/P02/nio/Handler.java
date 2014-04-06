@@ -78,6 +78,7 @@ final class Handler extends Command implements Runnable {
 	private Queue<SocketRegisterData> queue;
 	private SocketRegisterData remote;
 	private InetSocketAddress owner;
+	private Gossip gossip;
 
 	private final int serverPort;
 	private final JoinThread parent;
@@ -99,7 +100,7 @@ final class Handler extends Command implements Runnable {
 	}
 
 	/**
-	 * Used for 
+	 * Used for updating the timestamp of a node 
 	 * @param map
 	 * @param membership
 	 * @param owner 
@@ -121,9 +122,10 @@ final class Handler extends Command implements Runnable {
 	}
 
 	/**
-	 * Called by TSPushProcess timer
-	 * @param sel
-	 * @param dbHandler
+	 * Constructor for gossiping with other nodes.
+	 * @param offlineNodes true to gossip with with all offline nodes; false to iterate through online nodes until
+	 * one succeeds. 
+	 * @param sel 
 	 * @param map
 	 * @param queue
 	 * @param serverPort
@@ -131,9 +133,9 @@ final class Handler extends Command implements Runnable {
 	 * @param parent
 	 * @throws IOException
 	 */
-	Handler(Selector sel, PostCommand<Command> dbHandler, PostCommand<Handler> replicaHandler
+	Handler(Selector sel, PostCommand<Command> dbHandler
 			, ConsistentHashing<ByteArrayWrapper, byte[]> map, Queue<SocketRegisterData> queue, int serverPort
-			, MembershipProtocol membership, JoinThread parent) 
+			, MembershipProtocol membership, JoinThread parent, Gossip gossip, boolean offlineNodes) 
 			throws IOException {
 
 		this.parent = parent;
@@ -144,14 +146,20 @@ final class Handler extends Command implements Runnable {
 			throw new IllegalArgumentException("map cannot be null");
 
 		this.dbHandler = dbHandler;
+		this.replicaHandler = null;
+
 		this.map = map;
-		socketRequester = null; 
-		keyRequester = null;
+		this.socketRequester = null; 
+		this.keyRequester = null;
 		
 		this.membership= membership;
 		this.serverPort = serverPort;
-		this.process = new TSPushProcess();
-		this.replicaHandler = replicaHandler;
+		if (offlineNodes)
+			this.process = new TSPushOfflineProcess();
+		else
+			this.process = new TSPushProcess();
+		
+		this.gossip = gossip;
 		
 		state = State.CHECKING_LOCAL;
 		// keep reference to self so that nested classes can refer to the handler
@@ -162,7 +170,7 @@ final class Handler extends Command implements Runnable {
 	}
 
 	/**
-	 * Constructor
+	 * Constructor for most commands
 	 * @param sel
 	 * @param c
 	 * @param dbHandler
@@ -258,10 +266,6 @@ final class Handler extends Command implements Runnable {
 	 */
 	boolean outputIsComplete() {
 		return !output.hasRemaining();
-	}
-
-	void processRecvRequester() {
-		dbHandler.post(this);
 	}
 
 	@Override
@@ -370,7 +374,7 @@ final class Handler extends Command implements Runnable {
 			log.debug(" +++ Common::recvRequester() COMPLETE {}", this.toString());
 			keyRequester.interestOps(0);
 			state = State.CHECKING_LOCAL;
-			processRecvRequester(); 
+			dbHandler.post(self);
 		}
 	}
 	
@@ -656,7 +660,7 @@ final class Handler extends Command implements Runnable {
 		deallocateInternalNetworkResources();
 		input.position(0);
 		state = State.CHECKING_LOCAL;
-		processRecvRequester();
+		dbHandler.post(this);
 	}
 
 	private void mergeVector(int index) {
@@ -1289,8 +1293,133 @@ final class Handler extends Command implements Runnable {
 
 				if (recvOwnerIsComplete()) {
 					log.debug(" +++ TSPushProcess::recvOwner() COMPLETE {}", this);
+					gossip.armGossipRandom();
+					
 					deallocateInternalNetworkResources();
 					doNothing();
+				}
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
+		}
+
+		protected boolean recvOwnerIsComplete() {
+			timeLastCompletion = new Date().getTime() - timeStart;
+			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+
+			output.position(RPYSIZE);
+			output.flip();
+			
+			return true;
+		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			return true;
+		}
+	}
+
+	class TSPushOfflineProcess implements Process {
+
+		private List<InetSocketAddress> offlineList;
+
+		@Override
+		public void checkLocal() {
+			log.debug(" --- TSPushOfflineProcess::checkLocal(): {}", self);
+			
+			if (!keepRunning) {
+				doNothing();
+				return;
+			}
+
+			output = ByteBuffer.allocate(2048);
+
+			mergeVector(CMDSIZE);
+			incrLocalTime();
+
+			// OK this is a request from this node that will be outbound
+			// this was triggered by a periodic local timer
+			// Instantiate owner list
+			if (offlineList == null)
+				offlineList = map.getOfflineList();
+
+			if (retriesLeft == MAX_TCP_RETRIES) {
+				if (offlineList.size() == 0) {
+					log.trace(" *** TSPushOfflineProcess::checkLocal() No more offline nodes to gossip with"); 
+					// we have ran out of nodes to connect to, so do nothing
+					gossip.armGossipOffline();
+					doNothing();
+					return;
+				}
+
+				owner = offlineList.remove(0);
+				log.debug("     TSPushOfflineProcess::checkLocal() [choosing=>{}] [remainingList=>{}]", owner, offlineList);
+			}
+
+			// OK, we decided that the location of key is at a remote node
+			// we can transition to CONNECT_OWNER and connect to remote node
+			incrLocalTime();
+
+			try {
+				// prepare the output buffer, and signal for opening a socket to remote
+				generateOwnerQuery();
+
+				timeTimeout = membership.getTimeout(owner);
+
+				socketOwner = SocketChannel.open();
+				socketOwner.configureBlocking(false);
+				// Send message to selector and wake up selector to process the message.
+				// There is no need to set interestOps() because selector will check its queue.
+				registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+
+				state = State.CONNECT_OWNER;
+				timeStart = new Date().getTime();
+				sel.wakeup();
+
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			log.debug(" +++ TSPushOfflineProcess::generateOwnerQuery() START    {}", self);
+			output.position(0);
+			output.put(Request.CMD_TS_PUSH.getCode());
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+			log.debug(" +++ TSPushOfflineProcess::generateOwnerQuery() COMPLETE {}", self);
+		}
+
+		@Override
+		public void generateRequesterReply() {
+			throw new IllegalStateException(" ### should not call TSPushOfflineProcess::generateRequesterReply() " + self);
+		}
+
+		@Override
+		public void recvOwner() {
+			log.debug(" *** *** TSPushOfflineProcess::recvOwner() START {}", this);
+			output.limit(output.capacity());
+
+			// read from the socket then close the connection
+			try {
+				socketOwner.read(output);
+
+				if (recvOwnerIsComplete()) {
+					log.debug(" +++ TSPushOfflineProcess::recvOwner() COMPLETE {}", this);
+
+					deallocateInternalNetworkResources();
+
+					if (process.iterativeRepeat()) {
+						retriesLeft = MAX_TCP_RETRIES;
+						timeLastCompletion = -1;
+						state = State.CHECKING_LOCAL;
+						dbHandler.post(self);
+					} else {
+						doNothing();
+					}
 				}
 			} catch (IOException e) {
 				retryAtStateCheckingLocal(e);
@@ -1953,7 +2082,7 @@ final class Handler extends Command implements Runnable {
 		
 		if (process != null) {
 			String processString = process.getClass().getCanonicalName();
-			s.append(":" + processString.substring(processString.lastIndexOf('.')));
+			s.append(":" + processString.substring(processString.lastIndexOf('.') +1));
 		}
 		
 		s.append(":" + state.toString());

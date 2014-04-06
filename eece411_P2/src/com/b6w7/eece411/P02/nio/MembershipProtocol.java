@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -42,8 +44,10 @@ public class MembershipProtocol {
 		this.timeMinTimeout = timeMinTimeout;
 		
 		for (int i=0; i<this.total_nodes; i++) {
-			localTimestampVector.add(1);
+			localTimestampVector.add(-1);
 		}
+		
+		localTimestampVector.set(current_node, 1);
 	}
 	
 	/**
@@ -343,7 +347,7 @@ public class MembershipProtocol {
 				Long timeout = set.getValue().longValue();
 				s.append("[" + addr.getHostName().substring(0, 6) + ":" + addr.getPort() + ":" + timeout + "]");
 			}
-			log.error(s.toString());
+			log.trace(s.toString());
 		}
 	}
 }

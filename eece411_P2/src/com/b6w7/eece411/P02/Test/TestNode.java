@@ -931,7 +931,7 @@ public class TestNode implements Runnable, JoinThread {
 				populateAnnounceDeathTest();
 			}		
 //
-			for(int i = 0; i< 30; i++){
+			for(int i = 0; i< 20; i++){
 				populateDelayOneSecond();
 			}
 

@@ -36,15 +36,18 @@ import com.b6w7.eece411.P02.multithreaded.JoinThread;
 /**
  * A node in a Distributed Hash Table
  */
-public class ServiceReactor implements Runnable, JoinThread {
+public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	private final ConsistentHashing<ByteArrayWrapper, byte[]> dht;
 
 	private final HandlerThread dbHandler = new HandlerThread();
 	private final ReplicaThread replicaHandler;
 
 	public final int serverPort;
-	private final boolean ENABLE_GOSSIP = true; 
-
+	private final boolean ENABLE_GOSSIP_OFFLINE = false; 
+	private final boolean ENABLE_GOSSIP_RANDOM  = false; 
+	private final long PERIOD_GOSSIP_OFFLINE_MS = 2000;
+	private final long PERIOD_GOSSIP_RANDOM_MS  = 1000;
+	
 	private boolean keepRunning = true;
 
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
@@ -59,8 +62,12 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Timer timer;
 	private JoinThread self;
 
-	private final long TIME_MAX_TIMEOUT = 750;
-	private final long TIME_MIN_TIMEOUT = 350;
+	private final long TIME_MAX_TIMEOUT_MS = 750;
+	private final long TIME_MIN_TIMEOUT_MS = 350;
+
+	private TimerTask taskGossipRandom;
+	private TimerTask taskGossipOffline;
+
 	
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
@@ -90,7 +97,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		int position = dht.getNodePosition(localhost+":"+serverPort);
 		dht.setLocalNode(localhost+":"+serverPort);
 
-		membership = new MembershipProtocol(position, dht.getSizeAllNodes(), TIME_MAX_TIMEOUT, TIME_MIN_TIMEOUT);
+		membership = new MembershipProtocol(position, dht.getSizeAllNodes(), TIME_MAX_TIMEOUT_MS, TIME_MIN_TIMEOUT_MS);
 
 		dht.setMembership(membership);
 		
@@ -116,26 +123,17 @@ public class ServiceReactor implements Runnable, JoinThread {
 		log.info("Server listening on port {} with address {}", serverPort, inetAddress);
 
 		timer = new Timer();
-		if (ENABLE_GOSSIP) {
-			timer.schedule(new TimerTask() {
-
-				@Override
-				public void run() {
-					try {
-						log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
-						Command cmd = new Handler(selector, dbHandler, replicaHandler, dht, registrations, serverPort, membership, self);
-						dbHandler.post(cmd);
-					} catch (IOException e) {
-						log.debug(e.getMessage());
-					}
-
-				}
-			}, new Random().nextInt(2000), 5000);
-		}
+		
+		if (ENABLE_GOSSIP_OFFLINE)
+			armGossipOffline(0);
+		
+		if (ENABLE_GOSSIP_RANDOM)
+			armGossipRandom(0);
 
 		// start handler thread
 		dbHandler.start();
 
+		// start replica thread
 		replicaHandler.start();
 
 		while (keepRunning) {
@@ -143,7 +141,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 				
 				// block until a key has non-blocking operation available
 				selector.select(100);
-//				selector.select();
 
 				// iterate and dispatch each key in set 
 				Set<SelectionKey> keySet = selector.selectedKeys();
@@ -155,7 +152,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 					if (key.isValid() && key.interestOps() == SelectionKey.OP_READ) {
 						Handler handler = ((Handler)key.attachment());
 						long now = new Date().getTime(); 
-//						if (now - handler.timeStart - READ_TIMEOUT  > 0) {
 						if (now - handler.timeStart - handler.timeTimeout  > 0) {
 							// too much time has passed whilst waiting for reply from owner, so enforce timeout
 							if ( handler.state == Handler.State.RECV_OWNER ) {
@@ -170,7 +166,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 				keySet.clear(); 
 
 				SocketRegisterData data;
-//				synchronized (registrations) {
 				while (registrations.size() > 0) {
 					log.trace("--- ServiceReactor()::run() connecting to remote host");
 					data = registrations.poll();
@@ -179,7 +174,6 @@ public class ServiceReactor implements Runnable, JoinThread {
 					data.sc.socket().setSoTimeout(2000);
 					data.sc.connect(data.addr);
 				}
-//				}
 
 			} catch (IOException ex) { 
 				log.error(ex.getMessage());
@@ -193,7 +187,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		log.debug("Waiting for timer thread to stop");
 		
 		if (null != timer) 
-				timer.cancel();
+			timer.cancel();
 
 		log.debug("Waiting for handler thread to stop");
 
@@ -243,6 +237,56 @@ public class ServiceReactor implements Runnable, JoinThread {
 			r.run();
 	} 
 
+	@Override
+	public void armGossipOffline() {
+		armGossipOffline(PERIOD_GOSSIP_OFFLINE_MS);
+	}
+	
+	private void armGossipOffline(long delay) {
+		
+		taskGossipOffline = new TimerTask() {
+
+			@Override
+			public void run() {
+				try {
+					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
+					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, (JoinThread)self, (Gossip)self, true);
+					dbHandler.post(cmd);
+				} catch (IOException e) {
+					log.debug(e.getMessage());
+				}
+
+			}
+		};
+		
+		timer.schedule(taskGossipOffline, delay );
+	}
+
+	@Override
+	public void armGossipRandom() {
+		armGossipRandom(PERIOD_GOSSIP_RANDOM_MS);
+	}
+	
+	private void armGossipRandom(long delay) {
+		taskGossipRandom = new TimerTask() {
+
+			@Override
+			public void run() {
+				try {
+					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushOfflineProcess");
+					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, (JoinThread)self, (Gossip)self, false);
+					dbHandler.post(cmd);
+				} catch (IOException e) {
+					log.debug(e.getMessage());
+				}
+
+			}
+		};
+
+		timer.schedule(taskGossipRandom, delay);
+	}
+
+
 	public static void main(String[] args) throws FileNotFoundException {
 		if (args.length > 2) {
 			printUsage();
@@ -258,14 +302,14 @@ public class ServiceReactor implements Runnable, JoinThread {
 			String filename = args[1];
 			try {
 				participatingNodes = populateNodeList(filename);
+
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
 				log.error("Error in reading: {}", filename);
-				//return;
+
 			} catch (IOException e1) {
 				e1.printStackTrace();
 				log.error("Error in reading: {}", filename);
-				//return;
 			}
 		}
 		

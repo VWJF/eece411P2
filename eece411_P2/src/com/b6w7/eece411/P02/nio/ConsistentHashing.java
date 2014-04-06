@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -236,6 +237,27 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	/**
+	 * return a list of offline nodes
+	 * @return
+	 */
+	public List<InetSocketAddress> getOfflineList() {
+		List<InetSocketAddress> offlineList = new LinkedList<InetSocketAddress>();
+		ByteArrayWrapper node;
+		
+		for (int i = 0; i < listOfNodes.size(); i++) {
+			if (membership.getTimestamp(i) < 0) {
+				node = listOfNodes.get(i);
+
+				String nodeString = new String(mapOfNodes.get(node));
+				String addr[] = nodeString.split(":");
+				
+				offlineList.add(new InetSocketAddress(addr[0], Integer.valueOf(addr[1])));
+			}
+		}
+		return offlineList;
+	}
+
+	/**
 	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors)
 	 * @param requestedKey
 	 * @param removeSelf TODO
@@ -248,13 +270,15 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper owner = getOwner(requestedKey);
 
 		sockAddress = getSocketAddress(owner);
-//		replicas.add(sockAddress);
 		
-		StringBuilder logtraceString = new StringBuilder();
-		logtraceString.append("owner: "+owner.toString()+"[reqeuestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
+		StringBuilder logtraceString = null;
+		if (log.isTraceEnabled()) {
+			logtraceString = new StringBuilder();
+			logtraceString.append("owner: "+owner.toString()+"[requestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
+		}
 
 		log.trace("All Replicas:\nowner: {}[reqeuestedKey->{}] SocketAddress", owner.toString(), requestedKey, sockAddress.toString() );
-
+		
 		ByteArrayWrapper nextKey = owner;
 
 		for(int i = 0; i < num_replicas + 1; i++){
@@ -275,26 +299,23 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				sockAddress = getSocketAddress(nextKey);
 				replicas.add(sockAddress);
 
-				logtraceString.append("replica "+i+" : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
+				if (log.isTraceEnabled())
+					logtraceString.append("replica "+i+" : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
 			}
 
 			nextKey = getNextNodeTo(nextKey);
 		}
 		
-		logtraceString.trimToSize();
-		log.trace("{}",logtraceString.toString());
-		
-//		System.out.println("All Replicas:\n"+logtraceString);
-		
-//		assert replicas.size() == num_replicas + 1;
-		
+		if (log.isTraceEnabled()) {
+			logtraceString.trimToSize();
+			log.trace("{}",logtraceString.toString());
+		}
+
 		log.debug("Local key: {}", localNode);
 		log.debug("Local key SocketAddress: {}", getSocketAddress(localNode));
 		
 		if(removeSelf) replicas.remove(getSocketAddress(localNode));
 		
-		//TODO: Check corner cases .... mapOfNodes.size < num_replicas + 1
-
 		return replicas;
 	}
 	
