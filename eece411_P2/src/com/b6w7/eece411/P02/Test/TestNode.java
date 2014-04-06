@@ -48,7 +48,7 @@ public class TestNode implements Runnable, JoinThread {
 	private int myCount;
 
 	// set to 0 to disable timeout
-	private final int TCP_READ_TIMEOUT_MS = 0;
+	private final int TCP_READ_TIMEOUT_MS = 4500;
 	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;
 	// reduced debug outut from normal
@@ -245,8 +245,8 @@ public class TestNode implements Runnable, JoinThread {
 	private void populatePutGetRemoveGet() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		int myCount = 1;
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 //		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 	}
 	
@@ -911,36 +911,35 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 			
-			populatePutGetRemoveGet();
+//			populatePutGetRemoveGet();
 			
 //			populateOneTest();
 //			populateTests();
-//			populateMemoryTests();
+			populateMemoryTests();
 			
 			//Test for routing.
 			//populatePutTests(); //For the node that has stored the Key-Values 11112
 			//populateGetTests();	//For a node that did not store the Key-Values 11111
-			//populateRemoveTests();	//For a node that did not store the Key-Values 11111
-
+			//populateRemoveTests();	//For a node that did not store the Key-Valued
 			//populateAnnounceDeathTest();
 			
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
 //			}
 
-//			for(int i = 0; i< 19; i++){
-//				populateAnnounceDeathTest();
-//			}		
-
-//			for(int i = 0; i< 10; i++){
-//				populateDelayOneSecond();
-//			}
+			for(int i = 0; i < 18; i++){
+				populateAnnounceDeathTest();
+			}		
+//
+			for(int i = 0; i< 30; i++){
+				populateDelayOneSecond();
+			}
 
 //			for(int i = 0; i< 60; i++){
 //				populateDelayOneSecond();
 //			}
 
-//			populateMemoryTests();
+			populateMemoryTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
@@ -967,10 +966,6 @@ public class TestNode implements Runnable, JoinThread {
 			for (TestData test : tests) {
 				isPass = true;
 
-				if (IS_VERBOSE) System.out.println();
-				if (!IS_BREVITY) System.out.println("--- Running Test: "+test);
-
-
 				boolean tryAgain = true;
 				while (tryAgain) {
 					try {
@@ -994,13 +989,9 @@ public class TestNode implements Runnable, JoinThread {
 						// If address was supplied, then use the supplied host instead of a random one
 						
 						// hack
-						//port = 11114;
+						//port = 11111;
 						
-						if (!IS_BREVITY) System.out.println(
-								"Connecting to: " 
-										+ address.toString().replaceAll("/", " == ") 
-										+ " on port " 
-										+ port);
+						if (!IS_BREVITY) System.out.println("--- Running Test: [" + address.toString().replaceAll("/", " == ") + ":" + port + "] " +test);
 
 						// initiate test with node by sending the test command
 						clientSocket = new Socket(address, port);
@@ -1108,6 +1099,7 @@ public class TestNode implements Runnable, JoinThread {
 						} catch (InterruptedException e1) {}
 						
 					} catch (SocketTimeoutException e) {
+						failMessage = "Timeout";
 						System.err.println("### "+ test.toString() + " " + failMessage);
 						System.out.println("Thread: "+myCount+"\n### TEST "+test.index+" FAILED - " + failMessage);
 						thisTestFailed++;
@@ -1116,6 +1108,7 @@ public class TestNode implements Runnable, JoinThread {
 					} catch (IOException e) {
 						// if (IS_VERBOSE) System.err.println("### network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
 						
+						//tryAgain = false;
 						System.err.println("### network error, retrying in "+TIME_RETRY_MS+"ms "+ test.toString() + " " + failMessage);
 						//e.printStackTrace();
 						try {

@@ -248,7 +248,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper owner = getOwner(requestedKey);
 
 		sockAddress = getSocketAddress(owner);
-		replicas.add(sockAddress);
+//		replicas.add(sockAddress);
 		
 		StringBuilder logtraceString = new StringBuilder();
 		logtraceString.append("owner: "+owner.toString()+"[reqeuestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
@@ -257,16 +257,28 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 		ByteArrayWrapper nextKey = owner;
 
-		for(int i = 1; i <= num_replicas; i++){
+		for(int i = 0; i < num_replicas + 1; i++){
+			// if this node is offline, then skip this iteration
+			int timestamp = membership.getTimestamp(listOfNodes.indexOf(nextKey)); 
+			
+			if ( timestamp < 0) {
+				i--;  // we are skipping this node, so undo counter
+				log.trace("     ConsistentHashing::getReplicaList() skipping offline node [{}] [timestamp=>{}]", sockAddress, timestamp);
+				
+			} else {
+				// if we have gone full circle, then stop iterating here
+				if (nextKey == owner && i > 0) {
+					log.trace("     ConsistentHashing::getReplicaList() full circle [{}] [timestamp=>{}]", sockAddress, timestamp);
+					break;
+				}
+
+				sockAddress = getSocketAddress(nextKey);
+				replicas.add(sockAddress);
+
+				logtraceString.append("replica "+i+" : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
+			}
+
 			nextKey = getNextNodeTo(nextKey);
-			sockAddress = getSocketAddress(nextKey);
-			
-			if (membership.getTimestamp(listOfNodes.indexOf(nextKey)) < 0)
-				continue;
-			
-			replicas.add(sockAddress);
-			
-			logtraceString.append("replica "+i+" : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
 		}
 		
 		logtraceString.trimToSize();

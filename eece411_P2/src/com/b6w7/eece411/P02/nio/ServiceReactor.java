@@ -15,6 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -42,10 +43,11 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private final ReplicaThread replicaHandler;
 
 	public final int serverPort;
+	private final boolean ENABLE_GOSSIP = true; 
+
 	private boolean keepRunning = true;
 
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
-
 
 	private final ConcurrentLinkedQueue<SocketRegisterData> registrations 
 	= new ConcurrentLinkedQueue<SocketRegisterData>();
@@ -57,8 +59,9 @@ public class ServiceReactor implements Runnable, JoinThread {
 	private Timer timer;
 	private JoinThread self;
 
-	private final long READ_TIMEOUT = 350;
-
+	private final long TIME_MAX_TIMEOUT = 750;
+	private final long TIME_MIN_TIMEOUT = 350;
+	
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
@@ -87,7 +90,7 @@ public class ServiceReactor implements Runnable, JoinThread {
 		int position = dht.getNodePosition(localhost+":"+serverPort);
 		dht.setLocalNode(localhost+":"+serverPort);
 
-		membership = new MembershipProtocol(position, dht.getSizeAllNodes());
+		membership = new MembershipProtocol(position, dht.getSizeAllNodes(), TIME_MAX_TIMEOUT, TIME_MIN_TIMEOUT);
 
 		dht.setMembership(membership);
 		
@@ -113,25 +116,23 @@ public class ServiceReactor implements Runnable, JoinThread {
 		log.info("Server listening on port {} with address {}", serverPort, inetAddress);
 
 		timer = new Timer();
-		timer.schedule(new TimerTask() {
-			
-			@Override
-			public void run() {
-				try {
-					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
-					Command cmd = new Handler(selector, dbHandler, replicaHandler, dht, registrations, serverPort, membership, self);
-					dbHandler.post(cmd);
-				} catch (IOException e) {
-					log.debug(e.getMessage());
-				}
-				
-			}
-		}, 
+		if (ENABLE_GOSSIP) {
+			timer.schedule(new TimerTask() {
 
-		
-		
-		2000, 10000);
-		
+				@Override
+				public void run() {
+					try {
+						log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushProcess");
+						Command cmd = new Handler(selector, dbHandler, replicaHandler, dht, registrations, serverPort, membership, self);
+						dbHandler.post(cmd);
+					} catch (IOException e) {
+						log.debug(e.getMessage());
+					}
+
+				}
+			}, new Random().nextInt(2000), 5000);
+		}
+
 		// start handler thread
 		dbHandler.start();
 
@@ -154,11 +155,13 @@ public class ServiceReactor implements Runnable, JoinThread {
 					if (key.isValid() && key.interestOps() == SelectionKey.OP_READ) {
 						Handler handler = ((Handler)key.attachment());
 						long now = new Date().getTime(); 
-						if (now - handler.timeStart - READ_TIMEOUT  > 0) {
-							log.trace(" %%% OP_READ timeout {}", now - handler.timeStart - READ_TIMEOUT);
+//						if (now - handler.timeStart - READ_TIMEOUT  > 0) {
+						if (now - handler.timeStart - handler.timeTimeout  > 0) {
 							// too much time has passed whilst waiting for reply from owner, so enforce timeout
-							if ( handler.state == Handler.State.RECV_OWNER )
+							if ( handler.state == Handler.State.RECV_OWNER ) {
+								log.trace(" %%% OP_READ timeout {} {}", now - handler.timeStart - handler.timeTimeout, handler);
 								handler.retryAtStateCheckingLocal(new TimeoutException());
+							}
 						}
 					}
 				}

@@ -1,9 +1,12 @@
 package com.b6w7.eece411.P02.nio;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,16 +21,25 @@ public class MembershipProtocol {
 	private final int total_nodes;
 	public final int current_node;
 	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
+	private Map<InetSocketAddress, Long> timeTCPTimeout = new HashMap<InetSocketAddress, Long>((int)(this.total_nodes / 0.7));
+	/** Fraction in the range of (0, 1) used in multiplication with the current running average */
+	public static double TIME_ALPHA = 0.9;
+	/** The maximum timeout on a read operation used as default value and when a node becomes unresponsive */
+	private final long timeMaxTimeout;  
+	/** The minimum timeout on a read operation to prevent timeout from becoming too small */
+	private final long timeMinTimeout;  
 	
 	private static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 
-	public MembershipProtocol(int current_node, int total_nodes) {
+	public MembershipProtocol(int current_node, int total_nodes, long timeMaxTimeout, long timeMinTimeout) {
 		this.current_node = current_node;
 		this.total_nodes = total_nodes;
 		this.localTimestampVector = new ArrayList<Integer>(this.total_nodes);
+		this.timeMaxTimeout = timeMaxTimeout;
+		this.timeMinTimeout = timeMinTimeout;
 		
 		for (int i=0; i<this.total_nodes; i++) {
 			localTimestampVector.add(1);
@@ -245,7 +257,7 @@ public class MembershipProtocol {
 	public static void main(String[] args) {
 		int current_node = 2; 
 		int total_nodes = 3;
-		MembershipProtocol mp = new MembershipProtocol(current_node, total_nodes);
+		MembershipProtocol mp = new MembershipProtocol(current_node, total_nodes, 750, 350);
 		
 		int[] sampleForMerge = new int[total_nodes];
 		int [] sampleForReceipt = new int[total_nodes];
@@ -267,5 +279,71 @@ public class MembershipProtocol {
 		mp.shutdown(null);
 		mp.shutdown(0);
 		mp.shutdown(1);
+	}
+
+	/**
+	 * Retrieve the timeout for this {@code owner}.  If {@code owner} does not exist then instantiate entry 
+	 * for {@code owner} with the default value {@link #timeMaxTimeout}.
+	 * @param owner the remote node
+	 * @return the timeout in ms for this owner
+	 */
+	public long getTimeout(InetSocketAddress owner) {
+		if (! timeTCPTimeout.containsKey(owner)) {
+			// we have not seen this owner before, so instantiate entry and assign timeMaxTimeout
+			log.trace("     Membership::getTimeout() ADDING [timeTCPTimeout+={}] {}", owner, this);
+			timeTCPTimeout.put(new InetSocketAddress(owner.getAddress(), owner.getPort()), Long.valueOf(timeMaxTimeout));
+			assert(timeTCPTimeout.containsKey(owner));
+		}	
+		
+		return timeTCPTimeout.get(owner).longValue();
+	}
+	
+	/**
+	 * Update the running average read timeout for this {@code owner}.  The timeout is calculated as
+	 * twice of the average time to complete a read operation.  The running average feedback is
+	 * {@link #TIME_ALPHA}.  If {@code timeLastCompletion} is zero, then reset timeout to 
+	 * {@link #timeMaxTimeout}.  Timeout cannot go below {@link #timeMinTimeout}
+	 * @param timeLastCompletion the time in ms to complete a read operation
+	 * @param owner the remote node being read from
+	 */
+	public void updateTimeout(long timeLastCompletion, InetSocketAddress owner) {
+		long timeNewTimeout;
+		
+		if (! timeTCPTimeout.containsKey(owner)) {
+			log.error(" ### Membership::updateTimeout() " + owner + " does not exist");
+			throw new IllegalStateException(" ### Membership::updateTimeout() " + owner + " does not exist");
+		}
+		
+		log.trace("     Membership::updateTimeout() BEFORE [{}] [timeLastCompletion=>{}] [timeout=>{}]", owner, timeLastCompletion, timeTCPTimeout.get(owner).longValue());
+
+		// update read timeout for this owner
+		if (timeLastCompletion < 0) {
+			timeNewTimeout = timeMaxTimeout;
+
+		} else {
+			// if non-zero time from last iteration, 
+			timeNewTimeout = (long)(timeTCPTimeout.get(owner).longValue() * TIME_ALPHA  + 2 * timeLastCompletion * (1 - TIME_ALPHA));
+			if (timeNewTimeout < timeMinTimeout)
+				timeNewTimeout = timeMinTimeout;
+		}
+		
+		// cap timeout at timeMaxTimeout
+		if (timeNewTimeout > timeMaxTimeout)
+			timeNewTimeout = timeMaxTimeout;
+
+		timeTCPTimeout.put(owner, Long.valueOf(timeNewTimeout));
+
+		log.trace("     Membership::updateTimeout() AFTER [{}] [timeout=>{}]", owner, timeNewTimeout);
+
+		// This is here to see the timeouts for all the other nodes
+		if (log.isTraceEnabled()) {
+			StringBuilder s = new StringBuilder();
+			for (Map.Entry<InetSocketAddress, Long> set : timeTCPTimeout.entrySet()) {
+				InetSocketAddress addr = set.getKey();
+				Long timeout = set.getValue().longValue();
+				s.append("[" + addr.getHostName().substring(0, 6) + ":" + addr.getPort() + ":" + timeout + "]");
+			}
+			log.error(s.toString());
+		}
 	}
 }

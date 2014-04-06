@@ -41,7 +41,7 @@ final class Handler extends Command implements Runnable {
 	private static final int KEYSIZE = NodeCommands.LEN_KEY_BYTES;
 	private static final int VALUESIZE = NodeCommands.LEN_VALUE_BYTES;
 	private static final int TIMESTAMPSIZE = NodeCommands.LEN_TIMESTAMP_BYTES;
-	private static final int MAX_TCP_RETRIES = 3;
+	private static final int MAX_TCP_RETRIES = 1;
 	
 	private static final int INTSIZE = 4;
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
@@ -82,6 +82,9 @@ final class Handler extends Command implements Runnable {
 	private final int serverPort;
 	private final JoinThread parent;
 	
+	public long timeTimeout = -1;         // -1 means not assigned yet; assign during checkLocal() by accessing model
+	public long timeLastCompletion = -1;  // -1 means not assigned yet; assign during checkLocal() by accessing model
+	
 
 	// possible states of any command
 	enum State {
@@ -92,6 +95,29 @@ final class Handler extends Command implements Runnable {
 		RECV_OWNER,
 		SEND_REQUESTER, 
 		DO_NOTHING, 
+		UPDATE_TIMEOUT, 
+	}
+
+	/**
+	 * Used for 
+	 * @param map
+	 * @param membership
+	 * @param owner 
+	 * @param timeLastCompletion 
+	 */
+	Handler(ConsistentHashing<ByteArrayWrapper, byte[]> map, MembershipProtocol membership, long timeLastCompletion, InetSocketAddress owner) {
+		this.socketRequester = null;
+		this.serverPort = -1;
+		this.replicaHandler = null;
+		this.parent = null;
+		this.membership = membership;
+		this.map = map;
+		this.keyRequester = null;
+		this.dbHandler = null;
+		this.state = State.UPDATE_TIMEOUT;
+		this.owner = owner;
+		this.timeLastCompletion = timeLastCompletion;
+		this.self = this;
 	}
 
 	/**
@@ -303,12 +329,35 @@ final class Handler extends Command implements Runnable {
 
 		case SEND_REQUESTER:
 			throw new IllegalStateException(" ### SEND_REQUESTER should not be called in execute()");
+		
+		case UPDATE_TIMEOUT:
+			updateTimeout();
+			break;
+			
+		case DO_NOTHING:
+			throw new IllegalStateException(" ### DO_NOTHING should not be called in execute()");
+			
 		default:
 			break;
 		}
 	}
 
 
+	private void updateTimeout() {
+		
+		// Notify membership of the latest timestamp
+		membership.updateTimeout(timeLastCompletion, owner);
+		
+		if (timeLastCompletion < 0) {
+			// this node needs to be shutdown
+			//			map.shutdown(owner);
+			log.info(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
+			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
+		}
+
+		state = State.DO_NOTHING;
+	}
+	
 	// only call this method if we have not received enough bytes for a complete
 	// operation.  This can be called multiple times until enough bytes are received.
 	private void recvRequester() throws IOException {
@@ -539,6 +588,7 @@ final class Handler extends Command implements Runnable {
 		state = State.DO_NOTHING;
 		deallocateInternalNetworkResources();
 		deallocateExternalNetworkResources();
+		
 		return;
 	}
 
@@ -583,20 +633,26 @@ final class Handler extends Command implements Runnable {
 	public void retryAtStateCheckingLocal(Exception e) {
 		log.debug(">>>>>>>> *** *** retryAtStateCheckingLocal() START {} [retries=>{}] [process=>{}] <<<<<<<<<<", this, retriesLeft, process.getClass().toString());
 
+		timeLastCompletion = new Date().getTime() - timeStart;
+		assert(timeLastCompletion > 0);
+
 		retriesLeft --;
 
 		if (retriesLeft < 0) {
-			log.debug(">>>>>>>> *** Handler::retryAtStateCheckingLocal() retriesLeft: {}.  <<<<<<<<<<", retriesLeft);
+			log.trace(" *** Handler::retryAtStateCheckingLocal() no more retriesLeft: {} ", retriesLeft);
+	
+			// we want the handlerthread to shutdown the node to avoid concurrent access to model
+			// so we post a message to handlerthread
+			assert(map!=null);
 			
-			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
-//			map.shutdown(owner);
+			dbHandler.post(new Handler(map, membership, -1, owner));
 			
-			if (process.iterativeRepeat())
+			if (process.iterativeRepeat()) {
 				retriesLeft = MAX_TCP_RETRIES;
+				timeLastCompletion = -1;
+			}
 		}
 
-		log.debug("*** Handler::retryAtStateCheckingLocal() Network error in connecting to remote node. {}", e.getMessage());
-		//e.printStackTrace();
 		deallocateInternalNetworkResources();
 		input.position(0);
 		state = State.CHECKING_LOCAL;
@@ -727,7 +783,6 @@ final class Handler extends Command implements Runnable {
 			else
 				replyCode = Reply.RPY_OUT_OF_SPACE.getCode();
 
-			
 			spawnReplicaPut();
 			
 			generateRequesterReply();
@@ -737,7 +792,6 @@ final class Handler extends Command implements Runnable {
 			timeStart = new Date().getTime();
 			keyRequester.interestOps(SelectionKey.OP_WRITE);
 			sel.wakeup();
-
 		}
 	}
 	
@@ -762,7 +816,7 @@ final class Handler extends Command implements Runnable {
 				generateRequesterReply();
 				return;
 			}
-			
+
 			incrLocalTime();
 			
 			// Instantiate owner list
@@ -784,22 +838,9 @@ final class Handler extends Command implements Runnable {
 				}
 
 				owner = replicaList.remove(0);
-
-//				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
-//					log.trace("     PutProcess::checkLocal() replica considering {}", owner); 
-//
-//					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
-//						owner = addr;
-//						log.trace(" *** PutProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
-//
-//						if (!replicaList.remove(addr)) 
-//							log.error(" ### PutProcess::checkLocal() Corrupted database {}", addr); 
-//						break SEARCH_FOR_LOCAL;
-//					}
-//				}
+				log.trace("     PutProcess::checkLocal() [choosing=>{}] [remainingList=>{}]", owner, replicaList);
 			}
 
-//			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 			if (isLocalhost()) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
@@ -825,6 +866,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
 				log.debug("--- PutProcess::checkLocal() -------------- Using remote --------------");
+				timeTimeout = membership.getTimeout(owner);
 				incrLocalTime();
 
 				try {
@@ -913,6 +955,9 @@ final class Handler extends Command implements Runnable {
 		 * @return true if enough bytes read; false otherwise.
 		 */
 		private boolean recvOwnerIsComplete() {
+			timeLastCompletion = new Date().getTime() - timeStart;
+			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+
 			output.position(RPYSIZE);
 			output.flip();
 			
@@ -960,6 +1005,8 @@ final class Handler extends Command implements Runnable {
 				return;
 			}
 			
+			// record the time to complete from previous iteration
+			// if this is the first call, then timeLastCompletion == 0, and no update is performed
 			mergeVector(CMDSIZE+KEYSIZE+VALUESIZE);
 			incrLocalTime();
 			
@@ -998,6 +1045,8 @@ final class Handler extends Command implements Runnable {
 				
 				log.debug(" --- TSReplicaPutProcess::checkLocal(): owner==[{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
 
+				timeTimeout = membership.getTimeout(owner);
+				
 				incrLocalTime();
 				try {
 					// prepare the output buffer, and signal for opening a socket to remote
@@ -1075,6 +1124,9 @@ final class Handler extends Command implements Runnable {
 		 * @return true if enough bytes read; false otherwise.
 		 */
 		private boolean recvOwnerIsComplete() {
+			timeLastCompletion = new Date().getTime() - timeStart;
+			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+
 			output.position(RPYSIZE);
 			output.flip();
 			
@@ -1174,17 +1226,18 @@ final class Handler extends Command implements Runnable {
 					return;
 				}
 				
-				log.debug(" --- TSPushProcess::checkLocal(): map.getRandomOnlineNode()==[{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
+				log.debug(" --- TSPushProcess::checkLocal(): gossiping to [{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
 
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
-				log.debug("--- TSPushProcess::checkLocal()");
 				incrLocalTime();
 
 				try {
 					// prepare the output buffer, and signal for opening a socket to remote
 					generateOwnerQuery();
 
+					timeTimeout = membership.getTimeout(owner);
+					
 					socketOwner = SocketChannel.open();
 					socketOwner.configureBlocking(false);
 					// Send message to selector and wake up selector to process the message.
@@ -1245,6 +1298,9 @@ final class Handler extends Command implements Runnable {
 		}
 
 		protected boolean recvOwnerIsComplete() {
+			timeLastCompletion = new Date().getTime() - timeStart;
+			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+
 			output.position(RPYSIZE);
 			output.flip();
 			
@@ -1341,25 +1397,8 @@ final class Handler extends Command implements Runnable {
 				}
 				
 				owner = replicaList.remove(0);
-
-				//				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
-//					log.trace("     GetProcess::checkLocal() replica considering {}", addr); 
-//					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
-//						owner = addr;
-//						log.trace(" *** GetProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
-//						if (!replicaList.remove(addr)) 
-//							log.error(" ### GetProcess::checkLocal() Corrupted database {}", addr); 
-//						break SEARCH_FOR_LOCAL;
-//					}
-//				}
 			}
 			
-			
-//			if (owner == null)
-//				owner = replicaList.remove(0);
-
-
-//			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort) ) {
 			if (isLocalhost()) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
@@ -1384,6 +1423,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
 				log.debug("--- GetProcess::checkLocal() ------------ Using Remote --------------");
+				timeTimeout = membership.getTimeout(owner);
 				incrLocalTime();
 
 				try {
@@ -1465,6 +1505,9 @@ final class Handler extends Command implements Runnable {
 		protected boolean recvOwnerIsComplete() {
 			if (Reply.RPY_SUCCESS.getCode() == output.get(0)) {
 				if (output.position() >= RPYSIZE + VALUESIZE) {
+					timeLastCompletion = new Date().getTime() - timeStart;
+					dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+
 					output.position(RPYSIZE + VALUESIZE);
 					output.flip();
 					return true;
@@ -1575,29 +1618,9 @@ final class Handler extends Command implements Runnable {
 				}
 				
 				owner = replicaList.remove(0);
-
-				//				SEARCH_FOR_LOCAL: for (InetSocketAddress addr : replicaList) {
-//					log.trace("     RemoveProcess::checkLocal() replica considering {}", owner); 
-//
-//					if (ConsistentHashing.isThisMyIpAddress(addr, serverPort)) {
-//						owner = addr;
-//						log.trace(" *** RemoveProcess::checkLocal() found owner who is LOCALHOST {}", owner); 
-//
-//						if (!replicaList.remove(addr)) 
-//							log.error(" ### RemoveProcess::checkLocal() Corrupted database {}", addr); 
-//						break SEARCH_FOR_LOCAL;
-//					}
-//				}
 			}
-			
-			
-//			if (owner == null)
-//				owner = replicaList.remove(0);
-
-			
 
 			if (isLocalhost()) {
-//			if (ConsistentHashing.isThisMyIpAddress(owner, serverPort)) {
 				// OK, we decided that the location of key is at local node
 				// perform appropriate action with database
 				// we can transition to SEND_REQUESTER
@@ -1622,6 +1645,7 @@ final class Handler extends Command implements Runnable {
 				// OK, we decided that the location of key is at a remote node
 				// we can transition to CONNECT_OWNER and connect to remote node
 				log.debug("--- RemoveProcess::checkLocal() ------------ Using Remote --------------");
+				timeTimeout = membership.getTimeout(owner);
 				incrLocalTime();
 
 				try {
@@ -1694,8 +1718,12 @@ final class Handler extends Command implements Runnable {
 		}
 
 		private boolean recvOwnerIsComplete() {
+			timeLastCompletion = new Date().getTime() - timeStart;
+			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+
 			output.position(RPYSIZE);
 			output.flip();
+
 			return true;
 		}
 
@@ -1764,6 +1792,8 @@ final class Handler extends Command implements Runnable {
 				
 				log.debug(" --- TSReplicaRemoveProcess::checkLocal(): owner==[{},{}]", owner.getAddress().getHostAddress(), owner.getPort());
 
+				timeTimeout = membership.getTimeout(owner);
+				
 				incrLocalTime();
 				try {
 					// prepare the output buffer, and signal for opening a socket to remote
@@ -1840,9 +1870,12 @@ final class Handler extends Command implements Runnable {
 		 * @return true if enough bytes read; false otherwise.
 		 */
 		private boolean recvOwnerIsComplete() {
+			timeLastCompletion = new Date().getTime() - timeStart;
+			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			
 			output.position(RPYSIZE);
 			output.flip();
-			
+
 			return true;
 		}
 
@@ -1916,18 +1949,25 @@ final class Handler extends Command implements Runnable {
 		StringBuilder s = new StringBuilder();
 		boolean isMatch = false;
 		
-		s.append("["+this.membership.current_node+":"+serverPort+"]"); 
-		s.append("[command=>");
+		s.append("{"+this.membership.current_node+":"+serverPort); 
+		
+		if (process != null) {
+			String processString = process.getClass().getCanonicalName();
+			s.append(":" + processString.substring(processString.lastIndexOf('.')));
+		}
+		
+		s.append(":" + state.toString());
+		s.append("} [cmd=>");
 		MATCH_CMD: for (Request req: Request.values()) {
 			if (req.getCode() == cmd) {
-				s.append(req.toString());
+				s.append(req.toString().substring(4));  // remove 'CMD_'
 				isMatch = true;
 				break MATCH_CMD;
 			}
 		}
 		if (!isMatch) { 
 			s.append("###");
-			s.append(Request.CMD_UNRECOG.toString());
+			s.append(Request.CMD_UNRECOG.toString().substring(4));
 		}
 		
 		s.append("] [key=>");
@@ -1939,18 +1979,18 @@ final class Handler extends Command implements Runnable {
 		}
 		
 		if (null != value) {
-			s.append("] [value["+value.length+"]=>");
+			s.append("] [val["+value.length+"]=>");
 			for (int i=0; i<LEN_TO_STRING_OF_VAL; i++)
 				s.append(Integer.toString((value[i] & 0xff) + 0x100, 16).substring(1));
 		} else {
-			s.append("] [value[-]=>null");
+			s.append("] [val[-]=>null");
 		}
 		
 		isMatch = false;
-		s.append("] [replyCode=>");
+		s.append("] [rpy=>");
 		MATCH_RPY: for (Reply rpy: Reply.values()) {
 			if (rpy.getCode() == replyCode) {
-				s.append(rpy.toString());
+				s.append(rpy.toString().substring(4));  // remove 'RPY_'
 				isMatch = true;
 				break MATCH_RPY;
 			}
@@ -1961,7 +2001,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		if (null != input) {
-			s.append("] [input=>");
+			s.append("] [in=>");
 			s.append(input.position());
 			s.append(",");
 			s.append(input.limit());
@@ -1970,7 +2010,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		if (null != output) {
-			s.append("] [output=>");
+			s.append("] [out=>");
 			s.append(output.position());
 			s.append(",");
 			s.append(output.limit());
@@ -1979,19 +2019,13 @@ final class Handler extends Command implements Runnable {
 		}
 		
 		if (null != owner) {
-			s.append("] [owner=>");
+			s.append("] [own=>");
 			s.append(owner.getHostName());
 			s.append(":");
 			s.append(owner.getPort());
+			s.append("["+timeTimeout+"ms]");
 		}
 		s.append("]");
-		
-//		if(hashedKey != null){
-//			List<InetSocketAddress> reps = map.getReplicaList(hashedKey);
-//			s.append("]\n[Replicas: ");
-//			s.append(reps);
-//		}
-//		s.append("]");
 		
 		return s.toString();
 	}
