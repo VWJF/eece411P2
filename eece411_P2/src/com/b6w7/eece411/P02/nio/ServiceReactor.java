@@ -301,7 +301,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		if (args.length == 2) {
 			String filename = args[1];
 			try {
-				participatingNodes = populateNodeList(filename);
+				participatingNodes = populateNodeList2(filename);
 
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
@@ -416,6 +416,30 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	    String[] nodes = nodesList.toArray(new String[nodesList.size()]);
 	    return nodes;
 
+	}
+	
+	public static String[] populateNodeList2(String filename) throws IOException {
+		BufferedReader in = new BufferedReader(new FileReader(filename));
+
+	    List<String> nodesList = new LinkedList<String>();
+
+	    while (in.ready()) {
+	    	String s = in.readLine();
+	    	if (s != null) {
+	    		String[] host = s.split(":");
+	    		if (host.length == 2)
+	    			nodesList.add(s);
+	    		else
+	    			log.warn("Reading from {}: skipping entry '{}'", filename, s);
+	    	}
+		}
+		in.close();
+		
+		String[] ret = new String[nodesList.size()];
+		for (int i = 0; i < nodesList.size(); i++)
+			ret[i] = nodesList.get(i);
+		
+		return ret;
 	}
 
 	public static String[] nodes = 
