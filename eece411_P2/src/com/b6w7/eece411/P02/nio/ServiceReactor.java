@@ -12,6 +12,8 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -40,7 +42,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	// Parameters for tuning performance
 	private final boolean ENABLE_GOSSIP_OFFLINE = true; 
 	private final boolean ENABLE_GOSSIP_RANDOM  = true; 
-	private final long PERIOD_GOSSIP_OFFLINE_MS = 10000;  // bigger number slows performance with larger number of offline nodes
+	private final long PERIOD_GOSSIP_OFFLINE_MS = 10000;  // smaller number slows performance with larger number of offline nodes
 	private final long PERIOD_GOSSIP_RANDOM_MS  = 700;    // smaller number propagates offline information faster
 	private final long TIME_MAX_TIMEOUT_MS = 750;         // anything longer than 750ms will timeout at this ceiling
 	private final long TIME_MIN_TIMEOUT_MS = 350;         // any nodes faster than 350ms will timeout only after this floor
@@ -72,6 +74,16 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
+
+		StringBuilder sb = new StringBuilder();
+		int i = 0;
+		for (String n : nodes){
+			if (i++ % 5 == 0)
+				sb.append("\n");
+			sb.append(n+"\t");
+		}
+		
+		log.info("List of nodes (size= {}): {}", nodes.length, sb.toString());
 		
 		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 		serverPort = servPort;

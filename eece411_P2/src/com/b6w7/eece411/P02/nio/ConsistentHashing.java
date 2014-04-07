@@ -84,20 +84,28 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			ByteArrayWrapper key = hashKey(node);
 			log.trace("     ConsistentHashing() hashKey: {}", key);
 
-			mapOfNodes.put(key, node.getBytes()); //circle.put(key, node.getBytes());			
+			byte[] fromMap = mapOfNodes.put(key, node.getBytes()); //circle.put(key, node.getBytes());			
 			String err_msg = (null == getNode(hashKey(node))) ? " *** ConsistentHashing() Fail to get" : "     ConsistentHashing() Success returned get(): "+
 					NodeCommands.byteArrayAsString(getNode(hashKey(node)));
 			
 			log.trace(err_msg);
 			log.debug("     ConsistentHashing() Map Of Nodes Size: {}", mapOfNodes.size());
 			log.debug("     ConsistentHashing() {}.{} {}", i, hashKey(node), new String(getNode(key)));
+			if(fromMap != null){
+				StringBuilder conflict = new StringBuilder(new String(fromMap));
+				log.error(" ### ConsistentHashing() Encountered collision entry for mapOfNodes: original: {} new: {} ", node, conflict.toString());
+			}
+			//assert(fromMap != null);
 			i++;
 		}
 		
-		log.debug("     ConsistentHashing() Map of Nodes Size at Constructor: {}", mapOfNodes.size());
+		log.info("     ConsistentHashing() Map of Nodes Size at Constructor: {}", mapOfNodes.size());
 		
 		listOfNodes = new ArrayList<ByteArrayWrapper>(mapOfNodes.keySet());
 		Collections.sort(listOfNodes);
+
+		log.info("     ConsistentHashing() Ordered List of Nodes Size at Constructor: {}", listOfNodes.size());
+		assert (listOfNodes.size() == mapOfNodes.size());
 
 		// circle has been initialized with the pairs of (Node, hostname).
 		// Create a new view containing only the existing nodes.

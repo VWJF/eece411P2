@@ -75,9 +75,8 @@ public class MembershipProtocol {
 			
 			int i, localView, remoteView;
 			int update;
-			if (IS_DEBUG) 
-				if (localTimestampVector.size() != receivedVector.length) 
-					System.out.println(" ### MembershipProtocol::mergeVector() receivedVector.length==" + receivedVector.length);
+			if (localTimestampVector.size() != receivedVector.length) 
+				log.warn(" ### MembershipProtocol::mergeVector() (localTimestampVector.size(), receivedVector.length) = ({},{})", localTimestampVector.size(), receivedVector.length);
 
 			for(i = 0; i < localTimestampVector.size(); i++){
 
@@ -125,6 +124,9 @@ public class MembershipProtocol {
 		int[] backingArray = convertListToArray(retInteger);
 		log.trace(" === incrementAndGetVector() backingArray: {}", Arrays.toString(backingArray));
 
+		if(localTimestampVector.size() != backingArray.length)
+			log.warn(" ### MembershipProtocol::incrementAndGetVector() (localTimestampVector.size(), retrunedVector.length) = ({},{})", localTimestampVector.size(), backingArray.length);
+		
 		return backingArray;
 	}
 
@@ -237,7 +239,7 @@ public class MembershipProtocol {
 					// we only have work if this node is online
 					int newTime = -1 * time;
 					localTimestampVector.set(updateIndex.intValue(), newTime);
-					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}]", time, newTime, updateIndex);
+					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}] [vect:->{}]", time, newTime, updateIndex, localTimestampVector);
 				}
 			}
 			else {
@@ -375,10 +377,8 @@ public class MembershipProtocol {
 			if (time < 0) {
 				// only have work to do if the timestamp is negative
 				int newTime = Math.abs(time);
-
-				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}]", time, newTime, index);
-
 				localTimestampVector.set(index, newTime);
+				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}] [vect->{}]", time, newTime, index, localTimestampVector);
 			}
 		} else { 
 			log.warn(" *** MembershipProtocol::enable() enable self attempted with index {}", index);
