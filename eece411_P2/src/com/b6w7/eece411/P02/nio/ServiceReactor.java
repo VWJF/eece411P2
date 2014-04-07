@@ -313,7 +313,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		if (args.length == 2) {
 			String filename = args[1];
 			try {
-				participatingNodes = populateNodeList2(filename);
+				participatingNodes = populateNodeList(filename);
+				//participatingNodes = populateNodeList2(filename);
 
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
