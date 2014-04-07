@@ -13,6 +13,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
+
 public class MembershipProtocol {
 	/**
 	 * The MembershipProtocol class can have a run() & execute().
@@ -47,7 +49,7 @@ public class MembershipProtocol {
 			localTimestampVector.add(-1);
 		}
 		
-		localTimestampVector.set(current_node, 1);
+		localTimestampVector.set(current_node, 2);
 	}
 	
 	/**
@@ -218,9 +220,12 @@ public class MembershipProtocol {
 		return localTimestampVector.get(nodeIndex).intValue();
 	}
 	
+	/**
+	 * Disable this node's timestamp.  If the timestamp is negative then nothing changes. 
+	 * If the timestamp is positive, then it is negated.
+	 * @param updateIndex of the node
+	 */
 	public void shutdown(Integer updateIndex){
-		//TODO:
-		
 		if (localTimestampVector == null) 
 			log.error(" ### localTimestampVector is null");
 
@@ -228,8 +233,15 @@ public class MembershipProtocol {
 			localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
 		}
 		else{
-			if (updateIndex.intValue() != current_node)
-				localTimestampVector.set(updateIndex.intValue(), -Math.abs(localTimestampVector.get(updateIndex.intValue())));
+			if (updateIndex.intValue() != current_node) {
+				int time = localTimestampVector.get(updateIndex.intValue());
+				if (time > 0) {
+					// we only have work if this node is online
+					int newTime = -1 * time;
+					localTimestampVector.set(updateIndex.intValue(), newTime);
+					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}]", time, newTime, updateIndex);
+				}
+			}
 			else {
 				log.trace(" *** MembershipProtocol::shutdown() shutdown self attempted with index {} instead of null", updateIndex.intValue());
 				return;
@@ -349,5 +361,31 @@ public class MembershipProtocol {
 			}
 			log.trace(s.toString());
 		}
+	}
+
+
+	/**
+	 * Enable the index of this node.  An online node is unaffected.  An offline node is set to positive of itself.
+	 * @param index of node
+	 */
+	public void enable(int index) {
+		if (localTimestampVector == null) 
+			log.error(" ### MembershipProtocol::enable() localTimestampVector is null");
+
+		if (index != current_node) {
+			int time = localTimestampVector.get(index);
+			if (time < 0) {
+				// only have work to do if the timestamp is negative
+				int newTime = Math.abs(time);
+
+				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}]", time, newTime, index);
+
+				localTimestampVector.set(index, newTime);
+			}
+		} else { 
+			log.warn(" *** MembershipProtocol::enable() enable self attempted with index {}", index);
+		}
+		
+		return;
 	}
 }

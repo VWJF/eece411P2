@@ -199,8 +199,10 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		
 		Integer randomIndex = membership.getRandomIndex();
-		if(randomIndex == null)
+		if(randomIndex == null) {
+			log.warn("ConsistentHashing.getRandomOnlineNode() No online nodes.");
 			return null;
+		}
 		
 		log.trace("     ConsistentHashing.getRandomOnlineNode() Index: {}", randomIndex);
 		ByteArrayWrapper node = listOfNodes.get(randomIndex.intValue());
@@ -266,7 +268,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	public List<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
 		List<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
 		InetSocketAddress sockAddress = null;
-		
 		ByteArrayWrapper owner = getOwner(requestedKey);
 
 		sockAddress = getSocketAddress(owner);
@@ -277,22 +278,56 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			logtraceString.append("owner: "+owner.toString()+"[requestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
 		}
 
-		log.trace("All Replicas:\nowner: {}[reqeuestedKey->{}] SocketAddress", owner.toString(), requestedKey, sockAddress.toString() );
+		log.trace("All Replicas:\n[owner->{}][requestedKey->{}] [SocketAddress->{}]", owner.toString(), requestedKey, sockAddress.toString() );
 		
 		ByteArrayWrapper nextKey = owner;
+		ByteArrayWrapper firstReplica = null; 
 
-		for(int i = 0; i < num_replicas + 1; i++){
-			// if this node is offline, then skip this iteration
+		// Iterate to find at least one node that is online and save that watermark with firstReplica
+		// There is possibility that all nodes are offline causing an infinite loop for the case that
+		// the local node has signalled shutdown and all other nodes are offline.
+		// However, we can ignore this case, because the local node is shutting down anyways
+		while (replicas.size() == 0) {
 			int timestamp = membership.getTimestamp(listOfNodes.indexOf(nextKey)); 
-			
 			if ( timestamp < 0) {
-				i--;  // we are skipping this node, so undo counter
 				log.trace("     ConsistentHashing::getReplicaList() skipping offline node [{}] [timestamp=>{}]", sockAddress, timestamp);
 				
 			} else {
-				// if we have gone full circle, then stop iterating here
-				if (nextKey == owner && i > 0) {
-					log.trace("     ConsistentHashing::getReplicaList() full circle [{}] [timestamp=>{}]", sockAddress, timestamp);
+				firstReplica = nextKey;
+				sockAddress = getSocketAddress(nextKey);
+				replicas.add(sockAddress);
+
+				if (log.isTraceEnabled())
+					logtraceString.append("replica 0 : "+nextKey.toString() +" SocketAddress: " + sockAddress.toString()+"\n");
+			}
+			
+			nextKey = getNextNodeTo(nextKey);
+		}
+		
+		// ok, we now have one entry in replicas, now it is time to 
+		// Iterate to find replicas
+		for (int i = 0; i < num_replicas; i++) {
+			int timestamp = membership.getTimestamp(listOfNodes.indexOf(nextKey)); 
+			
+			if ( timestamp < 0) {
+				// if this node is offline, then skip this iteration
+				// we are skipping this node, so undo counter
+				i--;  
+				if (log.isTraceEnabled())
+					logtraceString.append("     ConsistentHashing::getReplicaList() skipping offline node ["+sockAddress+"] [timestamp=>"+timestamp+"]\n");
+				
+			} else {
+				if (nextKey == owner) {
+					// if we have gone full circle and reached the node responsible for this key, then stop iterating here
+					if (log.isTraceEnabled())
+						logtraceString.append("     ConsistentHashing::getReplicaList() back to owner ["+sockAddress+"] [timestamp=>"+timestamp+"]\n");
+					break;
+				}
+				
+				if (nextKey == firstReplica) {
+					// if we have gone full circle and reached the first replica for this key, then stop iterating here
+					if (log.isTraceEnabled())
+						logtraceString.append("     ConsistentHashing::getReplicaList() back to first replica ["+sockAddress+"] [timestamp=>"+timestamp+"]\n");
 					break;
 				}
 
@@ -478,6 +513,19 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 //	public void shutdown(InetSocketAddress owner){
 //		
 //	}
+
+
+	public void enable(ByteArrayWrapper key) {
+		//ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
+		String node = new String(mapOfNodes.get(key));
+
+		int ret = listOfNodes.indexOf(key);
+		if (-1 == ret){
+			log.error(" ### ConsistentHashing::shutdown() key index not found for node {}", node );
+			return;
+		}
+		membership.enable(ret);
+	}
 	
 	/**
 	 * Method to notify MemebershipProtocol to update the timestamp vector.
@@ -495,8 +543,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
 		String node = new String(mapOfNodes.get(shutdownKeyOf));
 
-		log.info("     Shutdown of unresponsive node {}", node);
-		
 		int ret = listOfNodes.indexOf(shutdownKeyOf);
 		if (-1 == ret){
 			log.error(" ### ConsistentHashing::shutdown() key index not found for node {}", node );

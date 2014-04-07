@@ -43,8 +43,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	private final ReplicaThread replicaHandler;
 
 	public final int serverPort;
-	private final boolean ENABLE_GOSSIP_OFFLINE = false; 
-	private final boolean ENABLE_GOSSIP_RANDOM  = false; 
+	private final boolean ENABLE_GOSSIP_OFFLINE = true; 
+	private final boolean ENABLE_GOSSIP_RANDOM  = true; 
 	private final long PERIOD_GOSSIP_OFFLINE_MS = 2000;
 	private final long PERIOD_GOSSIP_RANDOM_MS  = 1000;
 	

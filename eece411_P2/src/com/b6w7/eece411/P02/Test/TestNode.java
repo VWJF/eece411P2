@@ -244,10 +244,10 @@ public class TestNode implements Runnable, JoinThread {
 	@SuppressWarnings("unused")
 	private void populatePutGetRemoveGet() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		int myCount = 1;
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 	}
 	
 	/**
@@ -927,15 +927,15 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-			for(int i = 0; i < 18; i++){
+			for(int i = 0; i < 2; i++){
 				populateAnnounceDeathTest();
 			}		
 //
-			for(int i = 0; i< 20; i++){
-				populateDelayOneSecond();
-			}
+//			for(int i = 0; i< 10; i++){
+//				populateDelayOneSecond();
+//			}
 
-//			for(int i = 0; i< 60; i++){
+//			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
 //			}
 

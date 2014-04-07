@@ -346,7 +346,6 @@ final class Handler extends Command implements Runnable {
 		}
 	}
 
-
 	private void updateTimeout() {
 		
 		// Notify membership of the latest timestamp
@@ -355,8 +354,13 @@ final class Handler extends Command implements Runnable {
 		if (timeLastCompletion < 0) {
 			// this node needs to be shutdown
 			//			map.shutdown(owner);
-			log.info(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
+			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
 			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
+			
+		} else {
+			// we need to record that this node is now online
+			log.debug(" *** Handler::updateTimeout() record responsive {}", owner);
+			map.enable(map.hashKey(owner.getHostName()+":"+owner.getPort()));
 		}
 
 		state = State.DO_NOTHING;
@@ -366,9 +370,9 @@ final class Handler extends Command implements Runnable {
 	// operation.  This can be called multiple times until enough bytes are received.
 	private void recvRequester() throws IOException {
 		// read from the socket
-		log.trace(" +++ Common::recvRequester() BEFORE input.position()=="+input.position()+" input.limit()=="+input.limit());
+		log.trace(" +++ Common::recvRequester() BEFORE {}", self);
 		socketRequester.read(input);
-		log.trace(" +++ Common::recvRequester() AFTER input.position()=="+input.position()+" input.limit()=="+input.limit());
+		log.trace(" +++ Common::recvRequester() AFTER {}", self);
 
 		if (requesterInputIsComplete()) {
 			log.debug(" +++ Common::recvRequester() COMPLETE {}", this.toString());
@@ -635,15 +639,18 @@ final class Handler extends Command implements Runnable {
 	 * @param e Exception that occurred
 	 */
 	public void retryAtStateCheckingLocal(Exception e) {
-		log.debug(">>>>>>>> *** *** retryAtStateCheckingLocal() START {} [retries=>{}] [process=>{}] <<<<<<<<<<", this, retriesLeft, process.getClass().toString());
-
+		if (log.isDebugEnabled()) {
+			String processClass = process.getClass().toString();
+			String process = processClass.substring(processClass.indexOf('$')+1);
+			log.debug(">>>>>>>> *** *** retryAtStateCheckingLocal() START {} [retries=>{}] [process=>{}] <<<<<<<<<<", this, retriesLeft, process);
+		}
 		timeLastCompletion = new Date().getTime() - timeStart;
 		assert(timeLastCompletion > 0);
 
 		retriesLeft --;
 
 		if (retriesLeft < 0) {
-			log.trace(" *** Handler::retryAtStateCheckingLocal() no more retriesLeft: {} ", retriesLeft);
+			log.trace(" *** Handler::retryAtStateCheckingLocal() no more [retriesLeft=>{}]", retriesLeft);
 	
 			// we want the handlerthread to shutdown the node to avoid concurrent access to model
 			// so we post a message to handlerthread
@@ -1208,7 +1215,7 @@ final class Handler extends Command implements Runnable {
 				// we need to read local timestamp and send it back
 				
 				// set replyCode as appropriate and prepare output buffer
-				log.debug("--- PutProcess::checkLocal() ------------ Using Local --------------");
+				log.debug("--- TSPushProcess::checkLocal() ------------ Using Local --------------");
 				replyCode = Reply.RPY_SUCCESS.getCode(); 
 
 				generateRequesterReply();
@@ -1226,6 +1233,7 @@ final class Handler extends Command implements Runnable {
 				
 				if (owner == null){
 					log.debug("All nodes are offline");
+					gossip.armGossipRandom();
 					state = State.DO_NOTHING;
 					return;
 				}
@@ -1400,7 +1408,7 @@ final class Handler extends Command implements Runnable {
 
 		@Override
 		public void recvOwner() {
-			log.debug(" *** *** TSPushOfflineProcess::recvOwner() START {}", this);
+			log.debug(" *** *** TSPushOfflineProcess::recvOwner() START {}", self);
 			output.limit(output.capacity());
 
 			// read from the socket then close the connection
@@ -1408,7 +1416,7 @@ final class Handler extends Command implements Runnable {
 				socketOwner.read(output);
 
 				if (recvOwnerIsComplete()) {
-					log.debug(" +++ TSPushOfflineProcess::recvOwner() COMPLETE {}", this);
+					log.debug(" +++ TSPushOfflineProcess::recvOwner() COMPLETE {}", self);
 
 					deallocateInternalNetworkResources();
 
@@ -1428,6 +1436,9 @@ final class Handler extends Command implements Runnable {
 
 		protected boolean recvOwnerIsComplete() {
 			timeLastCompletion = new Date().getTime() - timeStart;
+			if (timeLastCompletion != -1) {
+				log.debug("  recvOwnerIsComplete() [timeLastCompletion=>{}] {}", timeLastCompletion, self);
+			}
 			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
