@@ -915,31 +915,33 @@ public class TestNode implements Runnable, JoinThread {
 			
 //			populateOneTest();
 //			populateTests();
-			populateMemoryTests();
+//			populateMemoryTests();
 			
 			//Test for routing.
-			//populatePutTests(); //For the node that has stored the Key-Values 11112
-			//populateGetTests();	//For a node that did not store the Key-Values 11111
-			//populateRemoveTests();	//For a node that did not store the Key-Valued
+//			populatePutTests(); //For the node that has stored the Key-Values 11112
+//			populateGetTests();	//For a node that did not store the Key-Values 11111
+//			populateRemoveTests();	//For a node that did not store the Key-Valued
 			//populateAnnounceDeathTest();
 			
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
 //			}
 
-			for(int i = 0; i < 15; i++){
+			for(int i = 0; i < 10; i++){
 				populateAnnounceDeathTest();
 			}		
-//
-			for(int i = 0; i< 20; i++){
-				populateDelayOneSecond();
-			}
 
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
 //			}
 
-			populateMemoryTests();
+//			for(int i = 0; i< 60; i++){
+//				populateDelayOneSecond();
+//			}
+
+//			populateMemoryTests();
+
+			populateGetTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server

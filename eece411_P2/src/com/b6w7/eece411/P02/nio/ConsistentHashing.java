@@ -443,7 +443,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			String nextOfValue = "(key,value) does not exist in circle";
 			if(circle.get(key)!= null)
 				nextOfValue = new String(circle.get(key));
-			log.trace("NextOf: {}[value->{}]"+"\nis target TargetHost: {} [value->{}]", key.toString(), nextOfValue, nextKey, nextHost);		
+			log.trace("NextOf: {}[value->{}]"+"is the target TargetHost: {} [value->{}]", key.toString(), nextOfValue, nextKey, nextHost);		
 
 		return nextKey;
 	}
@@ -680,6 +680,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 				"planetlab03.cs.washington.edu:11111",
 				"pl1.csl.utoronto.ca:11111",
 				"Furry.local:11111",
+				"dhcp-128-189-79-19.ubcsecure.wireless.ubc.ca:11111",
 				"pl2.rcc.uottawa.ca:11111"};
 				
 		System.out.println();
