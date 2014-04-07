@@ -48,7 +48,7 @@ public class TestNode implements Runnable, JoinThread {
 	private int myCount;
 
 	// set to 0 to disable timeout
-	private final int TCP_READ_TIMEOUT_MS = 4500;
+	private final int TCP_READ_TIMEOUT_MS = 5500;
 	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;
 	// reduced debug outut from normal
@@ -247,7 +247,7 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
+		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 	}
 	
 	/**
@@ -915,31 +915,33 @@ public class TestNode implements Runnable, JoinThread {
 			
 //			populateOneTest();
 //			populateTests();
-			populateMemoryTests();
+//			populateMemoryTests();
 			
 			//Test for routing.
-			//populatePutTests(); //For the node that has stored the Key-Values 11112
-			//populateGetTests();	//For a node that did not store the Key-Values 11111
-			//populateRemoveTests();	//For a node that did not store the Key-Valued
+//			populatePutTests(); //For the node that has stored the Key-Values 11112
+//			populateGetTests();	//For a node that did not store the Key-Values 11111
+//			populateRemoveTests();	//For a node that did not store the Key-Valued
 			//populateAnnounceDeathTest();
 			
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
 //			}
 
-			for(int i = 0; i < 18; i++){
+			for(int i = 0; i < 10; i++){
 				populateAnnounceDeathTest();
 			}		
-//
-			for(int i = 0; i< 30; i++){
-				populateDelayOneSecond();
-			}
+
+//			for(int i = 0; i< 10; i++){
+//				populateDelayOneSecond();
+//			}
 
 //			for(int i = 0; i< 60; i++){
 //				populateDelayOneSecond();
 //			}
 
-			populateMemoryTests();
+//			populateMemoryTests();
+
+			populateGetTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
