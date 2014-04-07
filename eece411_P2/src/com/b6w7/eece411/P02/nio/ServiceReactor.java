@@ -40,7 +40,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	// Parameters for tuning performance
 	private final boolean ENABLE_GOSSIP_OFFLINE = true; 
 	private final boolean ENABLE_GOSSIP_RANDOM  = true; 
-	private final long PERIOD_GOSSIP_OFFLINE_MS = 10000;  // bigger number slows performance with larger number of offline nodes
+	private final long PERIOD_GOSSIP_OFFLINE_MS = 10000;  // smaller number slows performance with larger number of offline nodes
 	private final long PERIOD_GOSSIP_RANDOM_MS  = 700;    // smaller number propagates offline information faster
 	private final long TIME_MAX_TIMEOUT_MS = 750;         // anything longer than 750ms will timeout at this ceiling
 	private final long TIME_MIN_TIMEOUT_MS = 350;         // any nodes faster than 350ms will timeout only after this floor

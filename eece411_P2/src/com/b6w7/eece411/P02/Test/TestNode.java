@@ -9,6 +9,7 @@ import java.net.BindException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -48,9 +49,9 @@ public class TestNode implements Runnable, JoinThread {
 	private int myCount;
 
 	// set to 0 to disable timeout
-	private final int TCP_READ_TIMEOUT_MS = 5500;
+	private final int TCP_READ_TIMEOUT_MS = 8500;
 	// extra debug output from normal
-	private static boolean IS_VERBOSE = false;
+	private static boolean IS_VERBOSE = true;
 	// reduced debug outut from normal
 	private static boolean IS_BREVITY = false;
 
@@ -909,6 +910,13 @@ public class TestNode implements Runnable, JoinThread {
 	public void run() {
 		Socket clientSocket = null;
 
+		pareUnresponsiveNodes();
+		
+		if (hosts.size() == 0) {
+			System.out.println("Nothing to do: host list empty.");
+			return;
+		}
+
 		try {
 			
 //			populatePutGetRemoveGet();
@@ -927,9 +935,9 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-			for(int i = 0; i < 10; i++){
-				populateAnnounceDeathTest();
-			}		
+//			for(int i = 0; i < 15; i++){
+//				populateAnnounceDeathTest();
+//			}		
 
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();
@@ -939,9 +947,9 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-//			populateMemoryTests();
+			populateMemoryTests();
 
-			populateGetTests();
+//			populateGetTests();
 
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
@@ -1139,6 +1147,135 @@ public class TestNode implements Runnable, JoinThread {
 		} finally {
 			announceDeath();
 		}	
+	}
+
+
+	private void pareUnresponsiveNodes() {
+		if (null == md)
+			try {
+				md = MessageDigest.getInstance("SHA-1");
+			} catch (NoSuchAlgorithmException e) {}
+
+		ByteBuffer hashedKey = null;
+		ByteBuffer value = null;
+
+		hashedKey = ByteBuffer.allocate(NodeCommands.LEN_KEY_BYTES);
+		value = ByteBuffer.allocate(NodeCommands.LEN_VALUE_BYTES);
+
+		String keyString = "aslafhlbaldvbakvklwrf";
+		String valueString = "aslafhlbaldvbakvklwrfsfgsdfgsdfgsdfg2343535643656wekjrqefkljsadfhlsafhasfsadf";
+		
+		byte[] digest = null;
+		try {
+			digest = md.digest(keyString.getBytes("UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+
+		if (digest.length > hashedKey.limit()) {
+			hashedKey.put( digest, 0, hashedKey.limit() );
+		} else {
+			hashedKey.put( digest );
+		}
+		try {
+			value.put(valueString.getBytes("UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+
+		List<TestData> pareTests = new LinkedList<TestData>();
+		// from front of list, tests are PUT followed by REMOVE
+		pareTests.add(new TestData(NodeCommands.Request.CMD_PUT.getCode(), hashedKey, value, NodeCommands.Reply.RPY_SUCCESS.getCode(), null));
+		pareTests.add(new TestData(NodeCommands.Request.CMD_REMOVE.getCode(), hashedKey, null, NodeCommands.Reply.RPY_SUCCESS.getCode(), null));
+
+		Socket clientSocket = null;
+
+		DataOutputStream outToServer = null;
+		BufferedInputStream inFromServer = null;
+
+		// Loop through all tests
+		byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
+		boolean isPass = true;
+		String failMessage = null;
+		String replyString = null;
+
+		// variables used for parsing the host from hosts
+		String[] hostSplit;
+		int port;
+		InetAddress address;
+		
+		List<String> pareList = new LinkedList<String>();
+
+		EACH_HOST: for (String host : hosts) {
+			if (IS_VERBOSE) System.out.println("Connecting to " + host);
+
+			EACH_TEST: for (TestData test : pareTests) {
+				if (IS_VERBOSE) System.out.println("Performing test " + test);
+
+				// initiate test with node by sending the test command
+				isPass = true;
+
+				try {
+					hostSplit = host.split(":", 2);
+					address = InetAddress.getByName(hostSplit[0]);
+					port = Integer.valueOf(hostSplit[1]);
+
+					clientSocket = new Socket(address, port);
+					clientSocket.setSoTimeout(TCP_READ_TIMEOUT_MS);
+					outToServer = new DataOutputStream(clientSocket.getOutputStream());
+					inFromServer = new BufferedInputStream(clientSocket.getInputStream() );
+
+					outToServer.write(test.buffer.array());
+
+					// Code converting byte to hex representation obtained from
+					// http://stackoverflow.com/questions/6120657/how-to-generate-a-unique-hash-code-for-string-input-in-android
+
+					// get reply of one byte, and pretty format into "0xNN" string where N is the reply code
+					int numBytesRead;
+
+					if (IS_VERBOSE) System.out.print("-Reading Answer.");
+					while ((numBytesRead = inFromServer.read(recvBuffer, 0, 1)) == 0 ) {}
+
+					if ( numBytesRead > NodeCommands.LEN_CMD_BYTES ) {
+						// did not receive the one byte reply that was expected.
+						failMessage = "excess bytes reply.";
+						isPass = false;
+
+					} else if ( numBytesRead == -1 ) {
+						// network error closed the socket prematurely
+						isPass = false;
+						throw new IOException();
+					}
+					replyString = "0x" + Integer.toString((recvBuffer[0] & 0xFF)+0x100, 16).substring(1);
+
+					// Check the received reply against the expected reply and determine success of test
+					if (recvBuffer[0] != test.replyCode) {
+						isPass = false;
+						failMessage = "unexpected "+ NodeCommands.getReplyEnum((byte)(recvBuffer[0] & 0xFF)).toString() + " " + test;
+					}
+
+				} catch (UnknownHostException e1) {
+					isPass = false;
+				} catch (IOException e) {
+					isPass = false;
+				}
+				
+				if (!isPass) {
+					pareList.add(host);
+					break EACH_TEST;
+				}
+			}  // EACH_TEST:
+		
+			if (pareList.contains(host)) {
+				System.out.println("Removing unresponsive host " + host);
+			} else {
+				System.out.println("Retaining responsive host " + host);
+			}
+		}
+
+		for (String paredHost : pareList) {
+			hosts.remove(paredHost);
+		}
 	}
 
 
