@@ -278,8 +278,7 @@ final class Handler extends Command implements Runnable {
 				break;
 
 			case CHECKING_LOCAL:
-				log.debug(" *** CHECKING_LOCAL should not be called in run()");
-//				throw new IllegalStateException(" ### CHECKING_LOCAL should not be called in run()");
+				log.trace(" *** CHECKING_LOCAL should not be called in run()");
 				break;
 
 			case CONNECT_OWNER:
@@ -304,8 +303,16 @@ final class Handler extends Command implements Runnable {
 				break;
 				
 			case DO_NOTHING:
-				log.debug("     Handler::run() DO_NOTHING should not be processed");
+				log.trace(" *** Handler::run() DO_NOTHING should not be processed");
 				// do nothing
+				break;
+				
+			case UPDATE_TIMEOUT:
+				log.trace(" *** Handler::run() UPDATE_TIMEOUT should not be processed");
+				// deliberate waterfall
+				break;
+				
+			default:
 				break;
 			}
 		} catch (IOException ex) { /* ... */ }
@@ -353,7 +360,6 @@ final class Handler extends Command implements Runnable {
 		
 		if (timeLastCompletion < 0) {
 			// this node needs to be shutdown
-			//			map.shutdown(owner);
 			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
 			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
 			

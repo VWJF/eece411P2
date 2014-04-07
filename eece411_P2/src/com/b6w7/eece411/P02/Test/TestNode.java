@@ -48,7 +48,7 @@ public class TestNode implements Runnable, JoinThread {
 	private int myCount;
 
 	// set to 0 to disable timeout
-	private final int TCP_READ_TIMEOUT_MS = 4500;
+	private final int TCP_READ_TIMEOUT_MS = 5500;
 	// extra debug output from normal
 	private static boolean IS_VERBOSE = false;
 	// reduced debug outut from normal
@@ -927,13 +927,13 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-			for(int i = 0; i < 2; i++){
+			for(int i = 0; i < 15; i++){
 				populateAnnounceDeathTest();
 			}		
 //
-//			for(int i = 0; i< 10; i++){
-//				populateDelayOneSecond();
-//			}
+			for(int i = 0; i< 20; i++){
+				populateDelayOneSecond();
+			}
 
 //			for(int i = 0; i< 10; i++){
 //				populateDelayOneSecond();

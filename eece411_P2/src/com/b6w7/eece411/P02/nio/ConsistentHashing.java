@@ -1,8 +1,6 @@
 package com.b6w7.eece411.P02.nio;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -17,7 +15,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -26,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
-import com.b6w7.eece411.P02.multithreaded.Command;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
 //Based from code:
@@ -41,9 +37,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	private static Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
-//	private final HashFunction hashFunction;
-//	private final int numberOfReplicas;
-	
 	/**
 	 * The structure used to maintain the view of the pairs (key,value) & participating nodes.
 	 * Should be initialized to MAX_MEMORY*(1/load_factor), to limit the number of keys & avoid resizing.
@@ -342,7 +335,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		
 		if (log.isTraceEnabled()) {
-			logtraceString.trimToSize();
 			log.trace("{}",logtraceString.toString());
 		}
 
@@ -398,10 +390,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
 		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
 
-		
 		ByteArrayWrapper tempNextKey = nextKey;
-		//ByteArrayWrapper tempNextKey = getNextNodeTo(nextKey);
-		//nextKey = tempNextKey;
 		int x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
 		while(x < 0){
 			nextKey = getNextNodeTo(nextKey);
@@ -457,21 +446,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			log.trace("NextOf: {}[value->{}]"+"\nis target TargetHost: {} [value->{}]", key.toString(), nextOfValue, nextKey, nextHost);		
 
 		return nextKey;
-
 	}
 	
-	// isThisMyIpAddress() code obtained and modified from 
-	// http://stackoverflow.com/questions/2406341/how-to-check-if-an-ip-address-is-the-local-host-on-a-multi-homed-system
-	public static boolean isThisMyIpAddress(InetSocketAddress owner, int port){
-	    // Check if the address is defined on any interface
-		try {
-			return (owner.getAddress().toString().equals(InetAddress.getLocalHost().toString())) && owner.getPort() == port;
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-			return false;
-		}
-	}
-
 	/**
 	 * Method that populates a ByteBuffer with (Key,Value) pairs so that they may be transferred to other nodes.
 	 * Used when joining/leaving the Key-Value Store.
@@ -509,12 +485,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		out.flip();	
 	}
 	
-	
-//	public void shutdown(InetSocketAddress owner){
-//		
-//	}
-
-
 	public void enable(ByteArrayWrapper key) {
 		//ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
 		String node = new String(mapOfNodes.get(key));
@@ -539,11 +509,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			return;
 		}
 		
-		//ByteArrayWrapper key = hashKey(node);
-		ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
-		String node = new String(mapOfNodes.get(shutdownKeyOf));
+		String node = new String(mapOfNodes.get(key));
 
-		int ret = listOfNodes.indexOf(shutdownKeyOf);
+		int ret = listOfNodes.indexOf(key);
 		if (-1 == ret){
 			log.error(" ### ConsistentHashing::shutdown() key index not found for node {}", node );
 			return;
@@ -556,7 +524,6 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * @return
 	 */
 	public SortedMap<ByteArrayWrapper, byte[]> getMapOfNodes() {
-		//if(IS_DEBUG) System.out.println("Size of node map @Accessor: "+mapOfNodes.size());
 		return mapOfNodes;
 	}
 	
@@ -788,31 +755,4 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			e.printStackTrace();
 		}
 	}
-
-//	class ReplicaHandling {
-//	private Queue<Handler> replicate;
-//	
-//	/**
-//	 * (Alt 1): Given a Handler that is a replica Process, add to the queue for processing.
-//	 * (Alt 2): Given a Handler, instantiate the necessary number of replica Processes and add to the queue for processing.
-//	 * @param h
-//	 */
-//	public void registerReplica(Handler h){
-//		//TODO: Where will REPLICATION_FACTOR number of Handlers be instantiated?
-//		
-//		List<Handler> reps = new ArrayList<Handler>();
-//		Collections.addAll(reps, h);
-//		
-//		if (replicate.contains(h))
-//			replicate.removeAll(reps);
-//		
-//		// by caller, then
-//		//   replicate.add(Handler);
-//		// by this method, then instantiate REPLICATION_FACTOR number of Handlers. 
-//		// for (Handler h : Collections<Handler>(of size REPLICATION_FACTOR)) 
-//		//    replicate.add()
-//		
-//		replicate.add(h);
-//	}
-//}
 }

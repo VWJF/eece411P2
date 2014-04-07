@@ -101,7 +101,6 @@ public class MembershipProtocol {
 			updateTimestampVector.set(current_node, local);
 
 			localTimestampVector = updateTimestampVector;
-			localTimestampVector.trimToSize();
 
 			log.debug(" === mergeVector() (localIndex={}) after merging: {}", local, localTimestampVector);
 	}
@@ -120,10 +119,9 @@ public class MembershipProtocol {
 		
 		localTimestampVector.set(current_node, update);
 		retInteger = new ArrayList<Integer>(localTimestampVector);
-		localTimestampVector.trimToSize();
-		log.trace(" === incrementAndGetVector() after update: {}", retInteger);
+		
+		log.debug(" === incrementAndGetVector() {}", retInteger);
 
-		retInteger.trimToSize();
 		int[] backingArray = convertListToArray(retInteger);
 		log.trace(" === incrementAndGetVector() backingArray: {}", Arrays.toString(backingArray));
 
