@@ -15,7 +15,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -34,47 +33,60 @@ import com.b6w7.eece411.P02.multithreaded.JoinThread;
 // http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf
 
 /**
- * A node in a Distributed Hash Table
+ * A node in a Distributed Hash Table.
  */
 public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	// Parameters for tuning performance
+	/**	true to periodically gossip with all offline nodes with period {@link #PERIOD_GOSSIP_OFFLINE_MS} */
 	private final boolean ENABLE_GOSSIP_OFFLINE = true; 
+	/**	true to periodically gossip with one online node with period {@link #PERIOD_GOSSIP_RANDOM_MS}*/
 	private final boolean ENABLE_GOSSIP_RANDOM  = true; 
-	private final long PERIOD_GOSSIP_OFFLINE_MS = 10000;  // smaller number slows performance with larger number of offline nodes
-	private final long PERIOD_GOSSIP_RANDOM_MS  = 700;    // smaller number propagates offline information faster
-	private final long TIME_MAX_TIMEOUT_MS = 750;         // anything longer than 750ms will timeout at this ceiling
-	private final long TIME_MIN_TIMEOUT_MS = 350;         // any nodes faster than 350ms will timeout only after this floor
+	/**	The time interval after gossiping with all offline nodes before gossiping again.
+	 * A smaller number slows performance with larger number of offline nodes */
+	private final long PERIOD_GOSSIP_OFFLINE_MS = 10000;
+	/**	The time interval after gossiping with one online node before gossiping again.
+	 * A smaller number propagates offline information faster */
+	private final long PERIOD_GOSSIP_RANDOM_MS  = 700;
+	/**	The upper bound on TCP timeout with another node.  All TCP connections will timeout at this ceiling. */
+	private final long TIME_MAX_TIMEOUT_MS = 750;
+	/**	The lower bound on TCP timeout with another node.  All TCP connections will not timeout sooner than this floor. */
+	private final long TIME_MIN_TIMEOUT_MS = 350;
 
-	private final ConsistentHashing<ByteArrayWrapper, byte[]> dht;
-
-	private final HandlerThread dbHandler = new HandlerThread();
-	private final ReplicaThread replicaHandler;
-
-	public final int serverPort;
-	private boolean keepRunning = true;
-
+	/** Logging interface. */
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
+	/** A list of out bound TCP connections to be initiated. */
 	private final ConcurrentLinkedQueue<SocketRegisterData> registrations 
 	= new ConcurrentLinkedQueue<SocketRegisterData>();
+	/** A distributed hash table.  This table stores nodes as well as key-value pairs. */
+	private final ConsistentHashing<ByteArrayWrapper, byte[]> dht;
 
-	final Selector selector;
-	final ServerSocketChannel serverSocket;
-	final InetAddress inetAddress;
-	final MembershipProtocol membership;
-	private Timer timer;
-	private JoinThread self;
+	/** The sole thread that handles interactions with the entire local model. */
+	private final HandlerThread dbHandler = new HandlerThread();
+	/** The sole thread that handles locally-saved key-value pairs by spawning replicas to remote nodes. */
+	private final ReplicaThread replicaHandler = new ReplicaThread(dbHandler);
 
-	private TimerTask taskGossipRandom;
-	private TimerTask taskGossipOffline;
+	private final ServiceReactor self = this;
+	private final Selector selector;
+	private final ServerSocketChannel serverSocket;
+	private final String localhost;
+	private final InetAddress inetAddress;
+	private final int serverPort;
+	private final MembershipProtocol membership;
+	private final int positionInRing;
+	
+	private final Timer timer = new Timer();
+	private TimerTask taskGossipRandom = null;
+	private TimerTask taskGossipOffline = null;
 
+	private boolean keepRunning = true;
 	
 	public ServiceReactor(int servPort, String[] nodesFromFile) throws IOException, NoSuchAlgorithmException {
+		// Receive list of nodes in the node ring
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
 		
-		this.dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
-		serverPort = servPort;
+		// Find localhost
 		InetAddress tempInetAddress;
 		try {
 			tempInetAddress = InetAddress.getLocalHost();
@@ -83,57 +95,41 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 			tempInetAddress = InetAddress.getByName("localhost");
 		}
 		inetAddress = tempInetAddress;
-		
+		serverPort = servPort;
+
+		// Configure DHT and Membership
+		dht = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
+		localhost = inetAddress.getHostName();
+		positionInRing = dht.getNodePosition(localhost+":"+serverPort);
+		dht.setLocalNode(localhost+":"+serverPort);
+		membership = new MembershipProtocol(positionInRing, dht.getSizeAllNodes(), TIME_MAX_TIMEOUT_MS, TIME_MIN_TIMEOUT_MS);
+		dht.setMembership(membership);
+
+		// start the server socket in non-blocking mode and NIO selector and 
 		selector = Selector.open();
 		serverSocket = ServerSocketChannel.open();
-
-		log.info("Java version is {}", System.getProperty("java.version"));
-		
-//		if (System.getProperty("java.version").startsWith("1.7"))
-			//serverSocket.setOption(StandardSocketOptions.SO_REUSEADDR, true);
 		serverSocket.socket().setReuseAddress(true);
-		
-		String localhost = InetAddress.getLocalHost().getHostName();//.getCanonicalHostName();
-		int position = dht.getNodePosition(localhost+":"+serverPort);
-		dht.setLocalNode(localhost+":"+serverPort);
-
-		membership = new MembershipProtocol(position, dht.getSizeAllNodes(), TIME_MAX_TIMEOUT_MS, TIME_MIN_TIMEOUT_MS);
-
-		dht.setMembership(membership);
-		
-		log.info("Localhost is {}, position in ring is {}, total nodes is {}", localhost, position, dht.getSizeAllNodes());
-		if (position <0)
-			log.warn(" &&& Handler() position is negative {}!", position);
-		
-		replicaHandler = new ReplicaThread(dbHandler);
-
 		serverSocket.socket().bind(new InetSocketAddress(serverPort));
 		serverSocket.configureBlocking(false);
 		SelectionKey sk = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 		sk.attach(new Acceptor(this));
-
-		self = this;
 	}
-
-	// code for ExecutorService obtained and modified from 
-	// http://www.javacodegeeks.com/2013/01/java-thread-pool-example-using-executors-and-threadpoolexecutor.html
 
 	@Override
 	public void run() {
+		// Show some status information
+		log.info("Java version is {}", System.getProperty("java.version"));
+		log.info("Localhost is {}, position in ring is {}, total nodes is {}", localhost, positionInRing, dht.getSizeAllNodes());
+		if (positionInRing < 0)
+			log.warn("This node's position in the node ring is negative {}!", positionInRing);
 		log.info("Server listening on port {} with address {}", serverPort, inetAddress);
 
-		timer = new Timer();
-		
-		if (ENABLE_GOSSIP_OFFLINE)
-			armGossipOffline(0);
-		
-		if (ENABLE_GOSSIP_RANDOM)
-			armGossipRandom(0);
+		// schedule an immediate gossiping
+		if (ENABLE_GOSSIP_OFFLINE) armGossipOffline(0);
+		if (ENABLE_GOSSIP_RANDOM) armGossipRandom(0);
 
-		// start handler thread
+		// start handler thread and replica thread
 		dbHandler.start();
-
-		// start replica thread
 		replicaHandler.start();
 
 		while (keepRunning) {
@@ -146,7 +142,6 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 				Set<SelectionKey> keySet = selector.selectedKeys();
 				for (SelectionKey key : keySet)
 					dispatch(key);
-				
 
 				for (SelectionKey key: selector.keys()) {
 					if (key.isValid() && key.interestOps() == SelectionKey.OP_READ) {
