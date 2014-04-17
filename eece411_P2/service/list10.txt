@@ -1,0 +1,10 @@
+planetlab2.cs.ubc.ca:11111
+planetlab03.cs.washington.edu:11111
+pl1.rcc.uottawa.ca:11111
+planetlab-2.cs.colostate.edu:11111
+pl2.cs.montana.edu:11111
+ricepl-1.cs.rice.edu:11111
+planetlab3.wail.wisc.edu:11111
+planetlab4.wail.wisc.edu:11111
+planetlab1.csee.usf.edu:11111
+planetlab3.csee.usf.edu:11111

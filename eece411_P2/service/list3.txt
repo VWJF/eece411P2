@@ -1,0 +1,3 @@
+planetlab2.cs.ubc.ca:11111
+cs-planetlab4.cs.surrey.sfu.ca:11111
+planetlab03.cs.washington.edu:11111
