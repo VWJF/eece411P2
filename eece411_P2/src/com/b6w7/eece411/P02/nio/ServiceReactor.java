@@ -12,6 +12,8 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -85,6 +87,16 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		// Receive list of nodes in the node ring
 		if (nodesFromFile != null) 
 			nodes = nodesFromFile;
+
+		StringBuilder sb = new StringBuilder();
+		int i = 0;
+		for (String n : nodes){
+			if (i++ % 5 == 0)
+				sb.append("\n");
+			sb.append(n+"\t");
+		}
+		
+		log.info("List of nodes (size= {}): {}", nodes.length, sb.toString());
 		
 		// Find localhost
 		InetAddress tempInetAddress;
@@ -296,7 +308,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		if (args.length == 2) {
 			String filename = args[1];
 			try {
-				participatingNodes = populateNodeList2(filename);
+				participatingNodes = populateNodeList(filename);
+				//participatingNodes = populateNodeList2(filename);
 
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
