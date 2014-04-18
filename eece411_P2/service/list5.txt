@@ -1,0 +1,5 @@
+planetlab2.cs.ubc.ca
+cs-planetlab4.cs.surrey.sfu.ca
+planetlab03.cs.washington.edu
+pl1.csl.utoronto.ca
+pl2.rcc.uottawa.ca
