@@ -54,6 +54,12 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	private final List<ByteArrayWrapper> listOfNodes;
 	
 	/**
+	 * Maintains the current list of nodes that host replicas for primary key-values
+	 * that belong to localhost
+	 */
+	private final LinkedList<InetSocketAddress> localReplicaList = new LinkedList<InetSocketAddress>();
+	
+	/**
 	 * The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.
 	 */
 	private PriorityQueue<ByteArrayWrapper> orderedKeys;
@@ -237,6 +243,75 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 		log.trace("Finding InetSocketAddress.");
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
+	}
+
+	/**
+	 * return a list of nodes that host replicas for primary key-values of localhost
+	 * @return
+	 */
+	public List<InetSocketAddress> getLocalReplicaList() {
+		List<InetSocketAddress> replicas = updateLocalReplicaList();
+		// for now just pass through, but we might want to be saving it here, and just before
+		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
+		// keys is in order.
+		return new LinkedList<InetSocketAddress>(replicas);
+	}
+
+	private List<InetSocketAddress> updateLocalReplicaList() {
+		List<InetSocketAddress> replicas = new LinkedList<InetSocketAddress>();
+		ByteArrayWrapper nextNode;
+		ByteArrayWrapper startingNode = getLocalNode();
+		
+		InetSocketAddress startingInet = getSocketNodeResponsible(startingNode);
+		int numReplicasLeftToAdd = num_replicas;
+		InetSocketAddress nextInet = null;
+		boolean hasLooped = false;
+		
+		// false excludes self from the list
+		SortedMap<ByteArrayWrapper, byte[]> sortedMap = mapOfNodes.tailMap(startingNode, false);
+		
+		// If we have an empty list, then we are at end of circle, 
+		// so start at beginning of circle
+		if (sortedMap.size() == 0)  {
+			sortedMap = mapOfNodes;
+			hasLooped = true;
+		}
+		
+		Iterator<ByteArrayWrapper> iter = sortedMap.keySet().iterator();
+		nextNode = iter.next();
+		nextInet = getSocketNodeResponsible(nextNode);
+		
+		// we assume that localnode is in the mapOfNodes,
+		// so always at least one element in mapOfNodes
+		FIND_REPLICAS: while (!nextInet.equals(startingInet) && numReplicasLeftToAdd > 0) {
+			
+//			if (membership.getTimeout(nextInet) > 0) {
+//				// This node is online, so we can use it
+//				// This node is online, so we add to replicaList
+//				replicas.add(nextInet);
+//				numReplicasLeftToAdd --;
+//			}
+
+			// No need to check for online because getSocketNodeResponsible does that already
+			replicas.add(nextInet);
+			numReplicasLeftToAdd --;
+			
+			// check to see if we reached end of circle, if so, start
+			// at beginning
+			if (!iter.hasNext()) {
+				if (!hasLooped) {
+					hasLooped = true;
+					iter = mapOfNodes.keySet().iterator();
+				} else {
+					break FIND_REPLICAS;
+				}
+			}
+
+			nextNode = iter.next();
+			nextInet = getSocketNodeResponsible(nextNode);
+		}
+		
+		return replicas;
 	}
 	
 	/**

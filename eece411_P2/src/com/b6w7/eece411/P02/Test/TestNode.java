@@ -923,7 +923,7 @@ public class TestNode implements Runnable, JoinThread {
 			
 //			populateOneTest();
 //			populateTests();
-//			populateMemoryTests();
+			populateMemoryTests();
 
 //			populateRemoveTests();
 			//Test for routing.
@@ -948,7 +948,7 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-//			populateMemoryTests();
+			populateMemoryTests();
 
 //			populateGetTests();
 

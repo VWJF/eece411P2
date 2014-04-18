@@ -41,12 +41,19 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	private final boolean ENABLE_GOSSIP_OFFLINE = true; 
 	/**	true to periodically gossip with one online node with period {@link #PERIOD_GOSSIP_RANDOM_MS}*/
 	private final boolean ENABLE_GOSSIP_RANDOM  = true; 
+	/**	true to periodically gossip with one replica node with period {@link #PERIOD_GOSSIP_REPLICA_MS}*/
+	private final boolean ENABLE_GOSSIP_REPLICA = true; 
+
 	/**	The time interval after gossiping with all offline nodes before gossiping again.
 	 * A smaller number slows performance with larger number of offline nodes */
 	private final long PERIOD_GOSSIP_OFFLINE_MS = 10000;
 	/**	The time interval after gossiping with one online node before gossiping again.
 	 * A smaller number propagates offline information faster */
-	private final long PERIOD_GOSSIP_RANDOM_MS  = 700;
+	private final long PERIOD_GOSSIP_RANDOM_MS  = 3500;
+	/**	The time interval after gossiping with one online node before gossiping again.
+	 * A smaller number propagates offline information faster */
+	private final long PERIOD_GOSSIP_REPLICA_MS  = 700;
+
 	/**	The upper bound on TCP timeout with another node.  All TCP connections will timeout at this ceiling. */
 	private final long TIME_MAX_TIMEOUT_MS = 750;
 	/**	The lower bound on TCP timeout with another node.  All TCP connections will not timeout sooner than this floor. */
@@ -78,6 +85,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	private final Timer timer = new Timer();
 	private TimerTask taskGossipRandom = null;
 	private TimerTask taskGossipOffline = null;
+	private TimerTask taskGossipReplica = null;
 
 	private boolean keepRunning = true;
 	
@@ -136,7 +144,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 
 		// schedule an immediate gossiping
 		if (ENABLE_GOSSIP_OFFLINE) armGossipOffline(0);
-		if (ENABLE_GOSSIP_RANDOM) armGossipRandom(0);
+		if (ENABLE_GOSSIP_RANDOM)  armGossipOnline(0);
+		if (ENABLE_GOSSIP_REPLICA) armGossipReplica(0);
 
 		// start handler thread and replica thread
 		dbHandler.start();
@@ -241,6 +250,31 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		if (r != null) 
 			r.run();
 	} 
+	
+	@Override
+	public void armGossipReplica() {
+		armGossipReplica(PERIOD_GOSSIP_REPLICA_MS);
+	}
+
+	private void armGossipReplica(long delay) {
+		
+		taskGossipReplica = new TimerTask() {
+
+			@Override
+			public void run() {
+				try {
+					log.trace("ServiceReactor::Timer::run() Spawning new Handler for TSPushReplicaProcess");
+					Command cmd = new Handler(selector, dbHandler, dht, registrations, serverPort, membership, (JoinThread)self, (Gossip)self, 1);
+					dbHandler.post(cmd);
+				} catch (IOException e) {
+					log.debug(e.getMessage());
+				}
+
+			}
+		};
+		
+		timer.schedule(taskGossipReplica, delay );
+	}
 
 	@Override
 	public void armGossipOffline() {
@@ -268,11 +302,11 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	}
 
 	@Override
-	public void armGossipRandom() {
-		armGossipRandom(PERIOD_GOSSIP_RANDOM_MS);
+	public void armGossipOnline() {
+		armGossipOnline(PERIOD_GOSSIP_RANDOM_MS);
 	}
 	
-	private void armGossipRandom(long delay) {
+	private void armGossipOnline(long delay) {
 		taskGossipRandom = new TimerTask() {
 
 			@Override
@@ -372,31 +406,6 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 			}
 		}, 0);
 	}
-	
-	// Ishan: Not sure if you want this still, so I kept it here in comments
-//	private void sampleDHT(){
-//		try{
-//			log.debug("Getting nodes...");
-//			
-//			Map<ByteArrayWrapper, byte[]> mn = this.dht.getCircle();
-//			Iterator<Entry<ByteArrayWrapper, byte[]>> is = mn.entrySet().iterator();
-//			
-//			//Testing: Retrieval of nodes in the map.
-//			log.debug("Got nodes... {}", mn.size());
-//			synchronized(mn){
-//				while(is.hasNext()){
-//					Entry<ByteArrayWrapper, byte[]> e = is.next();
-//					log.debug("(Key,Value): {} {}", e.getKey(), new String(e.getValue()) );
-//				}
-//			}
-//		}catch(ConcurrentModificationException cme){
-//			// synchronized(){......} should occur before using the iterator for ConsistentHashing.java
-//			cme.printStackTrace();
-//		}
-//		catch(Exception e){
-//			e.printStackTrace();
-//		}
-//	}
 	
 	/**
 	 * Creates a String[] for each line in the given file.
