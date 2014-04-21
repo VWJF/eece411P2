@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -402,5 +403,63 @@ public class MembershipProtocol {
 		}
 		
 		return isEnabled;
+	}
+	
+	/**
+	 * Helper Methods used to test MemebershipProtocol & ConsistentHashing.
+	 * Simulates increasing timestamps, shutdown.
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 */
+	
+	/**
+	 * Simulated increasing timestamp entries. 
+	 * Does not differentiate between positive/negative entry.
+	 * 
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 */
+	public ArrayList<Integer> incrementAnEntry(){
+		Random rand = new Random();
+		int index = rand.nextInt(total_nodes);
+		Integer oldTime = localTimestampVector.get(index);
+		oldTime++;
+		localTimestampVector.set(index, oldTime);
+		return localTimestampVector;
+	}
+	/**
+	 * Simulates receiving shutdown command.
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
+	 */
+	public Integer shutdown(){
+		Random rand = new Random();
+		Integer index = rand.nextInt(total_nodes);
+		if(index == current_node){
+			index = null;
+		}
+		
+		boolean success = shutdown(index);
+		System.out.println("Message from Memebership.shutdown(Integer): "+success);
+		return index;
+	}
+	
+	/**
+	 * Simulates receiving enable command.
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
+	 */
+	public Integer enable(){
+		Random rand = new Random();
+		Integer index = rand.nextInt(total_nodes);
+		if(index == current_node){
+			index = null;
+		}
+		
+		boolean success = enable(index);
+		System.out.println("Message from Memebership.enable(int): "+success);
+		return index;
 	}
 }
