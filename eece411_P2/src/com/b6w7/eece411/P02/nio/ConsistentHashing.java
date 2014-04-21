@@ -14,6 +14,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedMap;
@@ -26,7 +28,8 @@ import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
 
-public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
+public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
+									Observer{
 
 	public static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 	public static boolean IS_VERBOSE = true; //true: System.out enabled, false: disabled
@@ -240,7 +243,11 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @return List<InetSocketAddress> TODO
 	 */
 	public List<InetSocketAddress> getLocalReplicaList() {
+		List<InetSocketAddress> oldReplicas = new LinkedList<InetSocketAddress>(this.localReplicaList);
+
 		List<InetSocketAddress> replicas = updateLocalReplicaList();
+		
+		
 		// TODO
 		// for now just pass through, but we might want to be saving it here, and just before
 		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
@@ -471,7 +478,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		// nextKey above may obtain the value of requestedKey,
 		// instead use nextKey = getNextNodeTo(nextKey);
 		
-		//nextKey = getNextNodeTo(nextKey);
+		nextKey = getNextNodeTo(nextKey);
 		
 		ByteArrayWrapper tempNextKey = nextKey;
 		int time = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
@@ -835,6 +842,27 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		return circle.values();
 	}
 	
+	/**
+	 * State of MembershipProtocol has changed. 
+	 */
+	@Override
+	public void update(Observable o, Object arg) {
+		// TODO Auto-generated method stub
+		
+		//TODO Change log level or Remove logging. Added for initial debugging.
+		ArrayList<Integer> updatedArg = null;
+		try{
+			updatedArg = (ArrayList<Integer>) arg;
+		}catch(ClassCastException e){
+			String exception = e.getLocalizedMessage();
+			log.error("ConsistentHashing Detecting change from MembershipProtocol. Casting Exception. {}", exception);
+		} catch( Exception e ){
+			String exception = e.getLocalizedMessage();
+			log.error("ConsistentHashing Detecting change from MembershipProtocol. Exception {}", exception);
+		}
+		log.info("ConsistentHashing Detected change from MembershipProtocol. {}", updatedArg);
+		
+	}
 	
 	public static void main(String[] args) {
 		//Testing: ConsistentHashing class.
@@ -862,6 +890,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			 int position = ch.getNodePosition(localnode);
 			 membership = new MembershipProtocol(position, nodes.length, 0, 0);
 			 ch.setMembership(membership);
+			 
+			 membership.addObserver(ch);
 			 
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();
@@ -901,6 +931,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 				System.out.println(" === timestamp vector after  "+ membership.incrementAnEntry() );
 				
 				//Shutdown
+				//Test1:
 				int num_shutdown = nodes.length-2;
 				List<Integer> shutdownindeces = new ArrayList<Integer>(num_shutdown);
 				System.out.println();
@@ -917,15 +948,18 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 					shutdownindeces.add(index);
 					j++;
 				}
-				// Shutdown all nodes in order and leave 2 neighboring nodes active.
-				// Re-enable 1 neighboring node at a later time.
-				for(j = 0; j < nodes.length; j++){
-					membership.shutdown(j);
+				
+				//Test2a:
+				// Shutdown all nodes in some sequetinal order .
+				for(j = 0; j <= nodes.length; j++){
+					membership.shutdown( j );
 				}
-				membership.enable(2);
-				shutdownindeces.add(1);
+				// Reenable nodes
+				//membership.enable(2);
+				// Nodes to be reenabled at a later time. Simulates "detected offline"
+				shutdownindeces.add(2);
 
-				// Testing: given a provided key, locate the succersot("next") key.
+				// Testing: given a provided key, locate the successor("next") key.
 			String looking_for_next_of ;//= cs-planetlab4.cs.surrey.sfu.ca:11111";
 										//"pl1.csl.utoronto.ca";
 										//"planetlab03.cs.washington.edu";
@@ -935,9 +969,19 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			System.out.println("Locating Nodes in Key-Value store.");
 						
 			showAllNodes(ch, map);
-			
+				
+				//Test2b:
+				System.out.println("Simulating shutdown of nodes.");
+				for(j = 3; j < 5; j++){
+					membership.shutdown(j);
+				}
+				System.out.println("=========================");
+
+			showAllNodes(ch, map);
+
+
 				//Enable node online
-				int num_enabled = 1;
+				int num_enabled = 0;
 				System.out.println();
 				System.out.println("Simulating enable of ("+num_enabled+" or "+shutdownindeces.size()+") nodes.");
 				int k = 0;
@@ -947,7 +991,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 					System.out.println("The index enabled was previously offline: "+success);
 					k++;
 				}
-				System.out.println("Total enabled: "+k);
+		//		System.out.println("Total enabled: "+k);
 
 			
 			if(num_enabled != 0){
@@ -1000,4 +1044,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			System.out.println();
 		}
 	}
+
+	
 }

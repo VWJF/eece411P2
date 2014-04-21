@@ -6,25 +6,26 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
+import java.util.Observable;
 import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
+public class MembershipProtocol extends Observable{
 
-public class MembershipProtocol {
-
-	/** index of local node(service) participating in the MemebershipProtocol */
+	/** index of local node(service) participating in the MemebershipProtocol. */
 	public final int current_node;
 	
-	/** number of total nodes participating in the MemebershipProtocol */
+	/** number of total nodes participating in the MemebershipProtocol. */
 	private final int total_nodes;
-	/** Internal representation of timestamp vector*/
+	/** Internal representation of timestamp vector. */
 	private ArrayList<Integer> localTimestampVector;
+
+	/** Internal representation of {@code localTimestampVector} to be used to detect changes to the membership protocol. */
+	private ArrayList<Integer> oldTimestampVector;
+
 	/** TODO: Write adequate description.*/
 	private Map<InetSocketAddress, Long> timeTCPTimeout = new HashMap<InetSocketAddress, Long>((int)(this.total_nodes / 0.7));
 	/** Fraction in the range of (0, 1) used in multiplication with the current running average */
@@ -43,14 +44,17 @@ public class MembershipProtocol {
 		this.current_node = current_node;
 		this.total_nodes = total_nodes;
 		this.localTimestampVector = new ArrayList<Integer>(this.total_nodes);
+		this.oldTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		this.timeMaxTimeout = timeMaxTimeout;
 		this.timeMinTimeout = timeMinTimeout;
 		
 		for (int i=0; i<this.total_nodes; i++) {
 			localTimestampVector.add(1);
+			oldTimestampVector.add(1);
 		}
 		
 		localTimestampVector.set(current_node, 2);
+		oldTimestampVector.set(current_node, 2);
 	}
 	
 	/**
@@ -69,7 +73,7 @@ public class MembershipProtocol {
 			
 			int local = localTimestampVector.get(current_node);
 			log.debug(" === mergeVector() (localIndex={}) received vect: {}", local, Arrays.toString(receivedVector));
-			log.debug(" === mergeVector() (localIndex={}) local vect   : {}", local, Arrays.toString(convertListToArray(localTimestampVector)));
+			log.debug(" === mergeVector() (localIndex={}) local vect   : {}", local, localTimestampVector );
 
 			
 			int i, localView, remoteView;
@@ -101,6 +105,8 @@ public class MembershipProtocol {
 			localTimestampVector = updateTimestampVector;
 
 			log.debug(" === mergeVector() (localIndex={}) after merging: {}", local, localTimestampVector);
+			
+			notifyViewers();
 	}
 
 	/**
@@ -116,15 +122,16 @@ public class MembershipProtocol {
 			update++;
 		
 		localTimestampVector.set(current_node, update);
+		//FIXME: Potentially retInteger not needed.
 		retInteger = new ArrayList<Integer>(localTimestampVector);
 		
 		log.debug(" === incrementAndGetVector() {}", retInteger);
 
 		int[] backingArray = convertListToArray(retInteger);
-		log.trace(" === incrementAndGetVector() backingArray: {}", Arrays.toString(backingArray));
+		log.trace(" === incrementAndGetVector() backingArray: {}", retInteger);
 
-		if(localTimestampVector.size() != backingArray.length)
-			log.warn(" ### MembershipProtocol::incrementAndGetVector() (localTimestampVector.size(), retrunedVector.length) = ({},{})", localTimestampVector.size(), backingArray.length);
+		if(localTimestampVector.size() != retInteger.size())
+			log.warn(" ### MembershipProtocol::incrementAndGetVector() (localTimestampVector.size(), retrunedVector.length) = ({},{})", localTimestampVector.size(), retInteger.size());
 		
 		return backingArray;
 	}
@@ -250,6 +257,8 @@ public class MembershipProtocol {
 					localTimestampVector.set(updateIndex.intValue(), newTime);
 					isShutdown = true;
 					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}] [vect:->{}]", time, newTime, updateIndex, localTimestampVector);
+					
+					notifyViewers();
 				}
 			}
 			else {
@@ -263,7 +272,7 @@ public class MembershipProtocol {
 			shutdownIndex = -1;
 		else
 			shutdownIndex = updateIndex.intValue();
-		log.debug(" === shutdownindex {}, {} {}", shutdownIndex, isShutdown, Arrays.toString(convertListToArray(localTimestampVector)));
+		log.debug(" === shutdownindex {}, {} {}", shutdownIndex, isShutdown, localTimestampVector );
 		
 		return isShutdown;
 	}
@@ -397,6 +406,8 @@ public class MembershipProtocol {
 				isEnabled = true;
 
 				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}] [vect->{}]", time, newTime, index, localTimestampVector);
+				
+				notifyViewers();			
 			}
 		} else { 
 			isEnabled = false;
@@ -404,6 +415,59 @@ public class MembershipProtocol {
 		}
 		
 		return isEnabled;
+	}
+	
+	/**
+	 * Detects differences in the {@code oldTimestampVector} with up-to-date {@code localTimestampVector}.
+	 * Detects differences among all entries except the one representing current_node.
+	 * @return true if differences were found, false if not.
+	 */
+	private boolean isChanged(){
+		ArrayList<Integer> oldVector = new ArrayList<Integer>(oldTimestampVector);
+		ArrayList<Integer> newLocal = new ArrayList<Integer>(localTimestampVector);
+
+		log.debug("Membership Detecting changes: oldtimestamp: {} ", oldTimestampVector);
+		log.debug("Membership Detecting changes: localtimestamp: {} ", localTimestampVector);
+
+
+		boolean differencesFound = false;
+
+		//Detect all changes except those to the current_node;
+		int oldVal = oldVector.remove(current_node);
+		int current_val = newLocal.remove(current_node);
+
+		//boolean differencesFound = oldVector.removeAll(newLocal);
+				
+		int i = 0;
+		while( i < oldVector.size() ){
+			if( oldVector.get(i) != newLocal.get(i))
+				differencesFound = true;
+			i++;
+		}
+		
+		oldVector.add(current_node, current_val);
+		newLocal.add(current_node, current_val);
+		
+		if(differencesFound){
+			oldTimestampVector = newLocal;
+		}
+		
+		log.info("MemebershipProtocol Determined changes to report to Observers. {} ", differencesFound);
+		
+		return differencesFound;
+	}
+	
+	/**
+	 * Method to notify Observers of this class of changes.
+	 * @param arg
+	 */
+	public void notifyViewers(){
+		//TODO:
+		if( isChanged() ){
+			log.info("MemebershipProtocol is notifying viewers.");
+			setChanged();
+			notifyObservers(localTimestampVector);
+		}
 	}
 	
 	/**
@@ -434,7 +498,7 @@ public class MembershipProtocol {
 	 * Change scope to public when testing.
 	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
 	 */
-	public Integer shutdown(){
+	public Integer shutdownAnyEntry(){
 		Random rand = new Random();
 		Integer index = rand.nextInt(total_nodes);
 		if(index == current_node){
@@ -452,7 +516,7 @@ public class MembershipProtocol {
 	 * Change scope to public when testing.
 	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
 	 */
-	public Integer enable(){
+	public Integer enableAnyEntry(){
 		Random rand = new Random();
 		Integer index = rand.nextInt(total_nodes);
 		if(index == current_node){
