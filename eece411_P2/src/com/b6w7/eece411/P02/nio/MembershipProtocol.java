@@ -452,7 +452,7 @@ public class MembershipProtocol extends Observable{
 			oldTimestampVector = newLocal;
 		}
 		
-		log.info("MemebershipProtocol Determined changes to report to Observers. {} ", differencesFound);
+		log.debug("MemebershipProtocol Determined changes to report to Observers. {} ", differencesFound);
 		
 		return differencesFound;
 	}
@@ -464,7 +464,7 @@ public class MembershipProtocol extends Observable{
 	public void notifyViewers(){
 		//TODO:
 		if( isChanged() ){
-			log.info("MemebershipProtocol is notifying viewers.");
+			log.debug("MemebershipProtocol is notifying viewers.");
 			setChanged();
 			notifyObservers(localTimestampVector);
 		}
@@ -472,7 +472,7 @@ public class MembershipProtocol extends Observable{
 	
 	/**
 	 * Helper Methods used to test MemebershipProtocol & ConsistentHashing.
-	 * Simulates increasing timestamps, shutdown.
+ß	 * Simulates increasing timestamps, shutdown.
 	 * Change scope to private when deploying
 	 * Change scope to public when testing.
 	 */

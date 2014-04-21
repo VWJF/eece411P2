@@ -4,6 +4,8 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.AbstractMap;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -50,13 +52,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	private final List<ByteArrayWrapper> listOfNodes;
 	
 	/*** Maintains the current list of nodes that host replicas for primary key-values that belong to localhost*/
-	private final LinkedList<InetSocketAddress> localReplicaList = new LinkedList<InetSocketAddress>();
-	
+	private ArrayList<InetSocketAddress> localReplicaList = new ArrayList<InetSocketAddress>();
+	private LinkedList<InetSocketAddress> oldReplicaList = new LinkedList<InetSocketAddress>();
+
 	/**The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.*/
-	private PriorityQueue<ByteArrayWrapper> orderedKeys;
+	private TreeMap<ByteArrayWrapper, byte[]> orderedKeys;
 	
 	/**Variable used to maintain identity of the key for the localhost(local ServiceReactor).
-	 * FIXME: Ideally, a final variable.
+	 * FIXME?: Ideally, a final variable.
 	 */
 	private ByteArrayWrapper localNode;
 
@@ -106,8 +109,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 		// circle has been initialized with the pairs of (Node, hostname).
 		// Create a new view containing only the existing nodes.
-		orderedKeys = new PriorityQueue<ByteArrayWrapper>((int) (40000*1.2)); //Initialized to large capacity to avoid excessive resizing.
-		orderedKeys.addAll(circle.keySet());
+		orderedKeys = new TreeMap<ByteArrayWrapper, byte[]>(circle); //Initialized to large capacity to avoid excessive resizing.
+		//orderedKeys.addAll(circle.keySet());
 	}
 	
 	public void setMembership(MembershipProtocol membership) {
@@ -115,7 +118,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	}
 	
 	public void setLocalNode(String key) {
-		localNode = getOwner(hashKey(key));	
+		localNode = getOwner(hashKey(key));
+		//getLocalReplicaList();
 		log.debug("setLocalNode(): {} {}",key, localNode);		
 	}
 	
@@ -170,7 +174,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		// Additional Checking unnecessary since the thread that
 		// uses the Map should impose additional restrictions.
 		//if(circle.size() == Command.MAX_MEMORY && circle.containsKey(key)){
-		orderedKeys.add( key );
+		orderedKeys.put(key, value);//add( key );
 		return circle.put(key, value);
 	}
 
@@ -243,20 +247,26 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * @return List<InetSocketAddress> TODO
 	 */
 	public List<InetSocketAddress> getLocalReplicaList() {
-		List<InetSocketAddress> oldReplicas = new LinkedList<InetSocketAddress>(this.localReplicaList);
+		ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(this.localReplicaList);
 
-		List<InetSocketAddress> replicas = updateLocalReplicaList();
+		ArrayList<InetSocketAddress> newReplicas = updateLocalReplicaList();
 		
+		//boolean oldValue = oldReplicas.remove(getSocketAddress(localNode));
+		//boolean newValue = newReplicas.remove(getSocketAddress(localNode));
+		//boolean isReplicaChanged = oldReplicas.removeAll(newReplicas);
 		
+		//newReplicas.add(getSocketAddress(localNode));
 		// TODO
 		// for now just pass through, but we might want to be saving it here, and just before
 		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
 		// keys is in order.
-		return new LinkedList<InetSocketAddress>(replicas);
+		
+		this.localReplicaList = new ArrayList<InetSocketAddress>(newReplicas);
+		return new ArrayList<InetSocketAddress>(newReplicas);
 	}
 
-	private List<InetSocketAddress> updateLocalReplicaList() {
-		List<InetSocketAddress> replicas = new LinkedList<InetSocketAddress>();
+	private ArrayList<InetSocketAddress> updateLocalReplicaList() {
+		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>();
 		ByteArrayWrapper nextNode;
 		ByteArrayWrapper startingNode = getLocalNode();
 		
@@ -292,6 +302,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 			// No need to check for online because getSocketNodeResponsible does that already
 			replicas.add(nextInet);
+			//this.localReplicaListMap.add(nextInet);
 			numReplicasLeftToAdd --;
 			
 			// check to see if we reached end of circle, if so, start
@@ -336,11 +347,11 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	/**
 	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors) of the requestedKey
 	 * @param requestedKey
-	 * @param removeSelf TODO
-	 * @return
+	 * @param removeSelf
+	 * @return TODO Check "TODO" near end of method.
 	 */
 	public List<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
-		List<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
+		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
 		InetSocketAddress sockAddress = null;
 		ByteArrayWrapper owner = getOwner(requestedKey);
 
@@ -424,7 +435,11 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		
 		if(removeSelf) replicas.remove(getSocketAddress(localNode));
 		
-		return replicas;
+		//FIXME: TODO: Setting the memeber variable was used for testing purposes, 
+		// unsure it is needed.
+		this.localReplicaList = replicas;
+		
+		return new LinkedList<InetSocketAddress>(replicas);
 	}
 	
 	/**
@@ -478,7 +493,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		// nextKey above may obtain the value of requestedKey,
 		// instead use nextKey = getNextNodeTo(nextKey);
 		
-		nextKey = getNextNodeTo(nextKey);
+		//nextKey = getNextNodeTo(nextKey);
 		
 		ByteArrayWrapper tempNextKey = nextKey;
 		int time = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
@@ -552,38 +567,23 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	/**
 	 * Method that populates a ByteBuffer with (Key,Value) pairs so that they may be transferred to other nodes.
 	 * Used when joining/leaving the Key-Value Store.
+	 * @param fromKey TODO
 	 * @param out: (ByteBuffer used to send the Key-Value pairs).
 	 * @param keyLimit: (ByteArrayWrapper that will determine the keys to be transferred [inclusive limit].
 	 */
-	public void transferKeys(ByteBuffer out, ByteArrayWrapper keyLimit){
+	public void transferKeys(ByteBuffer out, ByteArrayWrapper fromKey, ByteArrayWrapper toKey){
 	/**TODO: Untested */
-		boolean transfersComplete = false;
-		int compare = 0;//	int i = 0;
-		byte iBytes = 0; int index = out.position();
-		
-		//byte[] iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
-		out.put(iBytes); 
 
-		ByteArrayWrapper peekKey = orderedKeys.peek();
-		while(peekKey != null && (compare = keyLimit.compareTo(peekKey)) <=0){
-			if(out.remaining() >= NodeCommands.LEN_KEY_BYTES + NodeCommands.LEN_VALUE_BYTES ){
-				peekKey = orderedKeys.poll();
-				out.put(peekKey.keyBuffer);
-				out.put(mapOfNodes.get(peekKey));
-				iBytes++;
-			}
-			else{
-				transfersComplete = false;
-				break;
-			}
-			peekKey = orderedKeys.peek();
+		SortedMap<ByteArrayWrapper, byte[]> subMap = orderedKeys.subMap(fromKey, toKey);
+		while(subMap.isEmpty() == false){
+			ByteArrayWrapper firstKey = subMap.firstKey();
+			byte[] firstValue = circle.get(firstKey);
+			subMap.remove(firstKey);
+			circle.remove(firstKey);
+			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(firstKey, firstValue);
+			////TODO: To be sent to other nodes through TS_PUT_PROCESS();
+			//notifyViewers(){setChanged(); notifyObservers(entry)};
 		}
-		
-		transfersComplete = (peekKey == null || compare >=0);
-		
-		//iBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(i).array();
-		out.put(index, iBytes);
-		out.flip();	
 	}
 	
 	/**
@@ -849,19 +849,45 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	public void update(Observable o, Object arg) {
 		// TODO Auto-generated method stub
 		
-		//TODO Change log level or Remove logging. Added for initial debugging.
+		//TODO Correct log levels or Remove logging. Added for initial debugging purposes.
 		ArrayList<Integer> updatedArg = null;
 		try{
 			updatedArg = (ArrayList<Integer>) arg;
 		}catch(ClassCastException e){
 			String exception = e.getLocalizedMessage();
-			log.error("ConsistentHashing Detecting change from MembershipProtocol. Casting Exception. {}", exception);
+			log.error("ConsistentHashing update() from MembershipProtocol. Casting Exception. {}", exception);
 		} catch( Exception e ){
 			String exception = e.getLocalizedMessage();
-			log.error("ConsistentHashing Detecting change from MembershipProtocol. Exception {}", exception);
+			log.error("ConsistentHashing update() from MembershipProtocol. Exception {}", exception);
 		}
-		log.info("ConsistentHashing Detected change from MembershipProtocol. {}", updatedArg);
+		log.info("ConsistentHashing update() from MembershipProtocol. {}", updatedArg);
 		
+		//List<InetSocketAddress> newReplicas = getLocalReplicaList();
+		
+		List<InetSocketAddress> newReplicas = getReplicaList(localNode, false);
+		log.info("ConsistentHashing on update() Memebership: replica list of {}, {} ", getSocketAddress(localNode), membership.incrementAndGetVector());
+
+		if( newReplicas.containsAll(localReplicaList) && newReplicas.size() == localReplicaList.size() ){
+			//Sanity check:
+			log.info("ConsistentHashing on update() did not Detected change in replica list of {} old: {} ", localReplicaList.size(), localReplicaList);
+			log.info("ConsistentHashing on update() did not Detected change in replica list of {} new: {} ", newReplicas.size(), newReplicas);
+			return;
+		}
+		else{
+			log.info("ConsistentHashing on update() replica list old: {} ", localReplicaList);
+			log.info("ConsistentHashing on update() replica list new: {} ", newReplicas);
+		}
+		
+		// Doesn't matter if the localNode is removed, 
+		// can be checked when performing transfers it will be reinserted on the receiving side.
+		//newReplicas.remove(getSocketAddress(localNode));
+		//newReplicas.removeAll(localReplicaList);
+		
+		log.info("ConsistentHashing remove keys from: {}. transfer of Keys to: {}", localReplicaList, newReplicas);
+		//ByteArrayWrapper firstKey = newReplicas.remove(0);
+		//transferKeys(out, firstKey, toKey);
+		log.info("ConsistentHashing remove keys from: {}. transfer of Keys to: {}", localReplicaList, newReplicas);
+
 	}
 	
 	public static void main(String[] args) {
@@ -885,12 +911,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		ByteArrayWrapper nextNode, previousNode;
 		
 		try {
+			//Setup ConsistentHashing & MembershipProtocol
 			 ch = new ConsistentHashing<ByteArrayWrapper, byte[]>(nodes);
 			 ch.setLocalNode(localnode);
 			 int position = ch.getNodePosition(localnode);
 			 membership = new MembershipProtocol(position, nodes.length, 0, 0);
 			 ch.setMembership(membership);
 			 
+			 ch.num_replicas = 3;
 			 membership.addObserver(ch);
 			 
 			 if(IS_DEBUG) System.out.println();
@@ -951,13 +979,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 				
 				//Test2a:
 				// Shutdown all nodes in some sequetinal order .
-				for(j = 0; j <= nodes.length; j++){
+				for(j = 0; j < nodes.length; j++){
 					membership.shutdown( j );
 				}
 				// Reenable nodes
-				//membership.enable(2);
+				membership.enable(6);
 				// Nodes to be reenabled at a later time. Simulates "detected offline"
-				shutdownindeces.add(2);
+				shutdownindeces.add(6);
 
 				// Testing: given a provided key, locate the successor("next") key.
 			String looking_for_next_of ;//= cs-planetlab4.cs.surrey.sfu.ca:11111";
@@ -970,15 +998,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 						
 			showAllNodes(ch, map);
 				
-				//Test2b:
-				System.out.println("Simulating shutdown of nodes.");
-				for(j = 3; j < 5; j++){
-					membership.shutdown(j);
-				}
-				System.out.println("=========================");
-
-			showAllNodes(ch, map);
-
 
 				//Enable node online
 				int num_enabled = 0;
