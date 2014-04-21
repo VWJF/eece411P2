@@ -16,15 +16,15 @@ import org.slf4j.LoggerFactory;
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 
 public class MembershipProtocol {
-	/**
-	 * The MembershipProtocol class can have a run() & execute().
-	 * run() would be used to send the local vectortimestamp to a remote node [currently method sendVector()]
-	 * execute() would be used to update the local vectortimestamp with 
-	 * 		the vector received from a remote node [currently method receiveVector()]
-	 */
-	private final int total_nodes;
+
+	/** index of local node(service) participating in the MemebershipProtocol */
 	public final int current_node;
-	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
+	
+	/** number of total nodes participating in the MemebershipProtocol */
+	private final int total_nodes;
+	/** Internal representation of timestamp vector*/
+	private ArrayList<Integer> localTimestampVector;
+	/** TODO: Write adequate description.*/
 	private Map<InetSocketAddress, Long> timeTCPTimeout = new HashMap<InetSocketAddress, Long>((int)(this.total_nodes / 0.7));
 	/** Fraction in the range of (0, 1) used in multiplication with the current running average */
 	public static double TIME_ALPHA = 0.9;
@@ -54,7 +54,7 @@ public class MembershipProtocol {
 	
 	/**
 	 * Update the local timestamp vector based on the received vector timestamp 
-	 * @param receivedVector
+	 * @param int[] receivedVector
 	 */
 	public void mergeVector(int[] receivedVector){
 		//behavior on receiving a vectorTimestamp at each node 
@@ -64,8 +64,6 @@ public class MembershipProtocol {
 		
 		ArrayList<Integer> updateTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		
-		// TODO : We are accessing localTimestampVector from both threads, so synchronize
-//		synchronized (localTimestampVector) {
 			log.debug(" === mergeVector() (localTimestampVector.length=={}) (current_node=={})", localTimestampVector.size(), current_node);
 			
 			int local = localTimestampVector.get(current_node);
@@ -106,7 +104,7 @@ public class MembershipProtocol {
 
 	/**
 	 * Preparing the Vector Timestamp to be sent to a remote node.
-	 * @return
+	 * @return int[] of the node timestamps after incrementing the local node's timestamp
 	 */
 	public int[] incrementAndGetVector(){
 		ArrayList<Integer> retInteger;
@@ -132,7 +130,7 @@ public class MembershipProtocol {
 
 	/**
 	 * Return a random index in the range of localtimestampVector that does not match the current_node
-	 * @return
+	 * @return Integer index of a random node.
 	 */
 	public Integer getRandomIndex(){
 		//To obtain a unique random number to use as indices for localtimestampvector.
@@ -192,8 +190,8 @@ public class MembershipProtocol {
 	}
 	/**
 	 * Helper method to obtain a int[] from an ArrayList<Integer>.
-	 * @param retInteger
-	 * @return
+	 * @param retInteger: ArrayList<Integer>
+	 * @return int[] of size total_nodes such that int[x] = ArrayList<Integer>.get(x)
 	 */
 	private int[] convertListToArray(ArrayList<Integer> retInteger) {
 		int update;
@@ -214,7 +212,8 @@ public class MembershipProtocol {
 	
 	/**
 	 * Accessor for an index(node) the local Timestamp Vector.
-	 * @return
+	 * @params nodeIndex: Index of timestamp entry to return. {@link #total_nodes} 0 > nodeIndex >= 0 
+	 * @return int timestamp entry of nodeIndex
 	 */
 	public int getTimestamp(int nodeIndex){
 		return localTimestampVector.get(nodeIndex).intValue();
@@ -224,13 +223,21 @@ public class MembershipProtocol {
 	 * Disable this node's timestamp.  If the timestamp is negative then nothing changes. 
 	 * If the timestamp is positive, then it is negated.
 	 * @param updateIndex of the node
+	 * @return {@code true} if an online node has been set offline, {@code false} otherwise  
 	 */
-	public void shutdown(Integer updateIndex){
+	public boolean shutdown(Integer updateIndex){
+		boolean isShutdown = false;
+		
 		if (localTimestampVector == null) 
 			log.error(" ### localTimestampVector is null");
 
 		if(updateIndex == null){
-			localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
+			int oldTime = localTimestampVector.get(current_node);
+			if( oldTime > 0){
+				int newTime = -1 * oldTime;
+				localTimestampVector.set(current_node, newTime);
+				isShutdown = true;	
+			}
 		}
 		else{
 			if (updateIndex.intValue() != current_node) {
@@ -239,12 +246,14 @@ public class MembershipProtocol {
 					// we only have work if this node is online
 					int newTime = -1 * time;
 					localTimestampVector.set(updateIndex.intValue(), newTime);
+					isShutdown = true;
 					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}] [vect:->{}]", time, newTime, updateIndex, localTimestampVector);
 				}
 			}
 			else {
+				isShutdown = false;
 				log.trace(" *** MembershipProtocol::shutdown() shutdown self attempted with index {} instead of null", updateIndex.intValue());
-				return;
+				return isShutdown;
 			}
 		}
 		int shutdownIndex;
@@ -252,7 +261,9 @@ public class MembershipProtocol {
 			shutdownIndex = -1;
 		else
 			shutdownIndex = updateIndex.intValue();
-		log.debug(" === shutdownindex {} {}", shutdownIndex, Arrays.toString(convertListToArray(localTimestampVector)));
+		log.debug(" === shutdownindex {}, {} {}", shutdownIndex, isShutdown, Arrays.toString(convertListToArray(localTimestampVector)));
+		
+		return isShutdown;
 	}
 	
 	/**
@@ -367,8 +378,11 @@ public class MembershipProtocol {
 	/**
 	 * Enable the index of this node.  An online node is unaffected.  An offline node is set to positive of itself.
 	 * @param index of node
+	 * @return {@code true} if an offline node has been brought online, {@code false} otherwise  
 	 */
-	public void enable(int index) {
+	public boolean enable(int index) {
+		boolean isEnabled = false;
+		
 		if (localTimestampVector == null) 
 			log.error(" ### MembershipProtocol::enable() localTimestampVector is null");
 
@@ -378,12 +392,15 @@ public class MembershipProtocol {
 				// only have work to do if the timestamp is negative
 				int newTime = Math.abs(time);
 				localTimestampVector.set(index, newTime);
+				isEnabled = true;
+
 				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}] [vect->{}]", time, newTime, index, localTimestampVector);
 			}
 		} else { 
+			isEnabled = false;
 			log.warn(" *** MembershipProtocol::enable() enable self attempted with index {}", index);
 		}
 		
-		return;
+		return isEnabled;
 	}
 }
