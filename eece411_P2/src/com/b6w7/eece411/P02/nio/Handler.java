@@ -56,7 +56,6 @@ final class Handler extends Command implements Runnable {
 	byte[] replyValue;
 	byte[] messageTimestamp;
 	ByteBuffer byteBufferTSVector = ByteBuffer.allocate(TIMESTAMPSIZE).order(ByteOrder.BIG_ENDIAN);
-	//ByteBuffer byteBufferTSVector;
 
 	// when set to false, db will always reply to future requests with RPY_INTERNAL_FAILURE
 	private boolean keepRunning = true;
@@ -2264,7 +2263,7 @@ final class Handler extends Command implements Runnable {
 
 	@Override
 	public byte[] getReply() {
-		throw new UnsupportedOperationException(" ### To be removed from Commmand interface");
+		throw new UnsupportedOperationException(" ### To be removed from Commmand interface"); //TODO:
 	}
 
 	@Override
@@ -2388,7 +2387,7 @@ final class Handler extends Command implements Runnable {
 	//Method to compare InetSocketAddress
 	//Obtained from: http://stackoverflow.com/questions/6644738/java-comparator-for-inetsocketaddress
 	private int compareSocket(InetSocketAddress o1, InetSocketAddress o2) {
-		//TODO deal with nulls
+
 		if( o1 == null || o2 == null){
 			return 0;
 		}

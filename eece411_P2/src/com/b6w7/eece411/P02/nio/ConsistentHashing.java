@@ -25,51 +25,39 @@ import org.slf4j.LoggerFactory;
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
-//Based from code:
-// https://weblogs.java.net/blog/tomwhite/archive/2007/11/consistent_hash.html
 
-public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
+public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 
 	public static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 	public static boolean IS_VERBOSE = true; //true: System.out enabled, false: disabled
 
-	private static int num_replicas = NodeCommands.REPLICATION_FACTOR; //Can be instantiated through the constructor
+	private static int num_replicas = NodeCommands.REPLICATION_FACTOR; //Can be initialized through the constructor
 
 	private static Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
-	/**
-	 * The structure used to maintain the view of the pairs (key,value) & participating nodes.
+	/**The structure used to maintain the view of the pairs (key,value) & participating nodes.
 	 * Should be initialized to MAX_MEMORY*(1/load_factor), to limit the number of keys & avoid resizing.
-	 */
+	 * */
 	private HashMap<ByteArrayWrapper, byte[]> circle;
 	
-	/**
-	 * The structure used to maintain the view of the participating nodes. 
-	 */
+	/**The structure used to maintain the view of the participating nodes. */
 	private final TreeMap<ByteArrayWrapper, byte[]> mapOfNodes; // = new TreeMap<ByteArrayWrapper, byte[]>();
 
-	/**
-	 * The structure used to maintain the record of the natural ordering within the map of nodes.
-	 */
+	/** The structure used to maintain the record of the natural ordering within the map of nodes.*/
 	private final List<ByteArrayWrapper> listOfNodes;
 	
-	/**
-	 * Maintains the current list of nodes that host replicas for primary key-values
-	 * that belong to localhost
-	 */
+	/*** Maintains the current list of nodes that host replicas for primary key-values that belong to localhost*/
 	private final LinkedList<InetSocketAddress> localReplicaList = new LinkedList<InetSocketAddress>();
 	
-	/**
-	 * The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.
-	 */
+	/**The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.*/
 	private PriorityQueue<ByteArrayWrapper> orderedKeys;
 	
-	/**
-	 * Variable used to maintain identity of the key for the localhost(local ServiceReactor).
-	 * TODO: Ideally, a final variable.
+	/**Variable used to maintain identity of the key for the localhost(local ServiceReactor).
+	 * FIXME: Ideally, a final variable.
 	 */
 	private ByteArrayWrapper localNode;
 
+	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
 	private MembershipProtocol membership;
 	private MessageDigest md;
 
@@ -124,20 +112,20 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	public void setLocalNode(String key) {
-		localNode = getOwner(hashKey(key));
-		
+		localNode = getOwner(hashKey(key));	
 		log.debug("setLocalNode(): {} {}",key, localNode);		
 	}
 	
+	/**
+	 * 
+	 * @return localnode
+	 */
 	public ByteArrayWrapper getLocalNode() {
 		return localNode;
 	}
 	
 	private byte[] addNode(ByteArrayWrapper key, byte[] value) {
-		
-		// Additional Synchronization checking unnecessary since the thread that
-		// uses the Map should impose additional restrictions.
-		return mapOfNodes.put(key, value);
+				return mapOfNodes.put(key, value);
 	}
 	
 	public byte[] getNode(ByteArrayWrapper key) {
@@ -150,8 +138,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * Given a host-name, obtain its position (the natural ordering) within the map of Nodes
 	 * Assumption, the given host-name is present in the list of nodes participating.
-	 * @param node
-	 * @return
+	 * @param node	String of the hostname to find.
+	 * @return index of the hostname
 	 */
 	public int getNodePosition(String node){
 		ByteArrayWrapper key = hashKey(node);
@@ -162,6 +150,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		return ret;
 	}
 	
+	/**
+	 * @return total number of nodes in the Key-value store. Does not check for online/offline
+	 */
 	public int getSizeAllNodes(){
 		return listOfNodes.size();
 	}
@@ -196,7 +187,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * Obtains the InetSocketAddress of a random node that MemebrshipProtocol views online.
 	 * Returns null if one cannot be found.
-	 * @return
+	 * @return InetSocketAddress of the random node.
 	 */
 	public InetSocketAddress getRandomOnlineNode() {
 		log.trace("     ConsistentHashing.getRandomOnlineNode()");
@@ -226,12 +217,12 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * Obtains the node(IP address) that is responsible for the requested key in the Key-Value Store circle 
 	 * The keys that a node is responsible for are (previousNode:exclusive, currentNode:inclusive].
 	 * ..Similar to using getOwner() + getSockAddress() successively.
+	 * Does not check if the node is online/offline.
 	 * @param requestedKey
-	 * @return
+	 * @return The node responsible for {@code requestedKey} as a InetSocketAddress.
 	 */
 	public InetSocketAddress getSocketNodeResponsible(ByteArrayWrapper requestedKey) {
 		ByteArrayWrapper nextKey = getNodeResponsible(requestedKey);
-		
 		
 		String nextHost = new String(mapOfNodes.get(nextKey));
 		String nextOfValue = "(key,value) does not exist in circle";
@@ -247,10 +238,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	/**
 	 * return a list of nodes that host replicas for primary key-values of localhost
-	 * @return
+	 * @return List<InetSocketAddress> TODO
 	 */
 	public List<InetSocketAddress> getLocalReplicaList() {
 		List<InetSocketAddress> replicas = updateLocalReplicaList();
+		// TODO
 		// for now just pass through, but we might want to be saving it here, and just before
 		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
 		// keys is in order.
@@ -316,7 +308,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/**
 	 * return a list of offline nodes
-	 * @return
+	 * @return List<InetSocketAddress> where entries are InetSocketAddress of all nodes deemed offline by membership protocol 
 	 */
 	public List<InetSocketAddress> getOfflineList() {
 		List<InetSocketAddress> offlineList = new LinkedList<InetSocketAddress>();
@@ -336,7 +328,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 
 	/**
-	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors)
+	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors) of the requestedKey
 	 * @param requestedKey
 	 * @param removeSelf TODO
 	 * @return
@@ -353,7 +345,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 			logtraceString = new StringBuilder();
 			logtraceString.append("owner: "+owner.toString()+"[requestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
 		}
-
+		
 		log.trace("All Replicas:\n[owner->{}][requestedKey->{}] [SocketAddress->{}]", owner.toString(), requestedKey, sockAddress.toString() );
 		
 		ByteArrayWrapper nextKey = owner;
@@ -361,7 +353,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 		// Iterate to find at least one node that is online and save that watermark with firstReplica
 		// There is possibility that all nodes are offline causing an infinite loop for the case that
-		// the local node has signalled shutdown and all other nodes are offline.
+		// the local node has signaled shutdown and all other nodes are offline.
 		// However, we can ignore this case, because the local node is shutting down anyways
 		while (replicas.size() == 0) {
 			int timestamp = membership.getTimestamp(listOfNodes.indexOf(nextKey)); 
@@ -432,7 +424,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * Helper method to obtain the InetSocketAddress for a key(that represents a node entry)
 	 * @param node
-	 * @return
+	 * @return InetSocketAddress of {@code node} 
 	 */
 	private InetSocketAddress getSocketAddress(ByteArrayWrapper node){
 		String addr[] = (new String(mapOfNodes.get(node))).split(":");
@@ -443,8 +435,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	/**
 	 * Helper method that obtain the owner of requested key
-	 * @param requestedKey
-	 * @return
+	 * @param requestedKey:	node or data. ByteArrayWrapper whose owner to find.
+	 * @return ByteArrayWrapper of the owner of {@code requestedKey}. {@code null} there aren't nodes.
 	 */
 	private ByteArrayWrapper getOwner(ByteArrayWrapper requestedKey){
 		if (mapOfNodes.isEmpty()) {
@@ -460,8 +452,9 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	}
 	
 	/** Helper method that obtains the node responsible/owner of a requested key with a valid timestamp
-	 * @param requestedKey
-	 * @return
+	 * @param requestedKey:	node or data whose owner to find.
+	 * @return The node responsible for {@code requestedKey} which is deemed alive 
+	 * by membership protocol. {@code null} if there aren't nodes alive.
 	 */
 	private ByteArrayWrapper getNodeResponsible(ByteArrayWrapper requestedKey) {
 		if (mapOfNodes.isEmpty()) {
@@ -495,8 +488,8 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * Obtains the closest node(IP address) on the Key-Value Store circle 
 	 * that is subsequent to the given key.
 	 * "key" can be a key for a node or data.
-	 * @param key
-	 * @return ByteArrayWrapper (Key) for the next node.
+	 * @param key	ByteArrayWrapper
+	 * @return ByteArrayWrapper (key) for the next node of {@code key}.
 	 */
 	public ByteArrayWrapper getNextNodeTo(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
@@ -568,6 +561,11 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 		out.flip();	
 	}
 	
+	/**
+	 * "enables" a node in the membership protocol. 
+	 * Node will be online if {@code key} is a participating node
+	 * @param key ByteArrayWrapper of the node to "enable" in the membership protocol.
+	 */
 	public void enable(ByteArrayWrapper key) {
 		//ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
 		String node = new String(mapOfNodes.get(key));
@@ -604,7 +602,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 
 	/**
 	 * Accessor for data structure with view of the nodes in the Key-Value Store.
-	 * @return
+	 * @return 
 	 */
 	public SortedMap<ByteArrayWrapper, byte[]> getMapOfNodes() {
 		return mapOfNodes;
@@ -623,7 +621,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * Method used to create the hashed ByteArrayWrapper of a given node 
 	 * that is to be inserted in the Key-Value Store
 	 * @param byte[] node
-	 * @return
+	 * @return ByteArrayWrapper for the hash of {@code byte[] node}
 	 */
 	public ByteArrayWrapper hashKey(byte[] node){
 		ByteArrayWrapper key;
@@ -649,7 +647,7 @@ public class ConsistentHashing<TK, TV> implements Map<ByteArrayWrapper, byte[]>{
 	 * Method used to create the hashed ByteArrayWrapper of a given node 
 	 * that is to be inserted in the Key-Value Store
 	 * @param String node
-	 * @return
+	 * @return ByteArrayWrapper for the hash of {@code String node}
 	 */
 	public ByteArrayWrapper hashKey(String node){
 	
