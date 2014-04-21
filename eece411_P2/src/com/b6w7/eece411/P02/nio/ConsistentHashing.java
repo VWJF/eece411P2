@@ -871,16 +871,40 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		}
 		log.info("ConsistentHashing update() from MembershipProtocol. {}", updatedArg);
 		
-		//List<InetSocketAddress> newReplicas = getLocalReplicaList();
+		hasReplicaChanged();
+
+	}
+
+	/**
+	 * Detects differences in the old replica list with up-to-date replica list.
+	 * Detects differences among all entries..
+	 * @return true if differences were found, false if not. 
+	 */
+	private boolean hasReplicaChanged() {
+				
+		//TODO Correct/improve logs, levels or Remove logging. Added for initial debugging purposes.
+
+		boolean success = true;
 		
+		ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
 		List<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
+		if(newReplicas.isEmpty()){
+			log.warn("ConsistentHashing No replicas found to perform Key(s) repair.");
+			return success;
+		}
+		
+		if(oldReplicas.isEmpty() == false){
+			InetSocketAddress lastOfOldReplica = oldReplicas.get(oldReplicas.size() -1 );
+		}
+		InetSocketAddress lastOfNewReplica = newReplicas.get(newReplicas.size() -1 );
+
+		
 		log.info("ConsistentHashing on update() Memebership: replica list of {}, {} ", getSocketAddress(localNode), membership.incrementAndGetVector());
 
+		//Debugging Sanity check, can be removed when not needed:
 		if( newReplicas.containsAll(localReplicaList) && newReplicas.size() == localReplicaList.size() ){
-			//Sanity check:
 			log.info("ConsistentHashing on update() did not Detected change in replica list of {} old: {} ", localReplicaList.size(), localReplicaList);
 			log.info("ConsistentHashing on update() did not Detected change in replica list of {} new: {} ", newReplicas.size(), newReplicas);
-			return;
 		}
 		else{
 			log.info("ConsistentHashing on update() replica list old: {} ", localReplicaList);
@@ -892,11 +916,27 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		//newReplicas.remove(getSocketAddress(localNode));
 		//newReplicas.removeAll(localReplicaList);
 		
+		newReplicas.removeAll(oldReplicas);
+		ByteArrayWrapper firstKey = localNode;
+		ByteArrayWrapper toKey = null;
+		while(newReplicas.size() > 1){
+			//TODO: Need to convert InetSocket to corresponding ByteArrayWrapper
+			//toKey = newReplicas.remove(0);
+			
+			//Even better use get getSocketPreviousResponsible(Key endLimit)
+			transferKeys(firstKey, toKey, false);
+			firstKey = toKey;
+			//TODO: Again Need to convert InetSocket to corresponding ByteArrayWrapper
+			//toKey = newReplicas.remove(0);
+		}
+		//Remove Keys of the last segment
+		transferKeys(firstKey, toKey, true);
+		
 		log.info("ConsistentHashing remove keys from: {}. transfer of Keys to: {}", localReplicaList, newReplicas);
-		//ByteArrayWrapper firstKey = newReplicas.remove(0);
 		//transferKeys(out, firstKey, toKey);
 		log.info("ConsistentHashing remove keys from: {}. transfer of Keys to: {}", localReplicaList, newReplicas);
-
+		
+		return success;
 	}
 	
 	public static void main(String[] args) {
@@ -963,6 +1003,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 				int someTimeLater = 50;
 				System.out.println();
 				System.out.println("Simulating incrementing timestamps of the nodes.");
+				System.out.println("=========================");
 				System.out.println(" === timestamp vector before "+ membership.incrementAnEntry() );
 				System.out.println(" .." + someTimeLater + 1 + " events later.. ");
 				while(time++ < someTimeLater){
@@ -976,6 +1017,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 				List<Integer> shutdownindeces = new ArrayList<Integer>(num_shutdown);
 				System.out.println();
 				System.out.println("Simulating random shutdown of "+num_shutdown+" nodes.");
+				System.out.println("=========================");
 				int j = 0;
 				//while( j < num_shutdown && num_shutdown < nodes.length){
 				///while( j >= 0  && j > nodes.length -1 -num_shutdown){ // Use j=0; j--; Shutdown consecutive num_shutdown number of nodes from the end.	
@@ -990,9 +1032,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 				//}
 				
 				//Test2a:
-				System.out.println("=========================");
 				System.out.println();
 				System.out.println("Simulating shutdown of nodes in some order.");
+				System.out.println("=========================");
 				// Shutdown all nodes in some sequential order.
 				for(j = 0; j < nodes.length; j++){
 					membership.shutdown( j );
@@ -1008,9 +1050,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 										//"pl1.csl.utoronto.ca";
 										//"planetlab03.cs.washington.edu";
 			
-			System.out.println("=========================");
 			System.out.println();
 			System.out.println("Locating Nodes in Key-Value store.");
+			System.out.println("=========================");
+
 						
 			showAllNodes(ch, map);
 				
@@ -1019,6 +1062,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 				int num_enabled = 3;
 				System.out.println();
 				System.out.println("Simulating enable of ("+num_enabled+" or "+shutdownindeces.size()+") nodes.");
+				System.out.println("=========================");
 				int k = 0;
 				while( k < num_enabled && k < nodes.length && k < shutdownindeces.size()){
 					Integer index = shutdownindeces.remove(0);
@@ -1030,9 +1074,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 			
 			if(num_enabled != 0){
-				System.out.println("=========================");
 				System.out.println();
 				System.out.println("Locating Nodes in Key-Value store after enable.");
+				System.out.println("=========================");
+
 				showAllNodes(ch, map);
 			}
 				
@@ -1074,7 +1119,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			System.out.println("Online Predecessor: "+ ch.getSocketPreviousResponsible(e.getKey()) );
 			System.out.println("Online Successor: "+ ch.getSocketNodeResponsible(e.getKey()) );
 
-			List<InetSocketAddress> list = ch.getReplicaList(e.getKey(), true);
+			List<InetSocketAddress> list = ch.getReplicaList(e.getKey(), false);
 			System.out.println("Online Replicas main(): "+list);
 			System.out.println();
 		}

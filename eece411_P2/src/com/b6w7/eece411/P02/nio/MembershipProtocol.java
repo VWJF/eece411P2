@@ -422,7 +422,7 @@ public class MembershipProtocol extends Observable{
 	 * Detects differences among all entries except the one representing current_node.
 	 * @return true if differences were found, false if not.
 	 */
-	private boolean isChanged(){
+	private boolean hasTimestampChanged(){
 		ArrayList<Integer> oldVector = new ArrayList<Integer>(oldTimestampVector);
 		ArrayList<Integer> newLocal = new ArrayList<Integer>(localTimestampVector);
 
@@ -463,7 +463,7 @@ public class MembershipProtocol extends Observable{
 	 */
 	public void notifyViewers(){
 		//TODO:
-		if( isChanged() ){
+		if( hasTimestampChanged() ){
 			log.debug("MemebershipProtocol is notifying viewers.");
 			setChanged();
 			notifyObservers(localTimestampVector);
