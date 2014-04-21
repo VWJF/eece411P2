@@ -215,9 +215,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/**
 	 * Obtains the node(IP address) that is responsible for the requested key in the Key-Value Store circle 
-	 * The keys that a node is responsible for are (previousNode:exclusive, currentNode:inclusive].
-	 * ..Similar to using getOwner() + getSockAddress() successively.
-	 * Does not check if the node is online/offline.
+	 * The keys(arc) that a node is considered responsible for are (previousNode:exclusive, currentNode:inclusive].
+	 * Helper method getNodeResponsible() deems if a node is online/offline.
 	 * @param requestedKey
 	 * @return The node responsible for {@code requestedKey} as a InetSocketAddress.
 	 */
@@ -465,10 +464,18 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper nextKey;
 		SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(requestedKey);
 		nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
-
+		
+		//FIXME: What is expected behavior ??
+		// Scenario Shutdown (all nodes - 2). Use ConsistenHashing.main()
+		// Are the results of Successor buggy??.
+		// nextKey above may obtain the value of requestedKey,
+		// instead use nextKey = getNextNodeTo(nextKey);
+		
+		//nextKey = getNextNodeTo(nextKey);
+		
 		ByteArrayWrapper tempNextKey = nextKey;
-		int x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
-		while(x < 0){
+		int time = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
+		while(time < 0){
 			nextKey = getNextNodeTo(nextKey);
 			if( nextKey == tempNextKey ){
 				byte[] get = circle.get(requestedKey);
@@ -478,8 +485,19 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 				}
 				break;
 			}		
-			x = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
+			time = this.membership.getTimestamp(listOfNodes.indexOf(nextKey));
 		}
+		
+		String requestedWithKey;
+		if( mapOfNodes.containsKey(requestedKey) ){
+			requestedWithKey = getSocketAddress(requestedKey).toString();
+			log.trace("Requested for Node: {}", requestedWithKey);
+		}
+		
+		String nextNodeSocket = getSocketAddress(nextKey).toString();
+		String timestamp = Integer.toString(time);
+		
+		log.trace("Successor Node: {} with timestamp: {}", nextNodeSocket, timestamp);
 		
 		return nextKey;
 	}
@@ -491,7 +509,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param key	{@code key} whose subsequent to find.
 	 * @return ByteArrayWrapper (key) for the next node of {@code key}.
 	 */
-	public ByteArrayWrapper getNextNodeTo(ByteArrayWrapper key) {
+	private ByteArrayWrapper getNextNodeTo(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
 			log.debug("Map Of Nodes Empty.");
 			return null;
@@ -605,48 +623,16 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param key	{@code key} whose predecessor to find.
 	 * @return ByteArrayWrapper (key) for the predecessing node of {@code key}.
 	 */
-	public ByteArrayWrapper getPreviousNodeTo(ByteArrayWrapper key) {
+	private ByteArrayWrapper getPreviousNodeTo(ByteArrayWrapper key) {
 		if (mapOfNodes.isEmpty()) {
 			log.debug("Map Of Nodes Empty.");
 			return null;
 		}
 		
-			ByteArrayWrapper previousKey;
+			ByteArrayWrapper previousKey = key;
 			SortedMap<ByteArrayWrapper, byte[]> headMap = mapOfNodes.headMap(key, false); //exclusive of {@code key}
-			SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(key, false); //inclusive of {@code key}
-			
+
 			previousKey = headMap.isEmpty() ? mapOfNodes.tailMap(key, false).lastKey() : headMap.lastKey();
-
-//			if(headMap.isEmpty()){
-//				System.out.println("tailMap.size(): "+ tailMap.size());
-//				previousKey = tailMap.lastKey();
-//			} else if (tailMap.isEmpty()){
-//				System.out.println("headMap.size(): "+ headMap.size());
-//				previousKey = headMap.lastKey();
-//			}
-//			else{
-//				previousKey = key;
-//			}
-			
-//			ByteArrayWrapper floorKey = mapOfNodes.floorKey(key);
-//			ByteArrayWrapper ceilingKey = mapOfNodes.ceilingKey(key);
-//			
-//			previousKey = floorKey;
-//			if(previousKey == null){
-//				previousKey = ceilingKey;
-//			}
-//			if(previousKey == null){
-//				previousKey = key;
-//			}
-//			System.out.println("floorKey "+floorKey+" ceilingKey "+ceilingKey+", previousKey "+previousKey);
-
-
-//			SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.tailMap(key);
-//			nextKey = tailMap.isEmpty() ? mapOfNodes.firstKey() : tailMap.firstKey();
-
-//			SortedMap<ByteArrayWrapper, byte[]> tailMap = mapOfNodes.descendingMap().tailMap(key, false);
-//			previousKey = tailMap.isEmpty() ? mapOfNodes.descendingMap().firstKey() : tailMap.firstKey();
-//				
 			
 			return previousKey;
 	}
@@ -656,22 +642,48 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @return The node predecessor responsible for {@code requestedKey} which is deemed alive 
 	 * by membership protocol. {@code null} if there aren't nodes alive.
 	 */
-	public ByteArrayWrapper getPreviousResponsible(ByteArrayWrapper requestedKey ){
+	private ByteArrayWrapper getPreviousResponsible(ByteArrayWrapper requestedKey ){
 		
 		ByteArrayWrapper previousKey = getPreviousNodeTo(requestedKey);
-		ByteArrayWrapper tempPreviousKey = previousKey;
+		ByteArrayWrapper firstPreviousKey = previousKey;
 		
-		int x = this.membership.getTimestamp(listOfNodes.indexOf(previousKey));
-		while( x < 0 ){
+		int time = this.membership.getTimestamp(listOfNodes.indexOf(previousKey));
+		while( time < 0 ){
 			previousKey = getPreviousNodeTo(previousKey);
-			if( previousKey == tempPreviousKey){
+			if( previousKey == firstPreviousKey){
 				break;
 			}
-			x = this.membership.getTimestamp(listOfNodes.indexOf(previousKey));
+			time = this.membership.getTimestamp(listOfNodes.indexOf(previousKey));
 		}
-
+		String requestedWithKey;
+		if( mapOfNodes.containsKey(requestedKey) ){
+			requestedWithKey = getSocketAddress(requestedKey).toString();
+			log.trace("Requested for Node: {}", requestedWithKey);
+		}
+		
+		String previousNodeSocket = getSocketAddress(previousKey).toString();
+		String timestamp = Integer.toString(time);
+		
+		log.trace("Predecessor Node: {} with timestamp: {}", previousNodeSocket, timestamp);
+		
 		return previousKey;
 	}
+	
+	/**
+	 * Obtains the predecessor node(IP address) that is responsible for the requested key in the Key-Value Store circle 
+	 * The keys(arc) that a node is considered responsible for are (previousNode:exclusive, currentNode:inclusive].
+	 * Helper method getPreviousResponsible() deems if a node is online/offline.
+	 * @param requestedKey
+	 * @return The node responsible for {@code requestedKey} as a InetSocketAddress.
+	 */
+	public InetSocketAddress getSocketPreviousResponsible(ByteArrayWrapper requestedKey) {
+		log.trace("Finding InetSocketAddress of Predecessor.");
+
+		ByteArrayWrapper previousKey = getPreviousResponsible(requestedKey);		
+
+		return getSocketAddress(previousKey);
+	}
+	
 
 	/**
 	 * Accessor for data structure with view of the nodes in the Key-Value Store.
@@ -835,7 +847,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 				"planetlab03.cs.washington.edu:11111",
 				"pl1.csl.utoronto.ca:11111",
 				localnode,
-				"dhcp-128-189-79-19.ubcsecure.wireless.ubc.ca:11111",
+				"Knock3-Tablet:11111",
 				"pl2.rcc.uottawa.ca:11111"};
 				
 		System.out.println();
@@ -867,76 +879,84 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			System.out.println("Getting nodes...");
 			
 			SortedMap<ByteArrayWrapper, byte[]> map = ch.getMapOfNodes();
-			Iterator<Entry<ByteArrayWrapper, byte[]>> is = map.entrySet().iterator();
+			Iterator<Entry<ByteArrayWrapper, byte[]>> iterator = map.entrySet().iterator();
 			
 			//Testing: Retrieval of nodes in the map.
-			System.out.println("Got nodes... "+map.size());
-				while(is.hasNext()){
-					Entry<ByteArrayWrapper, byte[]> e = is.next();
+			System.out.println("Contains "+map.size()+" nodes... ");
+				while(iterator.hasNext()){
+					Entry<ByteArrayWrapper, byte[]> e = iterator.next();
 					System.out.println("(Key,Value): "+e.getKey() +" "+ new String(e.getValue()) );
 				}
 			
-				System.out.println();
-				System.out.println("Simulating incrementing the timestamps of the nodes.");
-				
 				//Increment timestamps.
 				int time = 0;
 				int someTimeLater = 50;
-				System.out.println(" === incrementAndGetVector() "+ membership.incrementAnEntry() );
+				System.out.println();
+				System.out.println("Simulating incrementing timestamps of the nodes.");
+				System.out.println(" === timestamp vector before "+ membership.incrementAnEntry() );
 				System.out.println(" .." + someTimeLater + " events later.. ");
 				while(time++ < someTimeLater){
 					membership.incrementAnEntry();
 				}
-				System.out.println(" === incrementAndGetVector() "+ membership.incrementAnEntry() );
+				System.out.println(" === timestamp vector after  "+ membership.incrementAnEntry() );
 				
 				//Shutdown
+				int num_shutdown = nodes.length-2;
+				List<Integer> shutdownindeces = new ArrayList<Integer>(num_shutdown);
 				System.out.println();
-				int num_shutdown = nodes.length -1;
+				System.out.println("Simulating shutdown of "+num_shutdown+" nodes.");
 				int j = 0;
-				while( j < num_shutdown){
-					boolean success = membership.shutdown(membership.getRandomIndex());
-					//Integer index = membership.shutdown();
-					System.out.println("The index shutdown is: "+success);
+				while( false && j < num_shutdown && num_shutdown < nodes.length){
+				//while( j >= 0  && j > nodes.length -1 -num_shutdown){ // Use j=0; j--; Shutdown consecutive num_shutdown number of nodes from the end.	
+					Integer index = membership.getRandomIndex(); // =j;//Determine order of node shutdown.
+					if(index == membership.current_node){
+						break;
+					}
+					boolean success = membership.shutdown(index); //Shutdown
+					System.out.println("The index shutdown was previously online: "+success);
+					shutdownindeces.add(index);
 					j++;
 				}
-
-				// Testing: given a provided key, locate the subsequent("next") key.
-			String looking_for_next_of ;//= cs-planetlab4.cs.surrey.sfu.ca:11111";
-//										//"pl1.csl.utoronto.ca";
-//										//"planetlab03.cs.washington.edu";
-
-			System.out.println();
-			System.out.println("Locating a Neighbor of key in the map.");
-				
-				int i = 0;
-				is = map.entrySet().iterator();
-				while(is.hasNext()){
-					Entry<ByteArrayWrapper, byte[]> e = is.next();
-
-					looking_for_next_of = ch.getSocketNodeResponsible(e.getKey()).toString();
-					System.out.println("Locating the Neighbour IP address of a given key. " 
-							+ looking_for_next_of
-							+ " " + ch.hashKey(looking_for_next_of)+"]"
-							);
-//					if( ch.hashKey(looking_for_next_of).equals(e.getKey()) ) 
-//						System.out.println("Current Key & NextOfTarget key are the same.");
-					System.out.println("From node (Key,Value): "+e.getKey() +" [value->"+ new String(e.getValue()) +"]");
-					
-					//nextNode = ch.getNextNodeTo( e.getKey() );
-					previousNode = ch.getPreviousResponsible( e.getKey() );
-					
-					//System.out.println("Next Neighbour: "+ ch.getSocketNodeResponsible(nextNode) );
-					System.out.println("Previous Neighbour: "+ previousNode );
-
-					
-					List<InetSocketAddress> list = ch.getReplicaList(e.getKey(), false);
-					System.out.println("Replicas main(): "+list);
-					System.out.println();
+				// Shutdown all nodes in order and leave 2 neighboring nodes active.
+				// Re-enable 1 neighboring node at a later time.
+				for(j = 0; j < nodes.length; j++){
+					membership.shutdown(j);
 				}
+				membership.enable(2);
+				shutdownindeces.add(1);
+
+				// Testing: given a provided key, locate the succersot("next") key.
+			String looking_for_next_of ;//= cs-planetlab4.cs.surrey.sfu.ca:11111";
+										//"pl1.csl.utoronto.ca";
+										//"planetlab03.cs.washington.edu";
 			
-			//List<InetSocketAddress> list = ch.getSocketReplicaList(requestedKey);
+			System.out.println("=========================");
+			System.out.println();
+			System.out.println("Locating Nodes in Key-Value store.");
+						
+			showAllNodes(ch, map);
 			
-			//Membership.Current_Node = ch.getClosestNodeTo( hashKey(InetAddress.getLocalHost()) );
+				//Enable node online
+				int num_enabled = 1;
+				System.out.println();
+				System.out.println("Simulating enable of ("+num_enabled+" or "+shutdownindeces.size()+") nodes.");
+				int k = 0;
+				while( k < num_enabled && k < nodes.length && k < shutdownindeces.size()){
+					Integer index = shutdownindeces.remove(0);
+					boolean success = membership.enable(index); //enable
+					System.out.println("The index enabled was previously offline: "+success);
+					k++;
+				}
+				System.out.println("Total enabled: "+k);
+
+			
+			if(num_enabled != 0){
+				System.out.println("=========================");
+				System.out.println();
+				System.out.println("Locating Nodes in Key-Value store after enable.");
+				showAllNodes(ch, map);
+			}
+				
 		}
 		catch(ConcurrentModificationException cme){
 			// synchronized(){......} should occur before using the iterator.
@@ -944,6 +964,40 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		catch(Exception e){
 			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Helper method used by ConsistentHashing.main() for testing functionality of {@code ConsistentHashing}.
+	 * Contains implementation to display online Successor, online Predecessor and online ReplicaList.
+	 * @param ch ConsistentHashing has been setup with
+	 * @param map of nodes to generate iterator.
+	 */
+	private static void showAllNodes(
+			ConsistentHashing<ByteArrayWrapper, byte[]> ch,
+			SortedMap<ByteArrayWrapper, byte[]> map) {
+		
+		ByteArrayWrapper previousNode, nextNode;
+		
+		Iterator<Entry<ByteArrayWrapper, byte[]>> iterator;
+		String looking_for_next_of;
+		iterator = map.entrySet().iterator();
+		
+		while(iterator.hasNext()){
+			Entry<ByteArrayWrapper, byte[]> e = iterator.next();
+
+			looking_for_next_of = ch.getSocketNodeResponsible(e.getKey()).toString();
+			System.out.println("From node (Key,Value): "+e.getKey() +" [value->"+ new String(e.getValue()) +"]");
+			
+			previousNode = ch.getPreviousResponsible( e.getKey() );
+			nextNode = ch.getNextNodeTo( e.getKey() );
+
+			System.out.println("Online Predecessor: "+ ch.getSocketPreviousResponsible(e.getKey()) );
+			System.out.println("Online Successor: "+ ch.getSocketNodeResponsible(e.getKey()) );
+
+			List<InetSocketAddress> list = ch.getReplicaList(e.getKey(), false);
+			System.out.println("Online Replicas main(): "+list);
+			System.out.println();
 		}
 	}
 }

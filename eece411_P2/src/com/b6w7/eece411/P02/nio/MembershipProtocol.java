@@ -130,8 +130,9 @@ public class MembershipProtocol {
 	}
 
 	/**
-	 * Return a random index in the range of localtimestampVector that does not match the current_node
-	 * @return Integer index of a random node.
+	 * Return a random index in the range of localtimestampVector that does not match 
+	 * the current_node and is online (localtimestampVector[return_index] > 0)
+	 * @return Integer index of a random online node.
 	 */
 	public Integer getRandomIndex(){
 		//To obtain a unique random number to use as indices for localtimestampvector.
