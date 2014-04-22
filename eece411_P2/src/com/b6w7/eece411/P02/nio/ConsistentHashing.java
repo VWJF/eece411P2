@@ -59,11 +59,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	/*** Maintains the last known online predecessor to localhost. */
 	private ByteArrayWrapper onlinePredecessor;
 
-	/**The structure used to maintain in sorted order the Keys that are present in the local Key-Value store. */
+	/** The structure used to maintain in sorted order the Keys that are present in the local Key-Value store. */
 	private TreeMap<ByteArrayWrapper, byte[]> orderedKeys;
 	
-	/**Variable used to maintain identity of the key for the localhost(local ServiceReactor). */
+	/** Variable used to maintain identity of the key for the localhost(local ServiceReactor). */
 	private ByteArrayWrapper localNode;
+
+	/** Used to store the Keys that are expected to be transfered/removed. In order to avoid repeated request to TreeMap. */
+	private Set<ByteArrayWrapper> transferSet = null;
 
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
 	private MembershipProtocol membership;
@@ -86,7 +89,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			ByteArrayWrapper key = hashKey(node);
 			log.trace("     ConsistentHashing() hashKey: {}", key);
 
-			byte[] fromMap = mapOfNodes.put(key, node.getBytes()); //circle.put(key, node.getBytes());			
+			byte[] fromMap = mapOfNodes.put(key, node.getBytes());
+			circle.put(key, node.getBytes());			
 			String err_msg = (null == getNode(hashKey(node))) ? " *** ConsistentHashing() Fail to get" : "     ConsistentHashing() Success returned get(): "+
 					NodeCommands.byteArrayAsString(getNode(hashKey(node)));
 			
@@ -111,7 +115,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 		// circle has been initialized with the pairs of (Node, hostname).
 		// Create a new view containing only the existing nodes.
-		orderedKeys = new TreeMap<ByteArrayWrapper, byte[]>(circle); //Initialized to large capacity to avoid excessive resizing.
+		orderedKeys = new TreeMap<ByteArrayWrapper, byte[]>(circle);//Initialized to large capacity to avoid excessive resizing.
 		//orderedKeys.addAll(circle.keySet());
 	}
 	
@@ -615,34 +619,80 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * ({@code toKey}, {@code fromKey}] if toKey < fromKey (exclusive, inclusive]
 	 * @param fromKey limit to transfer.
 	 * @param toKey: limit to transfer.
-	 * @param destinationNode 
-	 * @param isSegmentRemove determines whether the key is to be put or removed on the {@code destinationNode}
-	 * @return TODO
+	 * @return Reference to the Set that is ready to be transferred.
 	 */
-	public boolean transferKeys(ByteArrayWrapper fromKey, ByteArrayWrapper toKey, InetSocketAddress destinationNode, boolean isSegmentRemove){
+	public Set<ByteArrayWrapper> transferKeys(ByteArrayWrapper fromKey, ByteArrayWrapper toKey){
 
-		boolean isComplete = false;
 		//InetSocketAddress destinationSocket = getSocketAddress(destinationNode);
 		
+		StringBuilder sb_extras = new StringBuilder();
+		StringBuilder sb = new StringBuilder();
+		sb.append("ConsistHash. transferKeys: ")
+		.append("lowerKey: ").append(getSocketAddress(fromKey))
+		.append(" upperKey: ").append(getSocketAddress(toKey));
+		
 		/**TODO: Untested */
-		NavigableSet<ByteArrayWrapper> subMapSet, headSet, tailSet;
+		Set<ByteArrayWrapper> headSet = null;
 		if( (fromKey.compareTo(toKey)) < 0	){
-			subMapSet = orderedKeys.subMap(fromKey, true, toKey, false).navigableKeySet();
+			transferSet = orderedKeys.subMap(fromKey, false, toKey, true).keySet();
+			sb.append(". fromKey < toKey.");
 		}
 		else{
-			subMapSet = orderedKeys.tailMap(fromKey, false).navigableKeySet();
-			headSet = orderedKeys.headMap(toKey, true).navigableKeySet();
-			subMapSet.addAll(headSet);
+			transferSet = (orderedKeys.tailMap(fromKey, false).keySet());
+			headSet = orderedKeys.headMap(toKey, true).keySet();
+			sb.append(". toKey < fromKey : flip direction. ");
 		}
-		//Send all keys until subMap.size() == 1, to exclude sending the lower limit (fromKey).
-		Iterator<ByteArrayWrapper> iter = subMapSet.iterator();
-		while(iter.hasNext()){	
-			ByteArrayWrapper firstKey = iter.next();
-			byte[] firstValue = circle.get(firstKey);
+		
+		long totalKeysFound =  transferSet.size();
+		try{
+			if(headSet != null)
+				totalKeysFound =  headSet.size();
 			
-			subMapSet.remove(firstKey);
-			circle.remove(firstKey);
-			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(firstKey, firstValue);
+			sb.append("Total Keys found: ").append(totalKeysFound);
+			
+			if(headSet != null && headSet.isEmpty() == false){
+				sb_extras.append(". headSet.size: "+ headSet.size());
+				transferSet.addAll(headSet);
+			}
+		} catch(UnsupportedOperationException e){
+			log.warn(e.getLocalizedMessage());
+		}
+		
+		sb.trimToSize();
+		log.info(sb.toString());
+		
+		sb_extras.append(". Total HashMap keyspace size: " + circle.size());
+		sb_extras.append(". Total TreeMap keyspace size: " + orderedKeys.size());
+		sb_extras.append(" subMapSet.size: "+transferSet.size());	
+		log.trace(sb_extras.toString());
+		
+		return transferSet;
+	}
+	
+	/**
+	 * Helper method used to instantiate adequate Handlers in order to transferKeys.
+	 * Retrieves Keys from {@link tranferSet} populated by {@link transferKeys(fromKey, toKey)}.
+	 * Retrieves values from HashMap circle.
+	 * @param destinationNode 
+	 * @param isSegmentRemove determines whether the key is to be put or removed on the {@code destinationNode}
+	 * @return  {@code false} if the transferSet has not been populated. 
+	 * 			{@code true}  after all Handlers have been instantiated to the given destination node
+	 */
+	private boolean createHandlerTransfers(InetSocketAddress destinationNode, boolean isSegmentRemove){
+		
+		boolean isComplete = false;
+		if(transferSet == null)
+			return false;
+		
+		Iterator<ByteArrayWrapper> iter = transferSet.iterator(); //To get the set in sorted ascending order
+		
+		while( iter.hasNext() ){	
+			ByteArrayWrapper sendKey = iter.next();
+			byte[] sendValue = circle.get(sendKey);
+			
+			log.trace("firstkey {}, firstValue {} ", getSocketAddress(sendKey), new String(sendValue) );
+
+			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(sendKey, sendValue);
 			
 			//Use <Key,Value> entry or construct the byte stream of sending TS_PUT_PROCESS OR TS_REMOVE
 			if(isSegmentRemove){
@@ -659,8 +709,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			// Create a new interface for Handler to send the entry and InetSocket to Handlers.
 			// Handler can instantiating appropriate type of Handler.
 		}
+		
 		isComplete = true;
-		return isComplete;
+		
+		return true;
 	}
 	
 	/**
@@ -957,11 +1009,12 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			.append("] to dest.node: ").append(getSocketAddress(onlinePredecessor));
 			log.info("{}", sb.toString());
 			
-			transferKeys(firstKey, toKey, getSocketAddress(onlinePredecessor), false); 
+			transferSet  = transferKeys(firstKey, toKey); 
+			createHandlerTransfers(getSocketAddress(onlinePredecessor), false);
 		}
+		transferSet = null; //Clear transferSet after all Handlers have been created.
 		
 		hasReplicaChanged();
-
 	}
 	/**
 	 * Detects differences in the currentOnline Predecessor and up-to-date Predecessor
@@ -1030,7 +1083,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		ByteArrayWrapper toKey = localNode;
 		
 		if(newReplicas.isEmpty() == false){
-
+			//Populate Set for transfers.
+			transferSet = transferKeys(firstKey, toKey);
+			
 			for(InetSocketAddress sendToReplica : newReplicas){
 				StringBuilder sb = new StringBuilder();
 				sb.append("Transfer of keys in (my) range: (").append(getSocketAddress( firstKey ))
@@ -1039,18 +1094,22 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		
 				log.info("{}", sb.toString());
 				
-				//Transfer(send) local keys.
-				transferKeys(firstKey, toKey, sendToReplica, false); 
+				//Send Handlers to Transfer(send) local keys.
+				createHandlerTransfers(sendToReplica, false); 
 			}
+			transferSet = null; //Clear transferSet after all Handlers have been created.
+
 		}
 		else{
 			log.info("ConsistHash. No replicas found that need to sends key.");
 		}
 		
 		if(oldReplicas.isEmpty() == false){
+			//Populate Set for transfers.
+			transferSet = transferKeys(firstKey, toKey);
 			for(InetSocketAddress removeFromReplica : oldReplicas){
-				//Remove local keys.
-				transferKeys(firstKey, toKey, removeFromReplica, true);
+				//Send Handlers to Remove local keys.
+				createHandlerTransfers(removeFromReplica, true);
 			}
 		}
 		else{
