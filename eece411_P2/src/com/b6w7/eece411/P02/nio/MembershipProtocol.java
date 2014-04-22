@@ -106,7 +106,7 @@ public class MembershipProtocol extends Observable{
 
 			log.debug(" === mergeVector() (localIndex={}) after merging: {}", local, localTimestampVector);
 			
-			notifyViewers();
+			notifyViewers("gossip");
 	}
 
 	/**
@@ -258,7 +258,7 @@ public class MembershipProtocol extends Observable{
 					isShutdown = true;
 					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}] [vect:->{}]", time, newTime, updateIndex, localTimestampVector);
 					
-					notifyViewers();
+					notifyViewers("shutdown");
 				}
 			}
 			else {
@@ -407,7 +407,7 @@ public class MembershipProtocol extends Observable{
 
 				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}] [vect->{}]", time, newTime, index, localTimestampVector);
 				
-				notifyViewers();			
+				notifyViewers("enable");			
 			}
 		} else { 
 			isEnabled = false;
@@ -459,14 +459,17 @@ public class MembershipProtocol extends Observable{
 	
 	/**
 	 * Method to notify Observers of this class of changes.
+	 * @param sourcestate TODO
 	 * @param arg
 	 */
-	public void notifyViewers(){
-		//TODO:
+	public void notifyViewers(String sourcestate){
 		if( hasTimestampChanged() ){
 			log.debug("MemebershipProtocol is notifying viewers.");
-			setChanged();
-			notifyObservers(localTimestampVector);
+			// We can choose to notify observers with other args if we chose to.
+			// e.g. notifyViewers() from enable can respond with args="enable" instead of localTimestamp.
+			setChanged();			
+			//notifyObservers(localTimestampVector);
+			notifyObservers(sourcestate);
 		}
 	}
 	
@@ -490,6 +493,9 @@ public class MembershipProtocol extends Observable{
 		Integer oldTime = localTimestampVector.get(index);
 		oldTime++;
 		localTimestampVector.set(index, oldTime);
+		
+		//notifyViewers("gossip");
+		
 		return localTimestampVector;
 	}
 	/**
