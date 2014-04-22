@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -238,7 +239,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	}
 	
 	/**
-	 * Obtains the InetSocketAddress of a random node that MemebrshipProtocol views online.
+	 * Obtains the InetSocketAddress of a random node that MemebershipProtocol views online.
 	 * Returns null if one cannot be found.
 	 * @return InetSocketAddress of the random node.
 	 */
@@ -389,7 +390,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors) of the requestedKey
 	 * @param requestedKey
 	 * @param removeSelf
-	 * @return TODO Check "FIXME" near end of method.
+	 * @return List of the online replicas of requestedKey. 
+	 * 		   If (removeSelf == true), then excludes {@link localNode} from returned list.
+	 * Check "FIXME" near end of method.
 	 */
 	public ArrayList<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
 		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
@@ -626,46 +629,53 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		
 		StringBuilder sb_extras = new StringBuilder();
 		StringBuilder sb = new StringBuilder();
-		sb.append("ConsistHash. transferKeys: ")
+		sb.append("ConsistHash. transferKeys. ")
 		.append("lowerKey: ").append(getSocketAddress(fromKey))
 		.append(" upperKey: ").append(getSocketAddress(toKey));
 		
-		/**TODO: Untested */
-		Set<ByteArrayWrapper> headSet = null;
+		Set<ByteArrayWrapper> subSet = null, headSet = null;
 		if( (fromKey.compareTo(toKey)) < 0	){
-			transferSet = orderedKeys.subMap(fromKey, false, toKey, true).keySet();
+			subSet = orderedKeys.subMap(fromKey, false, toKey, true).keySet();
 			sb.append(". fromKey < toKey.");
 		}
 		else{
-			transferSet = (orderedKeys.tailMap(fromKey, false).keySet());
+			subSet = (orderedKeys.tailMap(fromKey, false).keySet());
 			headSet = orderedKeys.headMap(toKey, true).keySet();
 			sb.append(". toKey < fromKey : flip direction. ");
 		}
 		
-		long totalKeysFound =  transferSet.size();
+		Set<ByteArrayWrapper> fullSet = subSet;
+		
+		long totalKeysFound =  fullSet.size();
 		try{
-			if(headSet != null)
-				totalKeysFound =  headSet.size();
-			
-			sb.append("Total Keys found: ").append(totalKeysFound);
-			
+						
 			if(headSet != null && headSet.isEmpty() == false){
-				sb_extras.append(". headSet.size: "+ headSet.size());
-				transferSet.addAll(headSet);
+				sb_extras.append("subSet.size: "+ subSet.size()+". ");
+				sb_extras.append("headSet.size: "+ headSet.size()+". ");
+				// A new HashSet is needed because the NavigableSet returned 
+				// by ordered key is backed by orderedKeys keySet.
+				// The orderedKeys keySet does not support .allAll(Collection....) operation.
+				fullSet = new HashSet<ByteArrayWrapper>(subSet.size() + headSet.size()); 
+				fullSet.addAll(subSet);
+				fullSet.addAll(headSet);
+				totalKeysFound =  fullSet.size();
 			}
 		} catch(UnsupportedOperationException e){
-			log.warn(e.getLocalizedMessage());
+			log.warn("{}",e.getLocalizedMessage());
 		}
-		
+
+		sb.append("Total Keys found: ").append(totalKeysFound);
+
 		sb.trimToSize();
 		log.info(sb.toString());
 		
-		sb_extras.append(". Total HashMap keyspace size: " + circle.size());
-		sb_extras.append(". Total TreeMap keyspace size: " + orderedKeys.size());
-		sb_extras.append(" subMapSet.size: "+transferSet.size());	
-		log.trace(sb_extras.toString());
+		sb_extras.append("Total HashMap keyspace size: " + circle.size()+". ");
+		sb_extras.append("Total TreeMap keyspace size: " + orderedKeys.size()+". ");
+		sb_extras.append("fullSet.size: "+fullSet.size());	
 		
-		return transferSet;
+		log.debug(sb_extras.toString());
+		
+		return fullSet;
 	}
 	
 	/**
@@ -680,6 +690,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	private boolean createHandlerTransfers(InetSocketAddress destinationNode, boolean isSegmentRemove){
 		
 		boolean isComplete = false;
+		
+
+		if( 0 == Handler.compareSocket(destinationNode, getSocketAddress(localNode))){
+			log.warn("ConsistHash. createHandlerTransfers() attempted to self. destination: {}", destinationNode);
+			return false;
+		}
+		
 		if(transferSet == null)
 			return false;
 		
@@ -688,8 +705,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		while( iter.hasNext() ){	
 			ByteArrayWrapper sendKey = iter.next();
 			byte[] sendValue = circle.get(sendKey);
-			
-			log.trace("firstkey {}, firstValue {} ", getSocketAddress(sendKey), new String(sendValue) );
+			StringBuilder sock = new StringBuilder(); 
+			try{
+				sock.append(getSocketAddress(sendKey).toString());
+			}catch(NoSuchElementException e){
+				sock.append(sendKey);
+			}
+			log.debug("Retrieving for Handler the pair: sendkey: {}, sendValue: {} ", sock, new String(sendValue) );
 
 			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(sendKey, sendValue);
 			
@@ -989,7 +1011,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			String exception = e.getLocalizedMessage();
 			log.error("ConsistHash. update() from MembershipProtocol. Exception {}", exception);
 		}
-		log.info("ConsistHash. update() in node {} received update from Memebrship with response {}", getSocketAddress(localNode), updatedArg);
+		log.info("ConsistHash. update() in node {} received update from Memebership with response \"{}\"", getSocketAddress(localNode), updatedArg);
 		
 		
 		// Since hasPredecessorChanged() updates the member variable onlinePredecessor, 
@@ -997,24 +1019,12 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		ByteArrayWrapper firstKey = onlinePredecessor;
 
 		if( hasPredecessorChanged() ){
-			//TransferKeys in range (onlinePredecesor.onlinePredecessor, onlinePredecesor] (exclusive, inclusive]
-			// hasPrecessorChanged has already updated the var. onlinePredecessor. 
-			//ByteArrayWrapper firstKey = getPreviousResponsible(onlinePredecessor); // Need non-changed onlinePredecessor.
-			ByteArrayWrapper toKey = localNode;
-			
-			StringBuilder sb = new StringBuilder();
-			sb.append("Transfer of keys in the range: (").append(getSocketAddress(firstKey))
-			.append(", to ").append(getSocketAddress(toKey))
-			.append("] to dest.node: ").append(getSocketAddress(onlinePredecessor));
-			log.info("{}", sb.toString());
-			
-			transferSet  = transferKeys(firstKey, toKey); 
-			createHandlerTransfers(getSocketAddress(onlinePredecessor), false);
+			predecessorTransfer(firstKey);
 		}
-		transferSet = null; //Clear transferSet after all Handlers have been created.
 		
 		hasReplicaChanged();
 	}
+	
 	/**
 	 * Detects differences in the currentOnline Predecessor and up-to-date Predecessor
 	 * updates {@code onlinePredecessor} accordingly.
@@ -1040,6 +1050,27 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		return haschanged;
 	}
 
+	/**
+	 * TransferKeys in range (firstKey, localNode] (exclusive, inclusive].
+	 * For our purposes of transferring: (onlinePredecesor.onlinePredecessor, onlinePredecesor] 
+	 * hasPredecessorChanged() already updated {@code onlinePredecessor}, need non-changed onlinePredecessor. 
+	 * @param firstKey key to begin transfers in range (firstKey, localNode]
+	 */
+	private void predecessorTransfer(ByteArrayWrapper firstKey) {
+		//ByteArrayWrapper firstKey = getPreviousResponsible(onlinePredecessor); // Need non-changed onlinePredecessor.
+		ByteArrayWrapper toKey = localNode;
+		
+		StringBuilder sb = new StringBuilder();
+		sb.append("Transfer of keys in the range: (").append(getSocketAddress(firstKey))
+		.append(", to ").append(getSocketAddress(toKey))
+		.append("] to dest.node: ").append(getSocketAddress(onlinePredecessor));
+		
+		log.info("{}", sb.toString());
+		
+		transferSet  = transferKeys(firstKey, toKey); 
+		createHandlerTransfers(getSocketAddress(onlinePredecessor), false);
+		transferSet = null; //Clear transferSet after all Handlers have been created.
+	}
 	/**
 	 * Detects differences in the old replica list with up-to-date replica list.
 	 * Detects differences among all entries and starts transfer of keys.
@@ -1069,13 +1100,30 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
 		}
 			
-		// Begin transfer procedure.
+		replicaTransfer(oldReplicas, newReplicas);
+		
+		this.localReplicaList = getReplicaList(localNode, true);
+
+		return haschanged;
+	}
+
+	/**
+	 * Transfer Keys that belong to localNode to new entries in the replica list.
+	 * Remove Keys that belong to localNode from the old(out-dated) entries of the replica list. 
+	 * hasPredecessorChanged() already updated {@code onlinePredecessor}, need non-changed onlinePredecessor. 
+	 * @param oldReplicas all entries of the out-dated replicas list.
+	 * @param newReplicas all entries of the up-to-date replicas list.
+	 */
+	private void replicaTransfer(ArrayList<InetSocketAddress> oldReplicas,
+			List<InetSocketAddress> newReplicas) {
+
+		List<InetSocketAddress> tempNewReplicas = new ArrayList<InetSocketAddress>(newReplicas);
+
 		// Find nodes that will receive keys, and nodes that will have keys removed.
 		newReplicas.removeAll(oldReplicas); //Replicas that need to receive missing keys from this nodes.
-		oldReplicas.removeAll(getReplicaList(localNode, true)); //Replicas that need to remove keys of this node.
+		oldReplicas.removeAll(tempNewReplicas); //Replicas that need to remove keys of this node.
 		
-		log.info("ConsistHash. on hasReplicaChanged from replica list, transfer to: {} ", newReplicas);
-		log.info("ConsistHash. on hasReplicaChanged from replica list, remove from: {} ", oldReplicas);
+		log.info("ConsistHash. on replica transfer to: {} ", newReplicas);
 
 		//Key range for local Keys
 		ByteArrayWrapper firstKey = onlinePredecessor;
@@ -1084,14 +1132,17 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		if(newReplicas.isEmpty() == false){
 			//Populate Set for transfers.
 			transferSet = transferKeys(firstKey, toKey);
+			StringBuilder sb = new StringBuilder();
+			String message = sb.append("Transfer of keys in (my) range: (").append(getSocketAddress( firstKey ))
+			.append(", to ").append(getSocketAddress( toKey )).toString();
+			log.trace("{}", sb.toString());
 			
 			for(InetSocketAddress sendToReplica : newReplicas){
-				StringBuilder sb = new StringBuilder();
-				sb.append("Transfer of keys in (my) range: (").append(getSocketAddress( firstKey ))
-				.append(", to ").append(getSocketAddress( toKey ))
-				.append("] to dest. node: ").append( sendToReplica );
+				
+				StringBuilder sb_node = new StringBuilder(message);
+				sb_node.append("] to dest. node: ").append( sendToReplica );
 		
-				log.info("{}", sb.toString());
+				log.debug("{}", sb_node.toString());
 				
 				//Send Handlers to Transfer(send) local keys.
 				createHandlerTransfers(sendToReplica, false); 
@@ -1103,6 +1154,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			log.info("ConsistHash. No replicas found that need to sends key.");
 		}
 		
+		log.info("ConsistHash. on replica remove from: {} ", oldReplicas);
 		if(oldReplicas.isEmpty() == false){
 			//Populate Set for transfers.
 			transferSet = transferKeys(firstKey, toKey);
@@ -1114,10 +1166,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		else{
 			log.info("ConsistHash. No replicas found to that need keys removed.");
 		}	
-		
-		this.localReplicaList = getReplicaList(localNode, true);
-		
-		return haschanged;
 	}
 	
 	public static void main(String[] args) {
@@ -1194,6 +1242,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 					membership.incrementAnEntry();
 				}
 				System.out.println(" === timestamp vector after  "+ membership.incrementAnEntry() );
+				
+				String someValue = "some key here";
+				ch.put(ch.hashKey("some key here"), someValue.getBytes());
 				
 				//Shutdown
 				//Test1:

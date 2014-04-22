@@ -2379,14 +2379,14 @@ final class Handler extends Command implements Runnable {
 
 	//Method to compare InetSocketAddress
 	//Obtained from: http://stackoverflow.com/questions/6644738/java-comparator-for-inetsocketaddress
-	private Integer getIp(InetSocketAddress addr) {
+	private static Integer getIp(InetSocketAddress addr) {
 		byte[] a = addr.getAddress().getAddress();
 		return ((a[0] & 0xff) << 24) | ((a[1] & 0xff) << 16) | ((a[2] & 0xff) << 8) | (a[3] & 0xff);
 	}
 
 	//Method to compare InetSocketAddress
 	//Obtained from: http://stackoverflow.com/questions/6644738/java-comparator-for-inetsocketaddress
-	private int compareSocket(InetSocketAddress o1, InetSocketAddress o2) {
+	public static int compareSocket(InetSocketAddress o1, InetSocketAddress o2) {
 
 		if( o1 == null || o2 == null){
 			return 0;
