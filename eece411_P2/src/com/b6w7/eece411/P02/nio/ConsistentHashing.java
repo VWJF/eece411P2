@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.PriorityQueue;
@@ -52,7 +53,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	
 	/*** Maintains the current list of nodes that host replicas for primary key-values that belong to localhost*/
 	private ArrayList<InetSocketAddress> localReplicaList = new ArrayList<InetSocketAddress>();
-	private LinkedList<InetSocketAddress> oldReplicaList = new LinkedList<InetSocketAddress>();
+
+	/*** Maintains the last known online predecessor to localhost*/
+	private ByteArrayWrapper onlinePredecesor;
 
 	/**The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.*/
 	private TreeMap<ByteArrayWrapper, byte[]> orderedKeys;
@@ -115,15 +118,30 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	public void setMembership(MembershipProtocol membership) {
 		this.membership = membership;
 	}
-	
+	/**
+	 * TODO: set {@link this.localReplicaList}
+	 * Setup method that will initialize {@link localNode}, {@link onlinePredecessor} 
+	 * and {@link localReplicaList} with the node that was created using {@code key}
+	 * @param key key that was used to create the Key in <Key,Value> pair in the map of nodes.
+	 * @throws IllegalArgumentException unchecked if the initialization was unsuccessful. 
+	 * 			i.e. @param key could not be found.
+	 */
 	public void setLocalNode(String key) {
 		localNode = getOwner(hashKey(key));
-		//getLocalReplicaList();
+		if(localNode == null){
+			log.error("Failed to setup ConsistentHashing. Local node {} could not be found in the map of nodes.", key);
+			throw new IllegalArgumentException("Failed to setup ConsistentHashing. Local node " +key+ " could not be found in the map of nodes.");
+		}
+		this.onlinePredecesor = getPreviousResponsible(localNode);
+		
+		// TODO: set this.localReplicaList. Being developed.
+		//this.localReplicaList = getReplicaList(); //this.localReplicaList = getLocalReplicaList();
+
 		log.debug("setLocalNode(): {} {}",key, localNode);		
 	}
 	
 	/**
-	 * 
+	 * Accessor
 	 * @return localnode
 	 */
 	public ByteArrayWrapper getLocalNode() {
@@ -349,7 +367,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * @param removeSelf
 	 * @return TODO Check "TODO" near end of method.
 	 */
-	public List<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
+	public ArrayList<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
 		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
 		InetSocketAddress sockAddress = null;
 		ByteArrayWrapper owner = getOwner(requestedKey);
@@ -435,10 +453,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		if(removeSelf) replicas.remove(getSocketAddress(localNode));
 		
 		//FIXME: TODO: Setting the member variable was used for testing purposes, 
-		// unsure it is still needed.
-		this.localReplicaList = replicas;
+		// unsure if it is still needed.
+		//this.localReplicaList = replicas;
 		
-		return new LinkedList<InetSocketAddress>(replicas);
+		return new ArrayList<InetSocketAddress>(replicas);
 	}
 	
 	/**
@@ -447,7 +465,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * @return InetSocketAddress of {@code node} 
 	 */
 	private InetSocketAddress getSocketAddress(ByteArrayWrapper node){
-		String addr[] = (new String(mapOfNodes.get(node))).split(":");
+		String addr[];
+		try{
+			addr = (new String(mapOfNodes.get(node))).split(":");
+		}catch(NullPointerException e){
+			log.warn("Searching for inexistent node in node map: "+node);
+			throw new NoSuchElementException("Searching for inexistent node in node map: "+node);
+		}
 		
 		log.trace("Finding InetSocketAddress.");
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
@@ -563,36 +587,51 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		return nextKey;
 	}
 	
+	
 	/**
-	 * Method that extracts the keys,value pairs in range of [{@code fromKey}, {@code toKey}] inclusive 
-	 * so that they may be transferred to other nodes.
+	 * Method that extracts the keys,value pairs in range of ({@code fromKey}, {@code toKey}] (exclusive, inclusive] 
+	 * so that they may be transferred/removed to other nodes.
 	 * @param fromKey lower key limit to transfer.
-	 * @param isSegmentRemove TODO
+	 * @param destinationNode 
+	 * @param isSegmentRemove determines whether the key is to be put or removed on the {@code destinationNode}
 	 * @param toKey: (ByteArrayWrapper that will determine the keys to be transferred [inclusive limit].
-	 * @param out: (ByteBuffer used to send the Key-Value pairs).
+	 * @return TODO
 	 */
-	public void transferKeys(ByteArrayWrapper fromKey, ByteArrayWrapper toKey, boolean isSegmentRemove){
-	/**TODO: Untested */
+	public boolean transferKeys(ByteArrayWrapper fromKey, ByteArrayWrapper toKey, InetSocketAddress destinationNode, boolean isSegmentRemove){
 
+		boolean isComplete = false;
+		//Implementation using ByteArrayWrapper desinationNode
+		//InetSocketAddress destinationSocket = getSocketAddress(destinationNode);
+		
+		/**TODO: Untested */
 		SortedMap<ByteArrayWrapper, byte[]> subMap = orderedKeys.subMap(fromKey, toKey);
-		while(subMap.isEmpty() == false){
-			ByteArrayWrapper firstKey = subMap.firstKey();
-			byte[] firstValue = circle.get(firstKey);
-			subMap.remove(firstKey);
-			circle.remove(firstKey);
-			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(firstKey, firstValue);
+		
+		//Send all keys until subMap.size() == 1, to exclude sending the lower limit (fromKey).
+		while(subMap.size() > 1){
+			ByteArrayWrapper lastKey = subMap.lastKey();
+			byte[] lastValue = circle.get(lastKey);
+			
+			subMap.remove(lastKey);
+			circle.remove(lastKey);
+			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(lastKey, lastValue);
 			
 			//Use <Key,Value> entry or construct the byte stream of sending TS_PUT_PROCESS OR TS_REMOVE
 			if(isSegmentRemove){
-				////TODO: To be sent to other nodes through TS_REMOVE_PROCESS();				
+				////TODO: To be sent to other nodes through TS_REMOVE_PROCESS() to destinationNode;				
 			}
 			else{
-				////TODO: To be sent to other nodes through TS_PUT_PROCESS();
+				////TODO: To be sent to other nodes through TS_PUT_PROCESS() to destinationNode;
 			}
 			
+			//TODO:
 			//If choose to use Observer Pattern.
 			//notifyViewers(){setChanged(); notifyObservers(entry)};
+			//TODO:
+			//Alternatively,
+			//Create a new interface for Handler that permits instantiating new Handlers.
 		}
+		isComplete = true;
+		return isComplete;
 	}
 	
 	/**
@@ -869,10 +908,37 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			String exception = e.getLocalizedMessage();
 			log.error("ConsistentHashing update() from MembershipProtocol. Exception {}", exception);
 		}
-		log.info("ConsistentHashing update() from MembershipProtocol. {}", updatedArg);
+		log.info("ConsistentHashing update() from at node {} MembershipProtocol. {}", getSocketAddress(localNode), updatedArg);
+		
+
+		if( hasPredecessorChanged() ){
+			//TransferKeys in range (onlinePredecesor.onlinePredecessor, onlinePredecesor] (exclusive, inclusive]
+			ByteArrayWrapper firstKey = getPreviousResponsible(onlinePredecesor);
+			ByteArrayWrapper toKey = onlinePredecesor;
+			
+			transferKeys(firstKey, toKey, getSocketAddress(onlinePredecesor), false); 
+		}
 		
 		hasReplicaChanged();
 
+	}
+	/**
+	 * Detects differences in the currentOnline Predecessor and up-to-date Predecessor.
+	 * @return true if differences were found, false if not. 
+	 */
+	private boolean hasPredecessorChanged() {
+		boolean haschanged = false;
+		ByteArrayWrapper newPredecessor = getPreviousResponsible(localNode);
+		
+		if(onlinePredecesor.equals(newPredecessor)){
+			haschanged = false;
+			log.info("ConsistentHashing on update() did not Detected change in predecessor old: {} new: {} ", newPredecessor, onlinePredecesor);
+		}else{
+			haschanged = true;
+			onlinePredecesor = newPredecessor;
+		}
+		
+		return haschanged;
 	}
 
 	/**
@@ -884,59 +950,58 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 				
 		//TODO Correct/improve logs, levels or Remove logging. Added for initial debugging purposes.
 
-		boolean success = true;
+		boolean haschanged = false;
 		
 		ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
 		List<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
-		if(newReplicas.isEmpty()){
-			log.warn("ConsistentHashing No replicas found to perform Key(s) repair.");
-			return success;
-		}
-		
-		if(oldReplicas.isEmpty() == false){
-			InetSocketAddress lastOfOldReplica = oldReplicas.get(oldReplicas.size() -1 );
-		}
-		InetSocketAddress lastOfNewReplica = newReplicas.get(newReplicas.size() -1 );
-
-		
-		log.info("ConsistentHashing on update() Memebership: replica list of {}, {} ", getSocketAddress(localNode), membership.incrementAndGetVector());
-
-		//Debugging Sanity check, can be removed when not needed:
-		if( newReplicas.containsAll(localReplicaList) && newReplicas.size() == localReplicaList.size() ){
+			
+		if(newReplicas.equals(oldReplicas)){
+			haschanged = false;
+			//Debugging Sanity check, can be removed when not needed:
 			log.info("ConsistentHashing on update() did not Detected change in replica list of {} old: {} ", localReplicaList.size(), localReplicaList);
 			log.info("ConsistentHashing on update() did not Detected change in replica list of {} new: {} ", newReplicas.size(), newReplicas);
+
 		}
 		else{
+			haschanged = true;
+			//Debugging Sanity check, can be removed when not needed:
 			log.info("ConsistentHashing on update() replica list old: {} ", localReplicaList);
 			log.info("ConsistentHashing on update() replica list new: {} ", newReplicas);
 		}
-		
-		// Doesn't matter if the localNode is removed, 
-		// can be checked when performing transfers it will be reinserted on the receiving side.
-		//newReplicas.remove(getSocketAddress(localNode));
-		//newReplicas.removeAll(localReplicaList);
-		
-		newReplicas.removeAll(oldReplicas);
-		ByteArrayWrapper firstKey = localNode;
-		ByteArrayWrapper toKey = null;
-		while(newReplicas.size() > 1){
-			//TODO: Need to convert InetSocket to corresponding ByteArrayWrapper
-			//toKey = newReplicas.remove(0);
 			
-			//Even better use get getSocketPreviousResponsible(Key endLimit)
-			transferKeys(firstKey, toKey, false);
-			firstKey = toKey;
-			//TODO: Again Need to convert InetSocket to corresponding ByteArrayWrapper
-			//toKey = newReplicas.remove(0);
+		// Begin transfer procedure.
+		// Find nodes that will receive keys, and nodes that will have keys removed.
+		newReplicas.removeAll(oldReplicas); //Replicas that need to receive missing keys from this nodes.
+		oldReplicas.retainAll(getReplicaList(localNode, true)); //Replicas that need to remove keys of this node.
+		
+		//Key range for local Keys
+		ByteArrayWrapper firstKey = onlinePredecesor;
+		ByteArrayWrapper toKey = localNode;
+		
+		if(newReplicas.isEmpty() == false){
+			for(InetSocketAddress sendToReplica : newReplicas){
+				//Transfer(send) local keys.
+				transferKeys(firstKey, toKey, sendToReplica, false); 
+			}
 		}
-		//Remove Keys of the last segment
-		transferKeys(firstKey, toKey, true);
+		else{
+			log.info("ConsistentHashing No replicas found to sends Key(s) for repair.");
+		}
 		
-		log.info("ConsistentHashing remove keys from: {}. transfer of Keys to: {}", localReplicaList, newReplicas);
-		//transferKeys(out, firstKey, toKey);
-		log.info("ConsistentHashing remove keys from: {}. transfer of Keys to: {}", localReplicaList, newReplicas);
+		if(oldReplicas.isEmpty() == false){
+			for(InetSocketAddress removeFromReplica : oldReplicas){
+				//Remove local keys.
+				transferKeys(firstKey, toKey, removeFromReplica, true);
+			}
+		}
+		else{
+			log.info("ConsistentHashing No replicas found to removed Key(s) for repair.");
+		}	
+		log.info("ConsistentHashing remove keys from: {}. transfer of Keys to: {}", oldReplicas, newReplicas);
 		
-		return success;
+		this.localReplicaList = getReplicaList(localNode, true);
+		
+		return haschanged;
 	}
 	
 	public static void main(String[] args) {
