@@ -39,8 +39,8 @@ public interface Process {
 	public abstract void recvOwner();
 
 	/**
-	 * true if this process should seek another node if the first node chosen appears offline,
-	 * false if this process should quit after being unsuccessful to connect to first node chosen.
+	 * @return true if this process should seek another node if the first node chosen appears offline,
+	 * @return false if this process should quit after being unsuccessful to connect to first node chosen.
 	 */
 	public abstract boolean iterativeRepeat();
 

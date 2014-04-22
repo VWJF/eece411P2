@@ -2373,19 +2373,27 @@ final class Handler extends Command implements Runnable {
 	}
 
 	public int compareTo(Handler arg0) {
-
 		return hashedKey.compareTo(arg0.hashedKey) + compareSocket(owner, arg0.getOwner());
 	}
 
-	//Method to compare InetSocketAddress
-	//Obtained from: http://stackoverflow.com/questions/6644738/java-comparator-for-inetsocketaddress
+	/**
+	 * Helper Method to parse IP address from InetSocketAddress.
+	 * Obtained from: http://stackoverflow.com/questions/6644738/java-comparator-for-inetsocketaddress
+	 * @param addr
+	 * @return IP address of addr as a number.
+	 */
 	private static Integer getIp(InetSocketAddress addr) {
 		byte[] a = addr.getAddress().getAddress();
 		return ((a[0] & 0xff) << 24) | ((a[1] & 0xff) << 16) | ((a[2] & 0xff) << 8) | (a[3] & 0xff);
 	}
 
-	//Method to compare InetSocketAddress
-	//Obtained from: http://stackoverflow.com/questions/6644738/java-comparator-for-inetsocketaddress
+	/**
+	 * Method to compare InetSocketAddress
+	 * Obtained from: http://stackoverflow.com/questions/6644738/java-comparator-for-inetsocketaddress
+	 * @param o1
+	 * @param o2
+	 * @return if (o1 == o2) returns 0, if( o1 ?? o2 ) returns <0, if( o1 ?? o2 )returns >0 FIXME: complete return description.
+	 */
 	public static int compareSocket(InetSocketAddress o1, InetSocketAddress o2) {
 
 		if( o1 == null || o2 == null){
@@ -2404,7 +2412,10 @@ final class Handler extends Command implements Runnable {
 		}
 	}
 
-
+	/**
+	 * 
+	 * @return
+	 */
 	private boolean isLocalhost() {
 		ByteArrayWrapper hashkey = map.hashKey(owner.getAddress().getHostName() + ":" + owner.getPort());
 		ByteArrayWrapper localNode = map.getLocalNode();
