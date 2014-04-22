@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
-import com.sun.org.apache.bcel.internal.generic.INSTANCEOF;
 
 
 public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
