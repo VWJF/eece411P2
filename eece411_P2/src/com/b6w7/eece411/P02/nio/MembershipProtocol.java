@@ -26,7 +26,7 @@ public class MembershipProtocol extends Observable{
 	/** Internal representation of {@code localTimestampVector} to be used to detect changes to the membership protocol. */
 	private ArrayList<Integer> oldTimestampVector;
 
-	/** TODO: Write adequate description.*/
+	/** TODO: Write description of data structure purpose. */
 	private Map<InetSocketAddress, Long> timeTCPTimeout = new HashMap<InetSocketAddress, Long>((int)(this.total_nodes / 0.7));
 	/** Fraction in the range of (0, 1) used in multiplication with the current running average */
 	public static double TIME_ALPHA = 0.9;
@@ -459,14 +459,13 @@ public class MembershipProtocol extends Observable{
 	
 	/**
 	 * Method to notify Observers of this class of changes.
-	 * @param sourcestate TODO
-	 * @param arg
+	 * @param sourcestate a reply string for the Observer to interpret.
 	 */
 	public void notifyViewers(String sourcestate){
 		if( hasTimestampChanged() ){
-			log.debug("MemebershipProtocol is notifying viewers.");
+			log.trace("MemebershipProtocol is notifying viewers.");
 			// We can choose to notify observers with other args if we chose to.
-			// e.g. notifyViewers() from enable can respond with args="enable" instead of localTimestamp.
+			// e.g. notifyViewers() from enable can respond with args="enable", or args=localTimestamp.
 			setChanged();			
 			//notifyObservers(localTimestampVector);
 			notifyObservers(sourcestate);
@@ -474,8 +473,8 @@ public class MembershipProtocol extends Observable{
 	}
 	
 	/**
-	 * Helper Methods used to test MemebershipProtocol & ConsistentHashing.
-ß	 * Simulates increasing timestamps, shutdown.
+	 * Helper Methods that Simulates increasing timestamps, shutdown.
+	 * Used to test MemebershipProtocol & ConsistentHashing.
 	 * Change scope to private when deploying
 	 * Change scope to public when testing.
 	 */
@@ -499,7 +498,7 @@ public class MembershipProtocol extends Observable{
 		return localTimestampVector;
 	}
 	/**
-	 * Simulates receiving shutdown command.
+	 * Simulates receiving shutdown command of any random node.
 	 * Change scope to private when deploying
 	 * Change scope to public when testing.
 	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
@@ -512,12 +511,12 @@ public class MembershipProtocol extends Observable{
 		}
 		
 		boolean success = shutdown(index);
-		System.out.println("Message from Memebership.shutdown(Integer): "+success);
+		//System.out.println("Message from Memebership.shutdown(Integer): "+success);
 		return index;
 	}
 	
 	/**
-	 * Simulates receiving enable command.
+	 * Simulates receiving enable command for any random.
 	 * Change scope to private when deploying
 	 * Change scope to public when testing.
 	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
@@ -530,7 +529,7 @@ public class MembershipProtocol extends Observable{
 		}
 		
 		boolean success = enable(index);
-		System.out.println("Message from Memebership.enable(int): "+success);
+		//System.out.println("Message from Memebership.enable(int): "+success);
 		return index;
 	}
 }

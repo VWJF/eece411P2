@@ -636,21 +636,21 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		Set<ByteArrayWrapper> subSet = null, headSet = null;
 		if( (fromKey.compareTo(toKey)) < 0	){
 			subSet = orderedKeys.subMap(fromKey, false, toKey, true).keySet();
-			sb.append(". fromKey < toKey.");
+			sb.append(". lowerKey < upperKey.");
 		}
 		else{
 			subSet = (orderedKeys.tailMap(fromKey, false).keySet());
 			headSet = orderedKeys.headMap(toKey, true).keySet();
-			sb.append(". toKey < fromKey : flip direction. ");
+			sb.append(". upperKey < lowerKey : flip direction. ");
 		}
-		
+		sb_extras.append("subSet.size: "+ subSet.size()+". ");
+
 		Set<ByteArrayWrapper> fullSet = subSet;
 		
 		long totalKeysFound =  fullSet.size();
 		try{
 						
 			if(headSet != null && headSet.isEmpty() == false){
-				sb_extras.append("subSet.size: "+ subSet.size()+". ");
 				sb_extras.append("headSet.size: "+ headSet.size()+". ");
 				// A new HashSet is needed because the NavigableSet returned 
 				// by ordered key is backed by orderedKeys keySet.
@@ -673,7 +673,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		sb_extras.append("Total TreeMap keyspace size: " + orderedKeys.size()+". ");
 		sb_extras.append("fullSet.size: "+fullSet.size());	
 		
-		log.debug(sb_extras.toString());
+		log.trace(sb_extras.toString());
 		
 		return fullSet;
 	}
@@ -697,7 +697,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			return false;
 		}
 		
-		if(transferSet == null)
+		if(transferSet == null)	//transferKeys(Key:lowerLimit, Key:upperLimit) must be used to obtain the keys for transferring.
 			return false;
 		
 		Iterator<ByteArrayWrapper> iter = transferSet.iterator(); //To get the set in sorted ascending order
@@ -711,7 +711,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			}catch(NoSuchElementException e){
 				sock.append(sendKey);
 			}
-			log.debug("Retrieving for Handler the pair: sendkey: {}, sendValue: {} ", sock, new String(sendValue) );
+			String logSendValue = new String(sendValue);
+			log.debug("Retrieving for Handler the pair: sendkey: {}, sendValue: {} ", sock, logSendValue );
 
 			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(sendKey, sendValue);
 			
@@ -728,7 +729,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			// notifyViewers(){setChanged(); notifyObservers(entry)};
 			//Alternatively,
 			// Create a new interface for Handler to send the entry and InetSocket to Handlers.
-			// Handler can instantiating appropriate type of Handler.
+			// Handler can instantiate appropriate type of Handler.
 		}
 		
 		isComplete = true;
@@ -1088,14 +1089,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			
 		if(newReplicas.equals(oldReplicas)){
 			haschanged = false;
-			//Debugging Sanity check, can be removed when not needed:
-			log.info("ConsistHash. on hasReplicaChanged() did not Detected change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
-			log.info("ConsistHash. on hasReplicaChanged() did not Detected change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
+			//Debugging Sanity check, Logging here can be removed when not needed:
+			log.info("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
+			log.info("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
 
 		}
 		else{
 			haschanged = true;
-			//Debugging Sanity check, can be removed when not needed:
+			//Debugging Sanity check, Logging here can be removed when not needed:
 			log.info("ConsistHash. on hasReplicaChanged() replica list old: {} ", localReplicaList);
 			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
 		}
@@ -1123,7 +1124,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		newReplicas.removeAll(oldReplicas); //Replicas that need to receive missing keys from this nodes.
 		oldReplicas.removeAll(tempNewReplicas); //Replicas that need to remove keys of this node.
 		
-		log.info("ConsistHash. on replica transfer to: {} ", newReplicas);
+		log.info("ConsistHash. on replica TRANSFER to: {} ", newReplicas);
 
 		//Key range for local Keys
 		ByteArrayWrapper firstKey = onlinePredecessor;
@@ -1154,7 +1155,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			log.info("ConsistHash. No replicas found that need to sends key.");
 		}
 		
-		log.info("ConsistHash. on replica remove from: {} ", oldReplicas);
+		log.info("ConsistHash. on replica REMOVE from: {} ", oldReplicas);
 		if(oldReplicas.isEmpty() == false){
 			//Populate Set for transfers.
 			transferSet = transferKeys(firstKey, toKey);
