@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 import java.util.Observable;
 import java.util.Observer;
@@ -55,7 +56,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	private ArrayList<InetSocketAddress> localReplicaList = new ArrayList<InetSocketAddress>();
 
 	/*** Maintains the last known online predecessor to localhost. */
-	private ByteArrayWrapper onlinePredecesor;
+	private ByteArrayWrapper onlinePredecessor;
 
 	/**The structure used to maintain in sorted order the Keys that are present in the local Key-Value store. */
 	private TreeMap<ByteArrayWrapper, byte[]> orderedKeys;
@@ -115,6 +116,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	
 	public void setMembership(MembershipProtocol membership) {
 		this.membership = membership;
+		initialSetup();
 	}
 	/**
 	 * TODO: update {@link this.localReplicaList} according to right implementation.
@@ -130,12 +132,37 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			log.error("Failed to setup ConsistentHashing. Local node {} could not be found in the map of nodes.", key);
 			throw new IllegalArgumentException("Failed to setup ConsistentHashing. Local node " +key+ " could not be found in the map of nodes.");
 		}
-		this.onlinePredecesor = getPreviousResponsible(localNode);
-		
-		// TODO: set this.localReplicaList. Being developed.
-		//this.localReplicaList = getReplicaList(); //this.localReplicaList = getLocalReplicaList();
 
+		this.onlinePredecessor = getPreviousNodeTo(localNode);
+		//this.localReplicaList = getReplicaList(); //this.localReplicaList = getLocalReplicaList();
+		if(membership != null){
+			initialSetup();
+		}
 		log.debug("setLocalNode(): {} {}",key, localNode);		
+	}
+
+	/**
+	 * Intialize onlinePredecesor and localReplicaList after setLocalNode() and setMembership(). 
+	 * @return {@code true}  if onlinePredecesor and localReplicaList have been initialized. 
+	 * 		   {@code false} if there were already initialized.
+	 * 
+	 */
+	public boolean initialSetup() {
+		boolean initialSetup = false;
+		if(membership == null)
+			initialSetup = false;
+		
+		if( onlinePredecessor == null){
+			this.onlinePredecessor = getPreviousResponsible(localNode);
+			initialSetup = initialSetup ^ true;
+		}
+		// TODO: set this.localReplicaList. Being developed.
+		if( localReplicaList == null){
+			//this.localReplicaList = getReplicaList(); //this.localReplicaList = getLocalReplicaList();
+			initialSetup = initialSetup && true;
+		}
+		return initialSetup;
+		
 	}
 	
 	/**
@@ -596,16 +623,24 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		//InetSocketAddress destinationSocket = getSocketAddress(destinationNode);
 		
 		/**TODO: Untested */
-		SortedMap<ByteArrayWrapper, byte[]> subMap = orderedKeys.subMap(fromKey, toKey);
-		
+		NavigableSet<ByteArrayWrapper> subMapSet, headSet, tailSet;
+		if( (fromKey.compareTo(toKey)) < 0	){
+			subMapSet = orderedKeys.subMap(fromKey, true, toKey, false).navigableKeySet();
+		}
+		else{
+			subMapSet = orderedKeys.tailMap(fromKey, false).navigableKeySet();
+			headSet = orderedKeys.headMap(toKey, true).navigableKeySet();
+			subMapSet.addAll(headSet);
+		}
 		//Send all keys until subMap.size() == 1, to exclude sending the lower limit (fromKey).
-		while(subMap.size() > 1){
-			ByteArrayWrapper lastKey = subMap.lastKey();
-			byte[] lastValue = circle.get(lastKey);
+		Iterator<ByteArrayWrapper> iter = subMapSet.iterator();
+		while(iter.hasNext()){	
+			ByteArrayWrapper firstKey = iter.next();
+			byte[] firstValue = circle.get(firstKey);
 			
-			subMap.remove(lastKey);
-			circle.remove(lastKey);
-			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(lastKey, lastValue);
+			subMapSet.remove(firstKey);
+			circle.remove(firstKey);
+			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(firstKey, firstValue);
 			
 			//Use <Key,Value> entry or construct the byte stream of sending TS_PUT_PROCESS OR TS_REMOVE
 			if(isSegmentRemove){
@@ -904,10 +939,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 		if( hasPredecessorChanged() ){
 			//TransferKeys in range (onlinePredecesor.onlinePredecessor, onlinePredecesor] (exclusive, inclusive]
-			ByteArrayWrapper firstKey = getPreviousResponsible(onlinePredecesor);
-			ByteArrayWrapper toKey = onlinePredecesor;
+			ByteArrayWrapper firstKey = getPreviousResponsible(onlinePredecessor);
+			ByteArrayWrapper toKey = onlinePredecessor;
 			
-			transferKeys(firstKey, toKey, getSocketAddress(onlinePredecesor), false); 
+			StringBuilder sb = new StringBuilder();
+			sb.append("Transfer of keys from ").append(getSocketAddress(firstKey)).append(", to ").append(getSocketAddress(toKey));
+			log.info("{}", sb.toString());
+			
+			transferKeys(firstKey, toKey, getSocketAddress(onlinePredecessor), false); 
 		}
 		
 		hasReplicaChanged();
@@ -922,12 +961,12 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		boolean haschanged = false;
 		ByteArrayWrapper newPredecessor = getPreviousResponsible(localNode);
 		
-		if(onlinePredecesor.equals(newPredecessor)){
+		if(onlinePredecessor.equals(newPredecessor)){
 			haschanged = false;
-			log.info("ConsistentHashing on update() did not Detected change in predecessor old: {} new: {} ", newPredecessor, onlinePredecesor);
+			log.info("ConsistentHashing on update() did not Detected change in predecessor old: {} new: {} ", newPredecessor, onlinePredecessor);
 		}else{
 			haschanged = true;
-			onlinePredecesor = newPredecessor;
+			onlinePredecessor = newPredecessor;
 		}
 		
 		return haschanged;
@@ -968,11 +1007,15 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		oldReplicas.retainAll(getReplicaList(localNode, true)); //Replicas that need to remove keys of this node.
 		
 		//Key range for local Keys
-		ByteArrayWrapper firstKey = onlinePredecesor;
+		ByteArrayWrapper firstKey = onlinePredecessor;
 		ByteArrayWrapper toKey = localNode;
 		
 		if(newReplicas.isEmpty() == false){
 			for(InetSocketAddress sendToReplica : newReplicas){
+				StringBuilder sb = new StringBuilder();
+				sb.append("Transfer of keys from ").append(getSocketAddress(firstKey)).append(", to ").append(getSocketAddress(toKey));
+				log.info("{}", sb.toString());
+				
 				//Transfer(send) local keys.
 				transferKeys(firstKey, toKey, sendToReplica, false); 
 			}
