@@ -51,18 +51,16 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	/** The structure used to maintain the record of the natural ordering within the map of nodes.*/
 	private final List<ByteArrayWrapper> listOfNodes;
 	
-	/*** Maintains the current list of nodes that host replicas for primary key-values that belong to localhost*/
+	/*** Maintains the current list of nodes that host replicas for primary key-values that belong to localhost. */
 	private ArrayList<InetSocketAddress> localReplicaList = new ArrayList<InetSocketAddress>();
 
-	/*** Maintains the last known online predecessor to localhost*/
+	/*** Maintains the last known online predecessor to localhost. */
 	private ByteArrayWrapper onlinePredecesor;
 
-	/**The structure used to maintain in sorted order the Keys that are present in the local Key-Value store.*/
+	/**The structure used to maintain in sorted order the Keys that are present in the local Key-Value store. */
 	private TreeMap<ByteArrayWrapper, byte[]> orderedKeys;
 	
-	/**Variable used to maintain identity of the key for the localhost(local ServiceReactor).
-	 * FIXME?: Ideally, a final variable.
-	 */
+	/**Variable used to maintain identity of the key for the localhost(local ServiceReactor). */
 	private ByteArrayWrapper localNode;
 
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
@@ -119,7 +117,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		this.membership = membership;
 	}
 	/**
-	 * TODO: set {@link this.localReplicaList}
+	 * TODO: update {@link this.localReplicaList} according to right implementation.
 	 * Setup method that will initialize {@link localNode}, {@link onlinePredecessor} 
 	 * and {@link localReplicaList} with the node that was created using {@code key}
 	 * @param key key that was used to create the Key in <Key,Value> pair in the map of nodes.
@@ -264,21 +262,16 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * @return List<InetSocketAddress> TODO
 	 */
 	public List<InetSocketAddress> getLocalReplicaList() {
-		ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(this.localReplicaList);
 
-		ArrayList<InetSocketAddress> newReplicas = updateLocalReplicaList();
-		
-		//boolean oldValue = oldReplicas.remove(getSocketAddress(localNode));
-		//boolean newValue = newReplicas.remove(getSocketAddress(localNode));
-		//boolean isReplicaChanged = oldReplicas.removeAll(newReplicas);
-		
-		//newReplicas.add(getSocketAddress(localNode));
+		ArrayList<InetSocketAddress> newReplicas = updateLocalReplicaList();		
+				
 		// TODO
 		// for now just pass through, but we might want to be saving it here, and just before
 		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
 		// keys is in order.
 		
-		this.localReplicaList = new ArrayList<InetSocketAddress>(newReplicas);
+		hasReplicaChanged();
+		
 		return new ArrayList<InetSocketAddress>(newReplicas);
 	}
 
@@ -365,7 +358,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * Given a requestedKey, replies with a List of InetSockAddress for the primary node/owner + num_replicas (successors) of the requestedKey
 	 * @param requestedKey
 	 * @param removeSelf
-	 * @return TODO Check "TODO" near end of method.
+	 * @return TODO Check "FIXME" near end of method.
 	 */
 	public ArrayList<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
 		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
@@ -452,7 +445,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		
 		if(removeSelf) replicas.remove(getSocketAddress(localNode));
 		
-		//FIXME: TODO: Setting the member variable was used for testing purposes, 
+		//FIXME: Setting the member variable was used for testing purposes, 
 		// unsure if it is still needed.
 		//this.localReplicaList = replicas;
 		
@@ -515,7 +508,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		// Are the results of Successor buggy??.
 		// nextKey above may obtain the value of requestedKey,
 		// instead use nextKey = getNextNodeTo(nextKey);
-		
 		nextKey = getNextNodeTo(nextKey);
 		
 		ByteArrayWrapper tempNextKey = nextKey;
@@ -625,10 +617,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			
 			//TODO:
 			//If choose to use Observer Pattern.
-			//notifyViewers(){setChanged(); notifyObservers(entry)};
-			//TODO:
+			// notifyViewers(){setChanged(); notifyObservers(entry)};
 			//Alternatively,
-			//Create a new interface for Handler that permits instantiating new Handlers.
+			// Create a new interface for Handler to send the entry and InetSocket to Handlers.
+			// Handler can instantiating appropriate type of Handler.
 		}
 		isComplete = true;
 		return isComplete;
@@ -895,9 +887,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 */
 	@Override
 	public void update(Observable o, Object arg) {
-		// TODO Auto-generated method stub
 		
-		//TODO Correct log levels or Remove logging. Added for initial debugging purposes.
+		//FIXME Correct log levels or Remove logging. Added for initial debugging purposes.
 		ArrayList<Integer> updatedArg = null;
 		try{
 			updatedArg = (ArrayList<Integer>) arg;
@@ -923,7 +914,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 	}
 	/**
-	 * Detects differences in the currentOnline Predecessor and up-to-date Predecessor.
+	 * Detects differences in the currentOnline Predecessor and up-to-date Predecessor
+	 * updates {@code onlinePredecessor} accordingly.
 	 * @return true if differences were found, false if not. 
 	 */
 	private boolean hasPredecessorChanged() {
@@ -943,12 +935,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 	/**
 	 * Detects differences in the old replica list with up-to-date replica list.
-	 * Detects differences among all entries..
+	 * Detects differences among all entries and starts transfer of keys.
+	 * updates {@code localReplicaList} accordingly.
 	 * @return true if differences were found, false if not. 
 	 */
 	private boolean hasReplicaChanged() {
 				
-		//TODO Correct/improve logs, levels or Remove logging. Added for initial debugging purposes.
+		//FIXME Correct/improve logs, levels or Remove logging. Added for initial debugging purposes.
 
 		boolean haschanged = false;
 		
