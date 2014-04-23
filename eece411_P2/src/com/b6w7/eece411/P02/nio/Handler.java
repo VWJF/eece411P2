@@ -439,8 +439,8 @@ final class Handler extends Command implements Runnable {
 			// this node needs to be shutdown
 			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
 			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
-			map.update();
-			dbHandler.post(new Handler(self, map.getRepairList()));
+			map.update("");
+			dbHandler.post(new Handler(self, map.getRepairData()));
 
 		} else {
 			// we need to record that this node is now online
@@ -1461,7 +1461,7 @@ final class Handler extends Command implements Runnable {
 
 				repairItem = repairList.remove(0);
 				cmd = repairItem.cmd.getCode();
-				key = repairItem.key;
+				key = repairItem.key.rawKey;
 				value = repairItem.value;
 				owner = repairItem.destination;
 
