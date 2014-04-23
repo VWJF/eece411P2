@@ -82,16 +82,6 @@ public class RepairData { //  implements Comparable<RepairData> {
 			s.append("null");
 		}
 		s.append("]");
-		
-		//Show as String
-//		s.append("[key-string=>");
-//		if (null != data) {
-//			s.append(new String(data));
-//		} else {
-//			s.append("null");
-//		}
-//		s.append("]");
-
 
 		return s.toString();
 	}
