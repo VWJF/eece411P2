@@ -1013,9 +1013,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		// we need to save it here the non-changed onlinePredecessor to correctly transferKeys.
 		ByteArrayWrapper firstKey = onlinePredecessor;
 
-		if( hasPredecessorChanged() ){
-			predecessorTransfer(firstKey);
-		}
+		//if( hasPredecessorChanged() ){
+		//	predecessorTransfer(firstKey);
+		//}
 		
 		hasReplicaChanged();
 	}
