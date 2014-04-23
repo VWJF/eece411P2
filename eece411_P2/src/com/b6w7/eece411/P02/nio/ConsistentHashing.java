@@ -92,7 +92,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			log.trace("     ConsistentHashing() hashKey: {}", key);
 
 			byte[] fromMap = mapOfNodes.put(key, node.getBytes());
-			circle.put(key, node.getBytes());			
+			//circle.put(key, node.getBytes());			
 			String err_msg = (null == getNode(hashKey(node))) ? " *** ConsistentHashing() Fail to get" : "     ConsistentHashing() Success returned get(): "+
 					NodeCommands.byteArrayAsString(getNode(hashKey(node)));
 			
@@ -399,6 +399,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		if(repairPutRemoveList == null || repairPutRemoveList.isEmpty())
 			return new ArrayList<RepairData>();
 		
+		assert(repairPutRemoveList != null);
 		return new ArrayList<RepairData>(repairPutRemoveList);	
 	}
 
