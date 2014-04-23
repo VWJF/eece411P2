@@ -12,16 +12,15 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
     public final byte[] rawKey;
 
 
-	public ByteArrayWrapper( byte[] raw_key){
-		byte[] hash_of_key = raw_key;
-	     if (hash_of_key == null)
-	        {
-	            throw new NullPointerException();
-	        }
-	        this.key = hash_of_key;
-	        this.keyBuffer = ByteBuffer.wrap(hash_of_key);
-	        this.rawKey = raw_key;
-	}
+    public ByteArrayWrapper( byte[] raw_key){
+    	if (raw_key == null)
+    	{
+    		throw new NullPointerException();
+    	}
+    	this.key = raw_key;
+    	this.keyBuffer = ByteBuffer.wrap(raw_key);
+    	this.rawKey = raw_key;
+    }
 	
 	public ByteArrayWrapper(byte[] hash_of_key, byte[] raw_key)
     {

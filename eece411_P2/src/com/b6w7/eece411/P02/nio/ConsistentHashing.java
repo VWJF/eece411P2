@@ -67,7 +67,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	/** Used to store the Keys that are expected to be transfered/removed. In order to avoid repeated request to TreeMap. */
 	private Set<ByteArrayWrapper> transferSet = null;
 	
-	/** TODO:*/	
+	/** Used to store all the relevant variables needed for Handler to put/remove one entry from key-value store to other nodes. */	
 	private List<RepairData> repairPutRemoveList = null;
 
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
@@ -163,9 +163,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			this.onlinePredecessor = getPreviousResponsible(localNode);
 			initialSetup = initialSetup ^ true;
 		}
-		// TODO: set this.localReplicaList. Being developed.
 		if( localReplicaList == null){
-			//this.localReplicaList = getReplicaList(localNode); //this.localReplicaList = getLocalReplicaList();
+			this.localReplicaList = getReplicaList(localNode, true); //this.localReplicaList = getLocalReplicaList();
 			initialSetup = initialSetup && true;
 		}
 		return initialSetup;
@@ -409,7 +408,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param removeSelf
 	 * @return List of the online replicas of requestedKey. 
 	 * 		   If (removeSelf == true), then excludes {@link localNode} from returned list.
-	 * Check "FIXME" near end of method.
 	 */
 	public ArrayList<InetSocketAddress> getReplicaList(ByteArrayWrapper requestedKey, boolean removeSelf) {
 		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>(num_replicas+1);
@@ -495,10 +493,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		log.debug("Local key SocketAddress: {}", getSocketAddress(localNode));
 		
 		if(removeSelf) replicas.remove(getSocketAddress(localNode));
-		
-		//FIXME: Setting the member variable was used for testing purposes, 
-		// unsure if it is still needed.
-		
+				
 		return new ArrayList<InetSocketAddress>(replicas);
 	}
 	
@@ -607,16 +602,15 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			
 			if (tailMap.containsKey(key) ==  true) {
 				log.trace("** Key exists in tailMap. {}", NodeCommands.byteArrayAsString(nextKey.key) ) ;
-				//if(tailMap.isEmpty() == false){
-		//TODO: synchronized not needed. Check before removal.
-				synchronized(mapOfNodes){
+			
+				//synchronized(mapOfNodes){
 					Iterator<Entry<ByteArrayWrapper,byte[]>> is = tailMap.entrySet().iterator();
 					//Skip the first entry since it is the element whose "next" we are trying to find.
 					if(is.next() != null && is.hasNext())
 						nextKey = is.next().getKey();
 					else
 						nextKey = mapOfNodes.firstKey();
-				}
+				//}
 			}
 			
 			
@@ -683,7 +677,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		sb.append("Total Keys found: ").append(totalKeysFound);
 
 		sb.trimToSize();
-		log.info(sb.toString());
+		log.debug(sb.toString());
 		
 		sb_extras.append("Total HashMap keyspace size: " + circle.size()+". ");
 		sb_extras.append("Total TreeMap keyspace size: " + orderedKeys.size()+". ");
@@ -713,8 +707,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			return false;
 		}
 		
-		if(transferSet == null)	//transferKeys(Key:lowerLimit, Key:upperLimit) must be used to obtain the keys for transferring.
-			return false;
+		if(repairPutRemoveList == null)	//transferKeys(Key:lowerLimit, Key:upperLimit) must be used to obtain the keys for transferring.
+			repairPutRemoveList = new ArrayList<RepairData>();
+		
 		
 		Iterator<ByteArrayWrapper> iter = transferSet.iterator(); //To get the set in sorted ascending order
 		
@@ -730,11 +725,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			String logSendValue = new String(sendValue);
 			log.info("Creating ReplicaData [destination->{}]  {remove->{}] of the [sendkey->{}], [sendValue->{}] ", destinationNode, isSegmentRemove, sock, logSendValue );
 
-			//Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(sendKey, sendValue);
-			if(repairPutRemoveList == null || repairPutRemoveList.isEmpty())
-				repairPutRemoveList = new ArrayList<RepairData>();
-			
-			//Use <Key,Value> entry or construct the byte stream of sending TS_PUT_PROCESS OR TS_REMOVE
+			//Use sendKey, sendValue, destinationNode and isSegmentRemove to construct List of ReplicaData, to be used by Handler to complete repairs
 			if(isSegmentRemove){
 				////To be sent to other nodes through TS_REPLICA_REMOVE_PROCESS() to destinationNode;
 				repairPutRemoveList.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_REMOVE));
@@ -745,7 +736,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			}
 		}
 		
-		log.info("Repair(s) to be processed ({}) -> {}", repairPutRemoveList.size(), repairPutRemoveList);
+		log.info("Repair(s) to be processed ({}) ", repairPutRemoveList.size() );
 		isComplete = true;
 		
 		return true;
@@ -1012,19 +1003,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	public void update(String arg) {
 		
-		//FIXME Correct log levels or Remove logging. Added for initial debugging purposes.
 		String updatedArg = null;
-		try{
-			//TODO: We can choose to obtain different args from the Observable Membership protocol.
-			updatedArg = (String) arg;
+		updatedArg = (String) arg;
 			
-		}catch(ClassCastException e){
-			String exception = e.getLocalizedMessage();
-			log.error("ConsistHash. update() from MembershipProtocol. Casting Exception. {}", exception);
-		} catch( Exception e ){
-			String exception = e.getLocalizedMessage();
-			log.error("ConsistHash. update() from MembershipProtocol. Exception {}", exception);
-		}
 		log.info("ConsistHash. update() in node {} received update from Memebership with response \"{}\"", getSocketAddress(localNode), updatedArg);
 		
 		
@@ -1045,6 +1026,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @return true if differences were found, false if not. 
 	 */
 	private boolean hasPredecessorChanged() {
+		
+		//FIXME Correct/improve log levels or Remove logging. Added for initial debugging purposes. Here and predecessorTransfer(ByteArrayWrapper key)
+
 		boolean haschanged = false;
 		ByteArrayWrapper newPredecessor = getPreviousResponsible(localNode);
 
@@ -1071,6 +1055,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param firstKey key to begin transfers in range (firstKey, localNode]
 	 */
 	private void predecessorTransfer(ByteArrayWrapper firstKey) {
+		
 		//ByteArrayWrapper firstKey = getPreviousResponsible(onlinePredecessor); // Need non-changed onlinePredecessor.
 		ByteArrayWrapper toKey = localNode;
 		
@@ -1093,7 +1078,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	private boolean hasReplicaChanged() {
 				
-		//FIXME Correct/improve logs, levels or Remove logging. Added for initial debugging purposes.
+		//FIXME Correct/improve logs, levels or Remove logging. Added for initial debugging purposes. Here and replicaTransfers(oldReplicas, newReplicas).
 
 		boolean haschanged = false;
 		
