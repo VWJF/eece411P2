@@ -183,15 +183,28 @@ public class TestNode implements Runnable, JoinThread {
 	@SuppressWarnings("unused")
 	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		int myCount = 1;
+		
+		// Knock3-Tablet:11114
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		
+		// Knock3-Tablet:11114
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		
+		// Knock3-Tablet:11112
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		
+		// Knock3-Tablet:11114
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
-//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		
+		// Knock3-Tablet:11114
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		
+		// Knock3-Tablet:11114
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		
+//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"5Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"1Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"6Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 	}
 	@SuppressWarnings("unused")
 	private void populateTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
@@ -257,14 +270,9 @@ public class TestNode implements Runnable, JoinThread {
 	 * @throws UnsupportedEncodingException
 	 */
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
-		// test 1: put 'Scott' => '63215065', and so on ... 
-
-		myCount = new Random().nextInt(Integer.MAX_VALUE);
-		System.out.println(myCount);
-
-		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-		//		populateOneTest(NodeCommands.CMD_GET, myCount+"Scott", "63215065", NodeCommands.RPY_SUCCESS);
-
+		populateMemoryTests(new Random().nextInt(Integer.MAX_VALUE));
+	}
+	private void populateMemoryPutTests(Integer seed) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAssh-linux.ece.ubc.ca", "137.82.52.29", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -372,7 +380,8 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"IIIi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"JJJi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		
+	}
+	private void populateMemoryGetTests(Integer seed) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// put - > GET -> remove -> get
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -481,7 +490,8 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"IIIi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"JJJi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-	
+	}
+	private void populateMemoryRemoveTests(Integer seed) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// put - > get -> REMOVE -> get
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -590,8 +600,8 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"IIIi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_REMOVE.getCode(), myCount+"JJJi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
-		
-		
+	}
+	private void populateMemoryGetFailTests(Integer seed) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// put - > get -> remove -> GET
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_INEXISTENT.getCode());
@@ -700,7 +710,17 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"IIIi can't change", "you can't see", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"JJJi can't change", "you can't see", NodeCommands.Reply.RPY_INEXISTENT.getCode());
 
-}
+	}
+
+	private void populateMemoryTests(Integer seed) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// test 1: put 'Scott' => '63215065', and so on ... 
+		myCount = seed;
+		System.out.println(myCount);
+		populateMemoryPutTests(seed);
+		populateMemoryGetTests(seed);
+		populateMemoryRemoveTests(seed);
+		populateMemoryGetFailTests(seed);
+	}
 	
 	/**
 	 * Test case: puts 32 keys..., and then gets the same 32 keys by populateGetTest()
@@ -918,13 +938,32 @@ public class TestNode implements Runnable, JoinThread {
 		}
 
 		try {
+
+			// Rolling Failure Test Start------------------------------------------------
+			// Put data in
+			populateMemoryPutTests(1234);
+			
+			// Roll failures on 18 nodes at 15second intervals
+			for(int i = 0; i < 14; i++){
+				populateAnnounceDeathTest();
+				
+				for(int j = 0; j < 15; j++){
+					populateDelayOneSecond();
+				}
+			}		
+			
+			// Resume the rest of memory tests
+			populateMemoryGetTests(1234);
+			populateMemoryRemoveTests(1234);
+			populateMemoryGetFailTests(1234);
+			
+			// Rolling Failure Test End ------------------------------------------------
 			
 //			populatePutGetRemoveGet();
 			
-			populateOneTest();
+//			populateOneTest();
 //			populateTests();
 //			populateMemoryTests();
-
 //			populateRemoveTests();
 			//Test for routing.
 //			populatePutTests(); //For the node that has stored the Key-Values 11112
@@ -936,19 +975,7 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-//			for(int i = 0; i < 15; i++){
-//				populateAnnounceDeathTest();
-//			}		
-
-//			for(int i = 0; i< 10; i++){
-//				populateDelayOneSecond();
-//			}
-
-//			for(int i = 0; i< 60; i++){
-//				populateDelayOneSecond();
-//			}
-
-//			populateMemoryTests();
+			populateMemoryTests();
 
 //			populateGetTests();
 
