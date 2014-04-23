@@ -14,16 +14,15 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.Command;
-import com.b6w7.eece411.P02.multithreaded.HandlerThread;
 import com.b6w7.eece411.P02.multithreaded.JoinThread;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
@@ -215,7 +214,6 @@ final class Handler extends Command implements Runnable {
 		input.position(0);	
 	}
 
-
 	/**
 	 * Constructor for most commands
 	 * @param sel
@@ -260,6 +258,37 @@ final class Handler extends Command implements Runnable {
 		input.put((byte)-1);
 		input.position(0);
 	}
+	
+	/**
+	 * Constructor for repairs
+	 * @param other
+	 * @param owner
+	 * @param process
+	 */
+	public Handler(Handler other, List<RepairData> repairs) {
+
+		this.parent = other.parent;
+		this.queue = other.queue;
+		this.sel = other.sel;
+		this.dbHandler = other.dbHandler;
+		this.replicaHandler = other.replicaHandler;
+		this.map = other.map;
+		socketRequester = null; 
+		keyRequester = null;
+
+		this.membership = other.membership;
+		this.serverPort = other.serverPort;
+
+		this.process = new TSRepairProcess(repairs);
+		
+		state = State.CHECKING_LOCAL;
+		// keep reference to self so that nested classes can refer to the handler
+		self = this;
+		input.position(0);
+		input.put((byte)-1);
+		input.position(0);
+	}
+
 
 	/**
 	 * TSReplica Constructor
@@ -410,6 +439,8 @@ final class Handler extends Command implements Runnable {
 			// this node needs to be shutdown
 			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
 			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
+			map.update();
+			dbHandler.post(new Handler(self, map.getRepairList()));
 
 		} else {
 			// we need to record that this node is now online
@@ -1379,8 +1410,14 @@ final class Handler extends Command implements Runnable {
 	
 	class TSRepairProcess implements Process {
 
-		private Object repairList;
+		private static final int NUM_REPAIRS_PER_HANDLER = 10;
+		private final List<RepairData> repairList;
+		private RepairData repairItem;
 
+		public TSRepairProcess(List<RepairData> repairs) {
+			this.repairList = repairs;
+		}
+		
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSRepairProcess::checkLocal(): {}", self);
@@ -1395,31 +1432,34 @@ final class Handler extends Command implements Runnable {
 			mergeVector(CMDSIZE);
 			incrLocalTime();
 
-			// OK this is a request from this node that will be outbound
-			// this was triggered by a periodic local timer
-			// Instantiate owner list
-			if (repairList == null)
-				repairList = map.getRepairData();
-			
-			cmd = repairList.cmd.getCode();
-			key = repairList.key;
-			value = repairList.value;
-			owner = repairList.owner;
-			
-			log.trace(" *** TSRepairProcess::checkLocal() repairItem=={}", repairList); 
+			log.trace(" *** TSRepairProcess::checkLocal() repairList=={}", repairList); 
 
-//			if (retriesLeft == MAX_TCP_RETRIES) {
-//				if (repairItem.size() == 0) {
-//					log.trace(" *** TSRepairProcess::checkLocal() No more repairs"); 
-//					// we have ran out of nodes to connect to, so do nothing
-//					gossip.armGossipReplica();
-//					doNothing();
-//					return;
-//				}
-//
-//				owner = repairItem.remove(0);
-//				log.debug("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingList=>{}]", owner, repairItem);
-//			}
+			if (retriesLeft == MAX_TCP_RETRIES) {
+				if (repairList.size() == 0) {
+					log.trace(" *** TSRepairProcess::checkLocal() No more repairs"); 
+					// we have ran out of nodes to connect to, so do nothing
+					doNothing();
+					return;
+				}
+				
+				while (repairList.size() > NUM_REPAIRS_PER_HANDLER) {
+					List<RepairData> subList = new LinkedList<RepairData>();
+					
+					for (int i = 0; i < NUM_REPAIRS_PER_HANDLER; i++)
+						subList.add(repairList.remove(0));
+
+					log.trace(" *** TSRepairProcess::checkLocal() spawning repair Handler with {}", subList); 
+					dbHandler.post(new Handler(self, subList));
+				}
+
+				repairItem = repairList.remove(0);
+				cmd = repairItem.cmd.getCode();
+				key = repairItem.key;
+				value = repairItem.value;
+				owner = repairItem.destination;
+
+				log.debug("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingItem=>{}]", owner, repairItem);
+			}
 
 			// OK, we decided that the location of key is at a remote node
 			// we can transition to CONNECT_OWNER and connect to remote node
