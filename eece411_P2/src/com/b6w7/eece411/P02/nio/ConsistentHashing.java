@@ -1354,8 +1354,12 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			System.out.println("Online Predecessor: "+ ch.getSocketPreviousResponsible(e.getKey()) );
 			System.out.println("Online Successor: "+ ch.getSocketNodeResponsible(e.getKey()) );
 
-			List<InetSocketAddress> list = ch.getReplicaList(e.getKey(), false);
-			System.out.println("Online Replicas main(): "+list);
+			List<InetSocketAddress> list_replicas = ch.getReplicaList(e.getKey(), false);
+			System.out.println("Online Replicas main(): "+list_replicas);
+			
+			List<RepairData> list_repair = ch.getRepairData();
+			System.out.println("Online Replicas main(): "+list_repair);
+
 			System.out.println();
 		}
 	}
