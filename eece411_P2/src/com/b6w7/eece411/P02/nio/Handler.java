@@ -443,7 +443,6 @@ final class Handler extends Command implements Runnable {
 			// this node needs to be shutdown
 			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
 			if (map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()))) {
-				map.update("");
 				dbHandler.post(new Handler(self, map.getRepairData()));
 			}
 
@@ -451,7 +450,6 @@ final class Handler extends Command implements Runnable {
 			// we need to record that this node is now online
 			log.debug(" *** Handler::updateTimeout() record responsive {}", owner);
 			if (map.enable(map.hashKey(owner.getHostName()+":"+owner.getPort()))) {
-				map.update("");
 				dbHandler.post(new Handler(self, map.getRepairData()));
 			}
 		}
@@ -1080,6 +1078,8 @@ final class Handler extends Command implements Runnable {
 			} else {
 				byte[] result = map.put(hashedKey, value);
 
+				log.info(" @@@ PutCommand::put() Key {}", self.toString());
+
 				if(result != null) {
 					// Overwriting -- we take note
 					log.debug("     PutCommand::put() Replacing Key {}", this.toString());
@@ -1256,6 +1256,8 @@ final class Handler extends Command implements Runnable {
 			} else {
 				byte[] result = map.put(hashedKey, value);
 
+				log.info(" @@@ PutCommand::put() Key {}", self.toString());
+
 				if(result != null) {
 					// Overwriting -- we take note
 					log.debug(" *** PutCommand() Replacing Key {}", this.toString());
@@ -1316,7 +1318,7 @@ final class Handler extends Command implements Runnable {
 			// this was triggered by a periodic local timer
 			// Instantiate owner list
 			if (replicaList == null)
-				replicaList = map.getLocalReplicaList();
+				replicaList = map.getReplicaList(map.getLocalNode(), true);
 			
 			log.trace(" *** TSPushReplicaProcess::checkLocal() replicaList=={}", replicaList); 
 
@@ -2262,6 +2264,8 @@ final class Handler extends Command implements Runnable {
 		}
 
 		protected byte[] remove(){
+			log.info(" @@@ RemoveCommand::remove() Key {}", self.toString());
+
 			return map.remove(hashedKey);
 		}
 

@@ -290,23 +290,23 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
 
-	/**
-	 * return a list of nodes that host replicas for primary key-values of localhost
-	 * @return List<InetSocketAddress> TODO
-	 */
-	public List<InetSocketAddress> getLocalReplicaList() {
-
-		ArrayList<InetSocketAddress> newReplicas = updateLocalReplicaList();		
-				
-		// TODO
-		// for now just pass through, but we might want to be saving it here, and just before
-		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
-		// keys is in order.
-		
-		hasReplicaChanged();
-		
-		return new ArrayList<InetSocketAddress>(newReplicas);
-	}
+//	/**
+//	 * return a list of nodes that host replicas for primary key-values of localhost
+//	 * @return List<InetSocketAddress> TODO
+//	 */
+//	public List<InetSocketAddress> getLocalReplicaList() {
+//
+//		ArrayList<InetSocketAddress> newReplicas = updateLocalReplicaList();		
+//				
+//		// TODO
+//		// for now just pass through, but we might want to be saving it here, and just before
+//		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
+//		// keys is in order.
+//		
+//		hasReplicaChanged();
+//		
+//		return new ArrayList<InetSocketAddress>(newReplicas);
+//	}
 
 	private ArrayList<InetSocketAddress> updateLocalReplicaList() {
 		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>();
@@ -421,8 +421,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			logtraceString = new StringBuilder();
 			logtraceString.append("owner: "+owner.toString()+"[requestedKey->"+requestedKey+"]\nSocketAddress "+ sockAddress.toString()+"\n");
 		}
-		
-		log.trace("All Replicas:\n[owner->{}][requestedKey->{}] [SocketAddress->{}]", owner.toString(), requestedKey, sockAddress.toString() );
 		
 		ByteArrayWrapper nextKey = owner;
 		ByteArrayWrapper firstReplica = null; 
@@ -1006,7 +1004,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		String updatedArg = null;
 		updatedArg = (String) arg;
 			
-		log.info("ConsistHash. update() in node {} received update from Memebership with response \"{}\"", getSocketAddress(localNode), updatedArg);
+		log.trace("ConsistHash. update() in node {} received update from Memebership with response \"{}\"", getSocketAddress(localNode), updatedArg);
 		
 		
 		// Since hasPredecessorChanged() updates the member variable onlinePredecessor, 
@@ -1064,7 +1062,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		.append(", to ").append(getSocketAddress(toKey))
 		.append("] to dest.node: ").append(getSocketAddress(onlinePredecessor));
 		
-		log.info("{}", sb.toString());
+		log.trace("{}", sb.toString());
 		
 		transferSet  = transferKeys(firstKey, toKey); 
 		createHandlerTransfers(getSocketAddress(onlinePredecessor), false);
@@ -1088,8 +1086,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		if(newReplicas.equals(oldReplicas)){
 			haschanged = false;
 			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.info("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
-			log.info("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
+			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
+			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
 
 		}
 		else{
@@ -1122,7 +1120,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		newReplicas.removeAll(oldReplicas); //Replicas that need to receive missing keys from this nodes.
 		oldReplicas.removeAll(tempNewReplicas); //Replicas that need to remove keys of this node.
 		
-		log.info("ConsistHash. on replica TRANSFER to: {} ", newReplicas);
+		log.debug("ConsistHash. on replica TRANSFER to: {} ", newReplicas);
 
 		//Key range for local Keys
 		ByteArrayWrapper firstKey = onlinePredecessor;
@@ -1150,10 +1148,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 
 		}
 		else{
-			log.info("ConsistHash. No replicas found that need to sends key.");
+			log.trace("ConsistHash. No replicas found that need to sends key.");
 		}
 		
-		log.info("ConsistHash. on replica REMOVE from: {} ", oldReplicas);
+		log.trace("ConsistHash. on replica REMOVE from: {} ", oldReplicas);
 		if(oldReplicas.isEmpty() == false){
 			//Populate Set for transfers.
 			transferSet = transferKeys(firstKey, toKey);
@@ -1163,7 +1161,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			}
 		}
 		else{
-			log.info("ConsistHash. No replicas found to that need keys removed.");
+			log.trace("ConsistHash. No replicas found to that need keys removed.");
 		}	
 	}
 	

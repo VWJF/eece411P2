@@ -38,11 +38,11 @@ import com.b6w7.eece411.P02.multithreaded.JoinThread;
 public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	// Parameters for tuning performance
 	/**	true to periodically gossip with all offline nodes with period {@link #PERIOD_GOSSIP_OFFLINE_MS} */
-	private final boolean ENABLE_GOSSIP_OFFLINE = true; 
+	private final boolean ENABLE_GOSSIP_OFFLINE = false; 
 	/**	true to periodically gossip with one online node with period {@link #PERIOD_GOSSIP_RANDOM_MS}*/
-	private final boolean ENABLE_GOSSIP_RANDOM  = true; 
+	private final boolean ENABLE_GOSSIP_RANDOM  = false; 
 	/**	true to periodically gossip with one replica node with period {@link #PERIOD_GOSSIP_REPLICA_MS}*/
-	private final boolean ENABLE_GOSSIP_REPLICA = true; 
+	private final boolean ENABLE_GOSSIP_REPLICA = false; 
 
 	/**	The time interval after gossiping with all offline nodes before gossiping again.
 	 * A smaller number slows performance with larger number of offline nodes */
@@ -52,7 +52,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	private final long PERIOD_GOSSIP_RANDOM_MS  = 3500;
 	/**	The time interval after gossiping with one online node before gossiping again.
 	 * A smaller number propagates offline information faster */
-	private final long PERIOD_GOSSIP_REPLICA_MS  = 700;
+	private final long PERIOD_GOSSIP_REPLICA_MS  = 10000;
 
 	/**	The upper bound on TCP timeout with another node.  All TCP connections will timeout at this ceiling. */
 	private final long TIME_MAX_TIMEOUT_MS = 750;
