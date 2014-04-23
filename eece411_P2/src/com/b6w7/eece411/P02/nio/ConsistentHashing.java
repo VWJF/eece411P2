@@ -163,7 +163,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		}
 		// TODO: set this.localReplicaList. Being developed.
 		if( localReplicaList == null){
-			//this.localReplicaList = getReplicaList(); //this.localReplicaList = getLocalReplicaList();
+			//this.localReplicaList = getReplicaList(localNode); //this.localReplicaList = getLocalReplicaList();
 			initialSetup = initialSetup && true;
 		}
 		return initialSetup;
@@ -481,7 +481,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		
 		//FIXME: Setting the member variable was used for testing purposes, 
 		// unsure if it is still needed.
-		//this.localReplicaList = replicas;
 		
 		return new ArrayList<InetSocketAddress>(replicas);
 	}
@@ -1199,6 +1198,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			 
 			 ch.num_replicas = 3;
 			 membership.addObserver(ch);
+			 membership.setMap(ch);
 			 
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();

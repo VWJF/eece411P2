@@ -13,6 +13,8 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
+
 public class MembershipProtocol extends Observable{
 
 	/** index of local node(service) participating in the MemebershipProtocol. */
@@ -33,7 +35,10 @@ public class MembershipProtocol extends Observable{
 	/** The maximum timeout on a read operation used as default value and when a node becomes unresponsive */
 	private final long timeMaxTimeout;  
 	/** The minimum timeout on a read operation to prevent timeout from becoming too small */
-	private final long timeMinTimeout;  
+	private final long timeMinTimeout;
+
+	/** Reference to the Map that this MembershipProtocol is working with. */
+	private ConsistentHashing<ByteArrayWrapper, byte[]> map;  
 	
 	private static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 
@@ -55,6 +60,11 @@ public class MembershipProtocol extends Observable{
 		
 		localTimestampVector.set(current_node, 2);
 		oldTimestampVector.set(current_node, 2);
+	}
+	
+	
+	public void setMap(ConsistentHashing<ByteArrayWrapper, byte[]> ch){
+		this.map = ch;
 	}
 	
 	/**
@@ -466,9 +476,10 @@ public class MembershipProtocol extends Observable{
 			log.trace("MemebershipProtocol is notifying viewers.");
 			// We can choose to notify observers with other args if we chose to.
 			// e.g. notifyViewers() from enable can respond with args="enable", or args=localTimestamp.
-			setChanged();			
+			//setChanged();			
 			//notifyObservers(localTimestampVector);
-			notifyObservers(sourcestate);
+			//notifyObservers(sourcestate);
+			map.update((Observable)this, "NonObservable" + sourcestate);
 		}
 	}
 	

@@ -124,6 +124,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		dht.setMembership(membership);
 		
 		membership.addObserver(dht);
+		membership.setMap(dht);
 
 		// start the server socket in non-blocking mode and NIO selector and 
 		selector = Selector.open();
