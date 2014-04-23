@@ -54,8 +54,8 @@ public class MembershipProtocol extends Observable{
 		this.timeMinTimeout = timeMinTimeout;
 		
 		for (int i=0; i<this.total_nodes; i++) {
-			localTimestampVector.add(-1);
-			oldTimestampVector.add(-1);
+			localTimestampVector.add(1);
+			oldTimestampVector.add(1);
 		}
 		
 		localTimestampVector.set(current_node, 2);

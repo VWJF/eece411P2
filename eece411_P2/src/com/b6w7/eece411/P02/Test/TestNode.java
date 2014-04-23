@@ -910,7 +910,7 @@ public class TestNode implements Runnable, JoinThread {
 	public void run() {
 		Socket clientSocket = null;
 
-		pareUnresponsiveNodes();
+		//pareUnresponsiveNodes();
 		
 		if (hosts.size() == 0) {
 			System.out.println("Nothing to do: host list empty.");
@@ -921,15 +921,15 @@ public class TestNode implements Runnable, JoinThread {
 			
 //			populatePutGetRemoveGet();
 			
-//			populateOneTest();
+			populateOneTest();
 //			populateTests();
-			populateMemoryTests();
+//			populateMemoryTests();
 
 //			populateRemoveTests();
 			//Test for routing.
-			populatePutTests(); //For the node that has stored the Key-Values 11112
-			populateGetTests();	//For a node that did not store the Key-Values 11111
-			populateRemoveTests();	//For a node that did not store the Key-Valued
+//			populatePutTests(); //For the node that has stored the Key-Values 11112
+//			populateGetTests();	//For a node that did not store the Key-Values 11111
+//			populateRemoveTests();	//For a node that did not store the Key-Valued
 			//populateAnnounceDeathTest();
 			
 //			for(int i = 0; i< 10; i++){
@@ -948,7 +948,7 @@ public class TestNode implements Runnable, JoinThread {
 //				populateDelayOneSecond();
 //			}
 
-			populateMemoryTests();
+//			populateMemoryTests();
 
 //			populateGetTests();
 
