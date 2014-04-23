@@ -106,7 +106,8 @@ final class Handler extends Command implements Runnable {
 	 * @param owner 
 	 * @param timeLastCompletion 
 	 */
-	Handler(ConsistentHashing<ByteArrayWrapper, byte[]> map, MembershipProtocol membership, long timeLastCompletion, InetSocketAddress owner) {
+	Handler(Selector sel, PostCommand<Command> dbHandler, ConsistentHashing<ByteArrayWrapper, byte[]> map, 
+			Queue<SocketRegisterData> queue, MembershipProtocol membership, long timeLastCompletion, InetSocketAddress owner) {
 		this.socketRequester = null;
 		this.serverPort = -1;
 		this.replicaHandler = null;
@@ -114,10 +115,12 @@ final class Handler extends Command implements Runnable {
 		this.membership = membership;
 		this.map = map;
 		this.keyRequester = null;
-		this.dbHandler = null;
+		this.dbHandler = dbHandler;
 		this.state = State.UPDATE_TIMEOUT;
 		this.owner = owner;
 		this.timeLastCompletion = timeLastCompletion;
+		this.queue = queue;
+		this.sel = sel;
 		this.self = this;
 	}
 
@@ -273,6 +276,7 @@ final class Handler extends Command implements Runnable {
 		this.dbHandler = other.dbHandler;
 		this.replicaHandler = other.replicaHandler;
 		this.map = other.map;
+		
 		socketRequester = null; 
 		keyRequester = null;
 
@@ -438,14 +442,18 @@ final class Handler extends Command implements Runnable {
 		if (timeLastCompletion < 0) {
 			// this node needs to be shutdown
 			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
-			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
-			map.update("");
-			dbHandler.post(new Handler(self, map.getRepairData()));
+			if (map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()))) {
+				map.update("");
+				dbHandler.post(new Handler(self, map.getRepairData()));
+			}
 
 		} else {
 			// we need to record that this node is now online
 			log.debug(" *** Handler::updateTimeout() record responsive {}", owner);
-			map.enable(map.hashKey(owner.getHostName()+":"+owner.getPort()));
+			if (map.enable(map.hashKey(owner.getHostName()+":"+owner.getPort()))) {
+				map.update("");
+				dbHandler.post(new Handler(self, map.getRepairData()));
+			}
 		}
 
 		state = State.DO_NOTHING;
@@ -741,7 +749,7 @@ final class Handler extends Command implements Runnable {
 			// so we post a message to handlerthread
 			assert(map!=null);
 
-			dbHandler.post(new Handler(map, membership, -1, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, -1, owner));
 
 			if (process.iterativeRepeat()) {
 				retriesLeft = MAX_TCP_RETRIES;
@@ -1057,7 +1065,7 @@ final class Handler extends Command implements Runnable {
 		 */
 		private boolean recvOwnerIsComplete() {
 			timeLastCompletion = new Date().getTime() - timeStart;
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
@@ -1228,7 +1236,7 @@ final class Handler extends Command implements Runnable {
 		 */
 		private boolean recvOwnerIsComplete() {
 			timeLastCompletion = new Date().getTime() - timeStart;
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
@@ -1400,7 +1408,7 @@ final class Handler extends Command implements Runnable {
 			if (timeLastCompletion != -1) {
 				log.debug("  recvOwnerIsComplete() [timeLastCompletion=>{}] {}", timeLastCompletion, self);
 			}
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
@@ -1439,7 +1447,7 @@ final class Handler extends Command implements Runnable {
 			mergeVector(CMDSIZE);
 			incrLocalTime();
 
-			log.trace(" *** TSRepairProcess::checkLocal() repairList=={}", repairList); 
+			log.error(" *** TSRepairProcess::checkLocal() repairList=={}", repairList); 
 
 			if (retriesLeft == MAX_TCP_RETRIES) {
 				if (repairList.size() == 0) {
@@ -1455,7 +1463,7 @@ final class Handler extends Command implements Runnable {
 					for (int i = 0; i < NUM_REPAIRS_PER_HANDLER; i++)
 						subList.add(repairList.remove(0));
 
-					log.trace(" *** TSRepairProcess::checkLocal() spawning repair Handler with {}", subList); 
+					log.error(" *** TSRepairProcess::checkLocal() spawning repair Handler with {}", subList); 
 					dbHandler.post(new Handler(self, subList));
 				}
 
@@ -1465,7 +1473,7 @@ final class Handler extends Command implements Runnable {
 				value = repairItem.value;
 				owner = repairItem.destination;
 
-				log.debug("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingItem=>{}]", owner, repairItem);
+				log.error("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingItem=>{}]", owner, repairItem);
 			}
 
 			// OK, we decided that the location of key is at a remote node
@@ -1553,7 +1561,7 @@ final class Handler extends Command implements Runnable {
 			if (timeLastCompletion != -1) {
 				log.debug("  recvOwnerIsComplete() [timeLastCompletion=>{}] {}", timeLastCompletion, self);
 			}
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
@@ -1687,7 +1695,7 @@ final class Handler extends Command implements Runnable {
 
 		protected boolean recvOwnerIsComplete() {
 			timeLastCompletion = new Date().getTime() - timeStart;
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
@@ -1813,7 +1821,7 @@ final class Handler extends Command implements Runnable {
 			if (timeLastCompletion != -1) {
 				log.debug("  recvOwnerIsComplete() [timeLastCompletion=>{}] {}", timeLastCompletion, self);
 			}
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
@@ -2026,7 +2034,7 @@ final class Handler extends Command implements Runnable {
 			if (Reply.RPY_SUCCESS.getCode() == output.get(0)) {
 				if (output.position() >= RPYSIZE + VALUESIZE) {
 					timeLastCompletion = new Date().getTime() - timeStart;
-					dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+					dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 					output.position(RPYSIZE + VALUESIZE);
 					output.flip();
@@ -2245,7 +2253,7 @@ final class Handler extends Command implements Runnable {
 
 		private boolean recvOwnerIsComplete() {
 			timeLastCompletion = new Date().getTime() - timeStart;
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
@@ -2399,7 +2407,7 @@ final class Handler extends Command implements Runnable {
 		 */
 		private boolean recvOwnerIsComplete() {
 			timeLastCompletion = new Date().getTime() - timeStart;
-			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+			dbHandler.post(new Handler(sel, dbHandler, map, queue, membership, timeLastCompletion, owner));
 
 			output.position(RPYSIZE);
 			output.flip();
