@@ -443,14 +443,14 @@ final class Handler extends Command implements Runnable {
 			// this node needs to be shutdown
 			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
 			if (map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()))) {
-				dbHandler.post(new Handler(self, map.getRepairData()));
+//				dbHandler.post(new Handler(self, map.getAndClearRepairData()));
 			}
 
 		} else {
 			// we need to record that this node is now online
 			log.debug(" *** Handler::updateTimeout() record responsive {}", owner);
 			if (map.enable(map.hashKey(owner.getHostName()+":"+owner.getPort()))) {
-				dbHandler.post(new Handler(self, map.getRepairData()));
+//				dbHandler.post(new Handler(self, map.getAndClearRepairData()));
 			}
 		}
 
@@ -1325,6 +1325,20 @@ final class Handler extends Command implements Runnable {
 			if (retriesLeft == MAX_TCP_RETRIES) {
 				if (replicaList.size() == 0) {
 					log.trace(" *** TSPushReplicaProcess::checkLocal() No more replicas to gossip with"); 
+					
+					// check if there has been a change in the predecessor that we
+					// care about, i.e. predecessor is now closer.
+//					map.updatePredecessor();
+					
+					// check if there has been a change in the replica list
+					// if so, repairs are needed.
+					map.updateLocalReplicaList();
+					List<RepairData> repairs = map.getAndClearRepairData();
+					if (!repairs.isEmpty()) {
+						log.info(" @@@ TSPushReplicaProcess::checkLocal() issuing repairList[{}]", repairs.size()); 
+						dbHandler.post(new Handler(self, repairs));
+					}
+					
 					// we have ran out of nodes to connect to, so do nothing
 					gossip.armGossipReplica();
 					doNothing();

@@ -42,7 +42,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	/**	true to periodically gossip with one online node with period {@link #PERIOD_GOSSIP_RANDOM_MS}*/
 	private final boolean ENABLE_GOSSIP_RANDOM  = false; 
 	/**	true to periodically gossip with one replica node with period {@link #PERIOD_GOSSIP_REPLICA_MS}*/
-	private final boolean ENABLE_GOSSIP_REPLICA = false; 
+	private final boolean ENABLE_GOSSIP_REPLICA = true; 
 
 	/**	The time interval after gossiping with all offline nodes before gossiping again.
 	 * A smaller number slows performance with larger number of offline nodes */

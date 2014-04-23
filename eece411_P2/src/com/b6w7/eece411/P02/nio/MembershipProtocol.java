@@ -268,7 +268,7 @@ public class MembershipProtocol extends Observable{
 					isShutdown = true;
 					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}] [vect:->{}]", time, newTime, updateIndex, localTimestampVector);
 					
-					notifyViewers("shutdown");
+//					notifyViewers("shutdown");
 				}
 			}
 			else {
@@ -417,7 +417,7 @@ public class MembershipProtocol extends Observable{
 
 				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}] [vect->{}]", time, newTime, index, localTimestampVector);
 				
-				notifyViewers("enable");			
+//				notifyViewers("enable");			
 			}
 		} else { 
 			isEnabled = false;
@@ -467,21 +467,21 @@ public class MembershipProtocol extends Observable{
 		return differencesFound;
 	}
 	
-	/**
-	 * Method to notify Observers of this class of changes.
-	 * @param sourcestate a reply string for the Observer to interpret.
-	 */
-	public void notifyViewers(String sourcestate){
-		if( hasTimestampChanged() ){
-			log.trace("MemebershipProtocol is notifying viewers.");
-			// We can choose to notify observers with other args if we chose to.
-			// e.g. notifyViewers() from enable can respond with args="enable", or args=localTimestamp.
-			//setChanged();			
-			//notifyObservers(localTimestampVector);
-			//notifyObservers(sourcestate);
-			map.update(sourcestate);
-		}
-	}
+//	/**
+//	 * Method to notify Observers of this class of changes.
+//	 * @param sourcestate a reply string for the Observer to interpret.
+//	 */
+//	public void notifyViewers(String sourcestate){
+//		if( hasTimestampChanged() ){
+//			log.trace("MemebershipProtocol is notifying viewers.");
+//			// We can choose to notify observers with other args if we chose to.
+//			// e.g. notifyViewers() from enable can respond with args="enable", or args=localTimestamp.
+//			//setChanged();			
+//			//notifyObservers(localTimestampVector);
+//			//notifyObservers(sourcestate);
+//			map.update(sourcestate);
+//		}
+//	}
 	
 	/**
 	 * Helper Methods that Simulates increasing timestamps, shutdown.

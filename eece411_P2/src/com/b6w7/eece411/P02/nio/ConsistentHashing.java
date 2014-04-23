@@ -3,8 +3,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.AbstractMap;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -16,11 +14,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
 import java.util.NoSuchElementException;
-import java.util.Observable;
-import java.util.Observer;
-import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -73,6 +67,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
 	private MembershipProtocol membership;
 	private MessageDigest md;
+	private boolean hasReplicaListChanged;
+	private boolean hasPredecessorChanged;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
@@ -290,83 +286,83 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		return new InetSocketAddress(addr[0], Integer.valueOf(addr[1]));
 	}
 
-//	/**
-//	 * return a list of nodes that host replicas for primary key-values of localhost
-//	 * @return List<InetSocketAddress> TODO
-//	 */
-//	public List<InetSocketAddress> getLocalReplicaList() {
+////	/**
+////	 * return a list of nodes that host replicas for primary key-values of localhost
+////	 * @return List<InetSocketAddress> TODO
+////	 */
+////	public List<InetSocketAddress> getLocalReplicaList() {
+////
+////		ArrayList<InetSocketAddress> newReplicas = updateLocalReplicaList();		
+////				
+////		// TODO
+////		// for now just pass through, but we might want to be saving it here, and just before
+////		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
+////		// keys is in order.
+////		
+////		hasReplicaChanged();
+////		
+////		return new ArrayList<InetSocketAddress>(newReplicas);
+////	}
 //
-//		ArrayList<InetSocketAddress> newReplicas = updateLocalReplicaList();		
-//				
-//		// TODO
-//		// for now just pass through, but we might want to be saving it here, and just before
-//		// saving, comparing it to the old copy.  If there is a difference, then a transfer of 
-//		// keys is in order.
+//	private ArrayList<InetSocketAddress> updateLocalReplicaList() {
+//		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>();
+//		ByteArrayWrapper nextNode;
+//		ByteArrayWrapper startingNode = getLocalNode();
 //		
-//		hasReplicaChanged();
+//		InetSocketAddress startingInet = getSocketNodeResponsible(startingNode);
+//		int numReplicasLeftToAdd = num_replicas;
+//		InetSocketAddress nextInet = null;
+//		boolean hasLooped = false;
 //		
-//		return new ArrayList<InetSocketAddress>(newReplicas);
-//	}
-
-	private ArrayList<InetSocketAddress> updateLocalReplicaList() {
-		ArrayList<InetSocketAddress> replicas = new ArrayList<InetSocketAddress>();
-		ByteArrayWrapper nextNode;
-		ByteArrayWrapper startingNode = getLocalNode();
-		
-		InetSocketAddress startingInet = getSocketNodeResponsible(startingNode);
-		int numReplicasLeftToAdd = num_replicas;
-		InetSocketAddress nextInet = null;
-		boolean hasLooped = false;
-		
-		// false excludes self from the list
-		SortedMap<ByteArrayWrapper, byte[]> sortedMap = mapOfNodes.tailMap(startingNode, false);
-		
-		// If we have an empty list, then we are at end of circle, 
-		// so start at beginning of circle
-		if (sortedMap.size() == 0)  {
-			sortedMap = mapOfNodes;
-			hasLooped = true;
-		}
-		
-		Iterator<ByteArrayWrapper> iter = sortedMap.keySet().iterator();
-		nextNode = iter.next();
-		nextInet = getSocketNodeResponsible(nextNode);
-		
-		// we assume that localnode is in the mapOfNodes,
-		// so always at least one element in mapOfNodes
-		
-//		FIND_REPLICAS: while (!nextInet.equals(startingInet) && numReplicasLeftToAdd > 0) {
-		FIND_REPLICAS: while (Handler.compareSocket(nextInet, startingInet) != 0 && numReplicasLeftToAdd > 0) {
-			
-//			if (membership.getTimeout(nextInet) > 0) {
-//				// This node is online, so we can use it
-//				// This node is online, so we add to replicaList
-//				replicas.add(nextInet);
-//				numReplicasLeftToAdd --;
+//		// false excludes self from the list
+//		SortedMap<ByteArrayWrapper, byte[]> sortedMap = mapOfNodes.tailMap(startingNode, false);
+//		
+//		// If we have an empty list, then we are at end of circle, 
+//		// so start at beginning of circle
+//		if (sortedMap.size() == 0)  {
+//			sortedMap = mapOfNodes;
+//			hasLooped = true;
+//		}
+//		
+//		Iterator<ByteArrayWrapper> iter = sortedMap.keySet().iterator();
+//		nextNode = iter.next();
+//		nextInet = getSocketNodeResponsible(nextNode);
+//		
+//		// we assume that localnode is in the mapOfNodes,
+//		// so always at least one element in mapOfNodes
+//		
+////		FIND_REPLICAS: while (!nextInet.equals(startingInet) && numReplicasLeftToAdd > 0) {
+//		FIND_REPLICAS: while (Handler.compareSocket(nextInet, startingInet) != 0 && numReplicasLeftToAdd > 0) {
+//			
+////			if (membership.getTimeout(nextInet) > 0) {
+////				// This node is online, so we can use it
+////				// This node is online, so we add to replicaList
+////				replicas.add(nextInet);
+////				numReplicasLeftToAdd --;
+////			}
+//
+//			// No need to check for online because getSocketNodeResponsible does that already
+//			replicas.add(nextInet);
+//			//this.localReplicaListMap.add(nextInet);
+//			numReplicasLeftToAdd --;
+//			
+//			// check to see if we reached end of circle, if so, start
+//			// at beginning
+//			if (!iter.hasNext()) {
+//				if (!hasLooped) {
+//					hasLooped = true;
+//					iter = mapOfNodes.keySet().iterator();
+//				} else {
+//					break FIND_REPLICAS;
+//				}
 //			}
-
-			// No need to check for online because getSocketNodeResponsible does that already
-			replicas.add(nextInet);
-			//this.localReplicaListMap.add(nextInet);
-			numReplicasLeftToAdd --;
-			
-			// check to see if we reached end of circle, if so, start
-			// at beginning
-			if (!iter.hasNext()) {
-				if (!hasLooped) {
-					hasLooped = true;
-					iter = mapOfNodes.keySet().iterator();
-				} else {
-					break FIND_REPLICAS;
-				}
-			}
-
-			nextNode = iter.next();
-			nextInet = getSocketNodeResponsible(nextNode);
-		}
-		
-		return replicas;
-	}
+//
+//			nextNode = iter.next();
+//			nextInet = getSocketNodeResponsible(nextNode);
+//		}
+//		
+//		return replicas;
+//	}
 	
 	/**
 	 * return a list of offline nodes
@@ -389,6 +385,29 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		return offlineList;
 	}
 	
+	/**
+	 * Obtains the List of RepairData(ByteArrayWrapper key, byte[] data, InetSocketAddress dest, NodeCommands.Request request)
+	 * that are to be processed by Handler.
+	 * @return
+	 */
+	public List<RepairData> getAndClearRepairData(){
+		if(repairPutRemoveList == null)
+			repairPutRemoveList = new ArrayList<RepairData>();
+		
+		// We pass off our list of repair items and then start
+		// back at zero with an empty list
+		List<RepairData> result = repairPutRemoveList;
+		repairPutRemoveList = new ArrayList<RepairData>();
+		
+		// we want to reset the 'hasChanged...' flags
+		// because we are starting back at zero
+		hasReplicaListChanged = false;
+		hasPredecessorChanged = false;
+		
+		assert(result != null);
+		return result;	
+	}
+
 	/**
 	 * Obtains the List of RepairData(ByteArrayWrapper key, byte[] data, InetSocketAddress dest, NodeCommands.Request request)
 	 * that are to be processed by Handler.
@@ -643,7 +662,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		
 		Set<ByteArrayWrapper> subSet = null, headSet = null;
 		if( (fromKey.compareTo(toKey)) < 0	){
-			subSet = orderedKeys.subMap(fromKey, false, toKey, true).keySet();
+			subSet = orderedKeys.subMap(fromKey, false, toKey, false).keySet();
 			sb.append(". lowerKey < upperKey.");
 		}
 		else{
@@ -996,54 +1015,92 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		return circle.values();
 	}
 	
-	/**
-	 * State of MembershipProtocol has changed. 
-	 */
-	public void update(String arg) {
-		
-		String updatedArg = null;
-		updatedArg = (String) arg;
-			
-		log.trace("ConsistHash. update() in node {} received update from Memebership with response \"{}\"", getSocketAddress(localNode), updatedArg);
-		
-		
-		// Since hasPredecessorChanged() updates the member variable onlinePredecessor, 
-		// we need to save it here the non-changed onlinePredecessor to correctly transferKeys.
-		ByteArrayWrapper firstKey = onlinePredecessor;
-
-		if( hasPredecessorChanged() ){
-		//	predecessorTransfer(firstKey);
-		}
-		
-		hasReplicaChanged();
-	}
+//	/**
+//	 * State of MembershipProtocol has changed. 
+//	 */
+//	public void update(String arg) {
+//		
+//		String updatedArg = null;
+//		updatedArg = (String) arg;
+//			
+//		log.trace("ConsistHash. update() in node {} received update from Memebership with response \"{}\"", getSocketAddress(localNode), updatedArg);
+//		
+//		
+//		// Since hasPredecessorChanged() updates the member variable onlinePredecessor, 
+//		// we need to save it here the non-changed onlinePredecessor to correctly transferKeys.
+//		ByteArrayWrapper firstKey = onlinePredecessor;
+//
+//		if( updatePredecessor() ){
+//		//	predecessorTransfer(firstKey);
+//		}
+//		
+//		updateLocalReplicaList();
+//	}
 	
 	/**
 	 * Detects differences in the currentOnline Predecessor and up-to-date Predecessor
 	 * updates {@code onlinePredecessor} accordingly.
 	 * @return true if differences were found, false if not. 
 	 */
-	private boolean hasPredecessorChanged() {
+	public boolean updatePredecessor() {
 		
 		//FIXME Correct/improve log levels or Remove logging. Added for initial debugging purposes. Here and predecessorTransfer(ByteArrayWrapper key)
 
-		boolean haschanged = false;
 		ByteArrayWrapper newPredecessor = getPreviousResponsible(localNode);
 
 		StringBuilder sb = new StringBuilder();
 		sb.append("ConsistHash. on hasPredecessorChanged() predecessor old: ").append(getSocketAddress(onlinePredecessor))
 			.append(" new: ").append(getSocketAddress(newPredecessor));
 		
-		//if(onlinePredecessor.equals(newPredecessor)){
-		if(onlinePredecessor.compareTo(newPredecessor) == 0){
-				haschanged = false;
-		}else{
-			haschanged = true;
+		if(onlinePredecessor.compareTo(newPredecessor) > 0){
+			// we only care for the case that the predecessor is now closer, because
+			// we do nothing for the other case that the predecessor is now further.
+			// Also, it is sticky-set here.
+			hasPredecessorChanged = true;
 			onlinePredecessor = newPredecessor;
 		}
-		sb.append(". hasChanged = " + haschanged);
+		
+		sb.append(". hasChanged = " + hasPredecessorChanged);
 		log.info(sb.toString());
-		return haschanged;
+		return hasPredecessorChanged;
+	}
+
+	/**
+	 * Detects differences in the old replica list with up-to-date replica list.
+	 * Detects differences among all entries and starts transfer of keys.
+	 * updates {@code localReplicaList} accordingly.
+	 * @return true if differences were found, false if not. 
+	 */
+	public boolean updateLocalReplicaList() {
+				
+		//FIXME Correct/improve logs, levels or Remove logging. Added for initial debugging purposes. Here and replicaTransfers(oldReplicas, newReplicas).
+	
+		List<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
+		
+		if(newReplicas.equals(localReplicaList)){
+			// we use sticky-set here
+//			hasReplicaChanged = false;
+			//Debugging Sanity check, Logging here can be removed when not needed:
+			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
+			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
+	
+		}
+		else{
+			hasReplicaListChanged = true;
+			//Debugging Sanity check, Logging here can be removed when not needed:
+			log.info("ConsistHash. on hasReplicaChanged() replica list old: {} ", localReplicaList);
+			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
+		}
+		
+		//Get old replica list and compare.
+		if(hasReplicaListChanged == true){
+			ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
+			replicaTransfer(oldReplicas, newReplicas);
+		}
+		
+		this.localReplicaList = getReplicaList(localNode, true);
+	
+		return hasReplicaListChanged;
 	}
 
 	/**
@@ -1068,45 +1125,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		createHandlerTransfers(getSocketAddress(onlinePredecessor), false);
 		transferSet = null; //Clear transferSet after all Handlers have been created.
 	}
-	/**
-	 * Detects differences in the old replica list with up-to-date replica list.
-	 * Detects differences among all entries and starts transfer of keys.
-	 * updates {@code localReplicaList} accordingly.
-	 * @return true if differences were found, false if not. 
-	 */
-	private boolean hasReplicaChanged() {
-				
-		//FIXME Correct/improve logs, levels or Remove logging. Added for initial debugging purposes. Here and replicaTransfers(oldReplicas, newReplicas).
-
-		boolean haschanged = false;
-		
-		List<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
-		
-		if(newReplicas.equals(localReplicaList)){
-			haschanged = false;
-			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
-			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
-
-		}
-		else{
-			haschanged = true;
-			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.info("ConsistHash. on hasReplicaChanged() replica list old: {} ", localReplicaList);
-			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
-		}
-		
-		//Get old replica list and compare.
-		if(haschanged == true){
-			ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
-			replicaTransfer(oldReplicas, newReplicas);
-		}
-		
-		this.localReplicaList = getReplicaList(localNode, true);
-
-		return haschanged;
-	}
-
 	/**
 	 * Transfer Keys that belong to localNode to new entries in the replica list.
 	 * Remove Keys that belong to localNode from the old(out-dated) entries of the replica list. 
