@@ -335,7 +335,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		
 		// we assume that localnode is in the mapOfNodes,
 		// so always at least one element in mapOfNodes
-		FIND_REPLICAS: while (!nextInet.equals(startingInet) && numReplicasLeftToAdd > 0) {
+		
+//		FIND_REPLICAS: while (!nextInet.equals(startingInet) && numReplicasLeftToAdd > 0) {
+		FIND_REPLICAS: while (Handler.compareSocket(nextInet, startingInet) != 0 && numReplicasLeftToAdd > 0) {
 			
 //			if (membership.getTimeout(nextInet) > 0) {
 //				// This node is online, so we can use it
