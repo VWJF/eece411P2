@@ -67,6 +67,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 
 	/** Used to store the Keys that are expected to be transfered/removed. In order to avoid repeated request to TreeMap. */
 	private Set<ByteArrayWrapper> transferSet = null;
+	
+	/** TODO:*/	
+	private List<RepairData> repairPutRemoveSet = null;
 
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
 	private MembershipProtocol membership;
@@ -163,7 +166,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		}
 		// TODO: set this.localReplicaList. Being developed.
 		if( localReplicaList == null){
-			//this.localReplicaList = getReplicaList(); //this.localReplicaList = getLocalReplicaList();
+			//this.localReplicaList = getReplicaList(localNode); //this.localReplicaList = getLocalReplicaList();
 			initialSetup = initialSetup && true;
 		}
 		return initialSetup;
@@ -483,7 +486,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		
 		//FIXME: Setting the member variable was used for testing purposes, 
 		// unsure if it is still needed.
-		//this.localReplicaList = replicas;
 		
 		return new ArrayList<InetSocketAddress>(replicas);
 	}
@@ -716,22 +718,17 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			String logSendValue = new String(sendValue);
 			log.debug("Retrieving for Handler the pair: sendkey: {}, sendValue: {} ", sock, logSendValue );
 
-			Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(sendKey, sendValue);
+			//Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(sendKey, sendValue);
 			
 			//Use <Key,Value> entry or construct the byte stream of sending TS_PUT_PROCESS OR TS_REMOVE
 			if(isSegmentRemove){
-				////TODO: To be sent to other nodes through TS_REMOVE_PROCESS() to destinationNode;				
+				////To be sent to other nodes through TS_REPLICA_REMOVE_PROCESS() to destinationNode;
+				repairPutRemoveSet.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_REMOVE));
 			}
 			else{
-				////TODO: To be sent to other nodes through TS_PUT_PROCESS() to destinationNode;
+				////To be sent to other nodes through TS_REPLICA_PUT_PROCESS() to destinationNode;
+				repairPutRemoveSet.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_PUT));
 			}
-			
-			//TODO:
-			//If choose to use Observer Pattern.
-			// notifyViewers(){setChanged(); notifyObservers(entry)};
-			//Alternatively,
-			// Create a new interface for Handler to send the entry and InetSocket to Handlers.
-			// Handler can instantiate appropriate type of Handler.
 		}
 		
 		isComplete = true;
@@ -1201,6 +1198,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			 
 			 ch.num_replicas = 3;
 			 membership.addObserver(ch);
+			 membership.setMap(ch);
 			 
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();
