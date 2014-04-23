@@ -116,7 +116,7 @@ public class MembershipProtocol extends Observable{
 
 			log.debug(" === mergeVector() (localIndex={}) after merging: {}", local, localTimestampVector);
 			
-			notifyViewers("gossip");
+			//notifyViewers("gossip");
 	}
 
 	/**
@@ -479,7 +479,7 @@ public class MembershipProtocol extends Observable{
 			//setChanged();			
 			//notifyObservers(localTimestampVector);
 			//notifyObservers(sourcestate);
-			map.update("NonObservable" + sourcestate);
+			map.update(sourcestate);
 		}
 	}
 	
