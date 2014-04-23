@@ -1012,7 +1012,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper firstKey = onlinePredecessor;
 
 		if( hasPredecessorChanged() ){
-			predecessorTransfer(firstKey);
+		//	predecessorTransfer(firstKey);
 		}
 		
 		hasReplicaChanged();
@@ -1080,10 +1080,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 
 		boolean haschanged = false;
 		
-		ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
 		List<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
-			
-		if(newReplicas.equals(oldReplicas)){
+		
+		if(newReplicas.equals(localReplicaList)){
 			haschanged = false;
 			//Debugging Sanity check, Logging here can be removed when not needed:
 			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
@@ -1096,8 +1095,12 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			log.info("ConsistHash. on hasReplicaChanged() replica list old: {} ", localReplicaList);
 			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
 		}
-			
-		replicaTransfer(oldReplicas, newReplicas);
+		
+		//Get old replica list and compare.
+		if(haschanged == true){
+			ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
+			replicaTransfer(oldReplicas, newReplicas);
+		}
 		
 		this.localReplicaList = getReplicaList(localNode, true);
 
@@ -1353,6 +1356,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			System.out.println("Online Successor: "+ ch.getSocketNodeResponsible(e.getKey()) );
 
 			List<InetSocketAddress> list_replicas = ch.getReplicaList(e.getKey(), false);
+			//List<InetSocketAddress> list_replicas = ch.getLocalReplicaList();//e.getKey(), false);
+
 			System.out.println("Online Replicas main(): "+list_replicas);
 			
 			List<RepairData> list_repair = ch.getRepairData();
