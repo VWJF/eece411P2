@@ -857,7 +857,9 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			value = new byte[VALUESIZE];
 			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-			hashedKey = new ByteArrayWrapper(key);
+			//FIXME: Maybe needs fixing.
+			//hashedKey = new ByteArrayWrapper(key);
+			hashedKey = map.hashKey(key); 
 			output = ByteBuffer.allocate(2048);
 
 			if (!keepRunning) {
@@ -903,7 +905,10 @@ final class Handler extends Command implements Runnable {
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 			value = new byte[VALUESIZE];
 			value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-			hashedKey = new ByteArrayWrapper(key);
+			
+			//hashedKey = new ByteArrayWrapper(key);
+			hashedKey = map.hashKey(key);
+
 			output = ByteBuffer.allocate(2048);
 
 			if (!keepRunning) {
@@ -1114,7 +1119,9 @@ final class Handler extends Command implements Runnable {
 				key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 				value = new byte[VALUESIZE];
 				value = Arrays.copyOfRange(input.array(), CMDSIZE+KEYSIZE, CMDSIZE+KEYSIZE+VALUESIZE);
-				hashedKey = new ByteArrayWrapper(key);
+
+				//hashedKey = new ByteArrayWrapper(key);
+				hashedKey = map.hashKey(key);
 
 				// set replyCode as appropriate and prepare output buffer
 				log.debug("--- TSReplicaPutProcess::checkLocal() ------------ Using Local --------------");
@@ -1828,7 +1835,10 @@ final class Handler extends Command implements Runnable {
 
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			hashedKey = new ByteArrayWrapper(key);
+			
+			//hashedKey = new ByteArrayWrapper(key);
+			hashedKey = map.hashKey(key);
+
 			output = ByteBuffer.allocate(2048);
 
 			if (!keepRunning) {
@@ -1874,7 +1884,10 @@ final class Handler extends Command implements Runnable {
 
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			hashedKey = new ByteArrayWrapper(key);
+
+			//hashedKey = new ByteArrayWrapper(key);
+			hashedKey = map.hashKey(key);
+
 			output = ByteBuffer.allocate(2048);
 
 			if (!keepRunning) {
@@ -2050,7 +2063,10 @@ final class Handler extends Command implements Runnable {
 
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			hashedKey = new ByteArrayWrapper(key);
+
+			//hashedKey = new ByteArrayWrapper(key);
+			hashedKey = map.hashKey(key);
+
 			output = ByteBuffer.allocate(2048);
 
 			if (!keepRunning) {
@@ -2094,7 +2110,10 @@ final class Handler extends Command implements Runnable {
 
 			key = new byte[KEYSIZE];
 			key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-			hashedKey = new ByteArrayWrapper(key);
+			
+			//hashedKey = new ByteArrayWrapper(key);
+			hashedKey = map.hashKey(key);
+
 			output = ByteBuffer.allocate(2048);
 
 			if (!keepRunning) {
@@ -2271,7 +2290,9 @@ final class Handler extends Command implements Runnable {
 
 				key = new byte[KEYSIZE];
 				key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
-				hashedKey = new ByteArrayWrapper(key);
+
+				//hashedKey = new ByteArrayWrapper(key);
+				hashedKey = map.hashKey(key);
 
 				// set replyCode as appropriate and prepare output buffer
 				// set replyCode as appropriate and prepare output buffer
