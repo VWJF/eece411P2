@@ -9,10 +9,10 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 
 public class RepairData { //  implements Comparable<RepairData> {
 
-	private final ByteArrayWrapper key;
-	private final InetSocketAddress destination;
-	private final byte[] value;
-	private final Request cmd;
+	public final ByteArrayWrapper key;
+	public final InetSocketAddress destination;
+	public final byte[] value;
+	public final Request cmd;
 
 	public RepairData(ByteArrayWrapper node, byte[] data, InetSocketAddress dest, NodeCommands.Request request) {
 		key = node;
