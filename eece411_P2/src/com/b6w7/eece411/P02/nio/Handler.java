@@ -1377,6 +1377,150 @@ final class Handler extends Command implements Runnable {
 	}
 
 	
+	class TSRepairProcess implements Process {
+
+		private Object repairList;
+
+		@Override
+		public void checkLocal() {
+			log.debug(" --- TSRepairProcess::checkLocal(): {}", self);
+
+			if (!keepRunning) {
+				doNothing();
+				return;
+			}
+
+			output = ByteBuffer.allocate(2048);
+
+			mergeVector(CMDSIZE);
+			incrLocalTime();
+
+			// OK this is a request from this node that will be outbound
+			// this was triggered by a periodic local timer
+			// Instantiate owner list
+			if (repairList == null)
+				repairList = map.getRepairData();
+			
+			cmd = repairList.cmd.getCode();
+			key = repairList.key;
+			value = repairList.value;
+			owner = repairList.owner;
+			
+			log.trace(" *** TSRepairProcess::checkLocal() repairItem=={}", repairList); 
+
+//			if (retriesLeft == MAX_TCP_RETRIES) {
+//				if (repairItem.size() == 0) {
+//					log.trace(" *** TSRepairProcess::checkLocal() No more repairs"); 
+//					// we have ran out of nodes to connect to, so do nothing
+//					gossip.armGossipReplica();
+//					doNothing();
+//					return;
+//				}
+//
+//				owner = repairItem.remove(0);
+//				log.debug("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingList=>{}]", owner, repairItem);
+//			}
+
+			// OK, we decided that the location of key is at a remote node
+			// we can transition to CONNECT_OWNER and connect to remote node
+			incrLocalTime();
+
+			try {
+				// prepare the output buffer, and signal for opening a socket to remote
+				generateOwnerQuery();
+
+				timeTimeout = membership.getTimeout(owner);
+
+				socketOwner = SocketChannel.open();
+				socketOwner.configureBlocking(false);
+				// Send message to selector and wake up selector to process the message.
+				// There is no need to set interestOps() because selector will check its queue.
+				registerData(keyOwner, socketOwner, SelectionKey.OP_CONNECT, owner);
+
+				state = State.CONNECT_OWNER;
+				timeStart = new Date().getTime();
+				sel.wakeup();
+
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
+		}
+
+		@Override
+		public void generateOwnerQuery() {
+			log.debug(" +++ TSRepairProcess::generateOwnerQuery() START    {}", self);
+
+			output.position(0);
+			output.put(cmd);
+			output.put(key);
+			
+			if (cmd == NodeCommands.Request.CMD_TS_REPLICA_PUT.getCode()) {
+				output.put(value);
+			} else if (cmd != NodeCommands.Request.CMD_TS_REPLICA_REMOVE.getCode()) {
+				log.warn(" +++ TSRepairProcess::generateOwnerQuery() UNEXPECTED CMD {}", cmd);
+			}
+
+			byteBufferTSVector.position(0);
+			output.put(byteBufferTSVector);
+			output.flip();
+
+			log.debug(" +++ TSRepairProcess::generateOwnerQuery() COMPLETE {}", self);
+		}
+
+		@Override
+		public void generateRequesterReply() {
+			throw new IllegalStateException(" ### should not call TSRepairProcess::generateRequesterReply() " + self);
+		}
+
+		@Override
+		public void recvOwner() {
+			log.debug(" *** *** TSRepairProcess::recvOwner() START {}", self);
+			output.limit(output.capacity());
+
+			// read from the socket then close the connection
+			try {
+				socketOwner.read(output);
+
+				if (recvOwnerIsComplete()) {
+					log.debug(" +++ TSRepairProcess::recvOwner() COMPLETE {}", self);
+
+					deallocateInternalNetworkResources();
+
+					if (process.iterativeRepeat()) {
+						retriesLeft = MAX_TCP_RETRIES;
+						timeLastCompletion = -1;
+						state = State.CHECKING_LOCAL;
+						
+						dbHandler.post(self);
+					} else {
+						doNothing();
+					}
+				}
+			} catch (IOException e) {
+				retryAtStateCheckingLocal(e);
+			}
+		}
+
+		protected boolean recvOwnerIsComplete() {
+			timeLastCompletion = new Date().getTime() - timeStart;
+			if (timeLastCompletion != -1) {
+				log.debug("  recvOwnerIsComplete() [timeLastCompletion=>{}] {}", timeLastCompletion, self);
+			}
+			dbHandler.post(new Handler(map, membership, timeLastCompletion, owner));
+
+			output.position(RPYSIZE);
+			output.flip();
+
+			return true;
+		}
+
+		@Override
+		public boolean iterativeRepeat() {
+			return true;
+		}
+	}
+
+	
 	class TSPushOnlineProcess implements Process {
 
 		@Override
