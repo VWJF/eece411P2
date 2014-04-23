@@ -479,7 +479,7 @@ public class MembershipProtocol extends Observable{
 			//setChanged();			
 			//notifyObservers(localTimestampVector);
 			//notifyObservers(sourcestate);
-			map.update((Observable)this, "NonObservable" + sourcestate);
+			map.update("NonObservable" + sourcestate);
 		}
 	}
 	

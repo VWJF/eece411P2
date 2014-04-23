@@ -123,7 +123,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		membership = new MembershipProtocol(positionInRing, dht.getSizeAllNodes(), TIME_MAX_TIMEOUT_MS, TIME_MIN_TIMEOUT_MS);
 		dht.setMembership(membership);
 		
-		membership.addObserver(dht);
+		//membership.addObserver(dht);
 		membership.setMap(dht);
 
 		// start the server socket in non-blocking mode and NIO selector and 

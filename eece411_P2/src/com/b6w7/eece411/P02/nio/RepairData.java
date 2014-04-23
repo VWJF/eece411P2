@@ -31,22 +31,21 @@ public class RepairData { //  implements Comparable<RepairData> {
         }
         RepairData otherRepair = (RepairData) other;
         
-        boolean inetComparison = false;
+        boolean destinationComparison = false;
         if ( 0 == Handler.compareSocket(destination, otherRepair.destination ) )
-        		inetComparison = true;
+        		destinationComparison = true;
         
         boolean equals = key.equals( otherRepair.key) 
         		 		&& Arrays.equals(this.value, otherRepair.value)
         		 		&& (cmd == otherRepair.cmd)
-        		 		&& inetComparison ;
-        		 		//.destination)(destination.equals( ((RepairData) other).destination);
+        		 		&& destinationComparison ;
          return equals;
     }
 
     @Override
     public int hashCode()
     {
-    	//TODO: Enum HashCode
+    	//FIXME: Verify use of Enum.hashCode()
     	return key.hashCode() + value.hashCode() + destination.hashCode() + cmd.hashCode() ;
     }
     
@@ -64,32 +63,37 @@ public class RepairData { //  implements Comparable<RepairData> {
 //		 
 //	}
 	
-//	@Override
-//	public String toString(){
-//
-//		StringBuilder s = new StringBuilder();
-//
-//		//Show as Bytes
-//		s.append("[key=>");
-//		if (null != key) {
-//			for (int i=0; i<key.; i++)
-//				s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
+	@Override
+	public String toString(){
+
+		StringBuilder s = new StringBuilder();
+
+		s.append("[key=>").append( key.toString() );
+		s.append("] [value=>").append( new String(value) );
+		s.append("] [destination=>").append( destination.toString() );
+		s.append("] [request=>").append( cmd.toString() );
+		//s.append(Integer.toString((cmd[i] & 0xff) + 0x100, 16).substring(1));
+		s.append("]");
+		
+		//Show as Bytes
+		s.append("[key=>");
+		if (null != key) {
+		} else {
+			s.append("null");
+		}
+		s.append("]");
+		
+		//Show as String
+//		s.append("[key-string=>");
+//		if (null != data) {
+//			s.append(new String(data));
 //		} else {
 //			s.append("null");
 //		}
 //		s.append("]");
-//		
-//		//Show as String
-////		s.append("[key-string=>");
-////		if (null != data) {
-////			s.append(new String(data));
-////		} else {
-////			s.append("null");
-////		}
-////		s.append("]");
-//
-//
-//		return s.toString();
-//	}
+
+
+		return s.toString();
+	}
 
 }

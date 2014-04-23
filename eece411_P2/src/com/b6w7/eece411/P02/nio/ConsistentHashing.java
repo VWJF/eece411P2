@@ -32,8 +32,7 @@ import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 
 
-public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
-									Observer{
+public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 
 	public static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
 	public static boolean IS_VERBOSE = true; //true: System.out enabled, false: disabled
@@ -69,7 +68,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	private Set<ByteArrayWrapper> transferSet = null;
 	
 	/** TODO:*/	
-	private List<RepairData> repairPutRemoveSet = null;
+	private List<RepairData> repairPutRemoveList = null;
 
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
 	private MembershipProtocol membership;
@@ -387,6 +386,18 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			}
 		}
 		return offlineList;
+	}
+	
+	/**
+	 * Obtains the List of RepairData(ByteArrayWrapper key, byte[] data, InetSocketAddress dest, NodeCommands.Request request)
+	 * that are to be processed by Handler.
+	 * @return
+	 */
+	public List<RepairData> getRepairData(){
+		if(repairPutRemoveList == null || repairPutRemoveList.isEmpty())
+			return new ArrayList<RepairData>();
+		
+		return new ArrayList<RepairData>(repairPutRemoveList);	
 	}
 
 	/**
@@ -714,21 +725,24 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 				sock.append(sendKey);
 			}
 			String logSendValue = new String(sendValue);
-			log.debug("Retrieving for Handler the pair: sendkey: {}, sendValue: {} ", sock, logSendValue );
+			log.info("Creating ReplicaData [destination->{}]  {remove->{}] of the [sendkey->{}], [sendValue->{}] ", destinationNode, isSegmentRemove, sock, logSendValue );
 
 			//Map.Entry<ByteArrayWrapper, byte[]> entry = new AbstractMap.SimpleEntry<ByteArrayWrapper, byte[]>(sendKey, sendValue);
+			if(repairPutRemoveList == null || repairPutRemoveList.isEmpty())
+				repairPutRemoveList = new ArrayList<RepairData>();
 			
 			//Use <Key,Value> entry or construct the byte stream of sending TS_PUT_PROCESS OR TS_REMOVE
 			if(isSegmentRemove){
 				////To be sent to other nodes through TS_REPLICA_REMOVE_PROCESS() to destinationNode;
-				repairPutRemoveSet.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_REMOVE));
+				repairPutRemoveList.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_REMOVE));
 			}
 			else{
 				////To be sent to other nodes through TS_REPLICA_PUT_PROCESS() to destinationNode;
-				repairPutRemoveSet.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_PUT));
+				repairPutRemoveList.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_PUT));
 			}
 		}
 		
+		log.info("Repair(s) to be processed ({}) -> {}", repairPutRemoveList.size(), repairPutRemoveList);
 		isComplete = true;
 		
 		return true;
@@ -738,29 +752,30 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	 * "enables" a node in the membership protocol. 
 	 * Node will be online if {@code key} is a participating node
 	 * @param key ByteArrayWrapper of the node to "enable" in the membership protocol.
+	 * @return true if the shutdown command caused an online node to be turned offline.
 	 */
-	public void enable(ByteArrayWrapper key) {
+	public boolean enable(ByteArrayWrapper key) {
 		//ByteArrayWrapper shutdownKeyOf = getNodeResponsible(key);
 		String node = new String(mapOfNodes.get(key));
 
 		int ret = listOfNodes.indexOf(key);
 		if (-1 == ret){
 			log.error(" ### ConsistentHashing::shutdown() key index not found for node {}", node );
-			return;
+			return false;
 		}
-		membership.enable(ret);
+		return membership.enable(ret);
 	}
 	
 	/**
 	 * Method to notify MemebershipProtocol to update the timestamp vector.
 	 * @param node: key of the node that is to be "disabled".
+	 * @return true if the shutdown command caused an online node to be turned offline.
 	 */
-	public void shutdown(ByteArrayWrapper key){
+	public boolean shutdown(ByteArrayWrapper key){
 		log.debug(" *** ConsistentHashing::shutdown() CALLED ");
 		if(key == null){
 			log.info("     Shutdown of local node");
-			membership.shutdown(null);
-			return;
+			return membership.shutdown(null);
 		}
 		
 		String node = new String(mapOfNodes.get(key));
@@ -768,9 +783,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		int ret = listOfNodes.indexOf(key);
 		if (-1 == ret){
 			log.error(" ### ConsistentHashing::shutdown() key index not found for node {}", node );
-			return;
 		}
-		membership.shutdown(ret);
+		return membership.shutdown(ret);
 	}
 	/**
 	 * Obtains the closest predecessor node(IP address) on the Key-Value Store circle 
@@ -876,9 +890,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 		}
 		
 		if (digest.length > NodeCommands.LEN_KEY_BYTES) {
-			key = new ByteArrayWrapper(Arrays.copyOfRange(digest, 0, NodeCommands.LEN_KEY_BYTES));
+			key = new ByteArrayWrapper(Arrays.copyOfRange(digest, 0, NodeCommands.LEN_KEY_BYTES), node);
 		} else {
-			key = new ByteArrayWrapper( digest );
+			key = new ByteArrayWrapper( digest , node );
 		}
 		return key;
 	}
@@ -993,8 +1007,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 	/**
 	 * State of MembershipProtocol has changed. 
 	 */
-	@Override
-	public void update(Observable o, Object arg) {
+	public void update(String arg) {
 		
 		//FIXME Correct log levels or Remove logging. Added for initial debugging purposes.
 		String updatedArg = null;
@@ -1195,7 +1208,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>,
 			 ch.setMembership(membership);
 			 
 			 ch.num_replicas = 3;
-			 membership.addObserver(ch);
+			 //membership.addObserver(ch);
 			 membership.setMap(ch);
 			 
 			 if(IS_DEBUG) System.out.println();
