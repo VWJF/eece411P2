@@ -273,25 +273,30 @@ public class TestNode implements Runnable, JoinThread {
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		populateMemoryTests(new Random().nextInt(Integer.MAX_VALUE));
 	}
+	
 	@SuppressWarnings("unused")
-	private void populateRollingFailuresTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+	private void populateRollingFailuresTest(int seed, int numSets, int numAnnounceDeath, int periodAnnounceDeathS) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// Rolling Failure Test Start------------------------------------------------
 		// Put data in
-		populateMemoryPutTests(1234);
-		
+		for (int i=0; i<numSets; i++) {
+			populateMemoryPutTests(seed+i*100);
+		}
+
 		// Roll failures on 18 nodes at 15second intervals
-		for(int i = 0; i < 14; i++){
+		for(int i = 0; i < numAnnounceDeath; i++){
 			populateAnnounceDeathTest();
-			
-			for(int j = 0; j < 15; j++){
+
+			for(int j = 0; j < periodAnnounceDeathS; j++)
 				populateDelayOneSecond();
-			}
-		}		
+		}	
 		
 		// Resume the rest of memory tests
-		populateMemoryGetTests(1234);
-		populateMemoryRemoveTests(1234);
-		populateMemoryGetFailTests(1234);
+		// 100 * 10 == 1000 keys
+		for (int i=0; i<numSets; i++) {
+			populateMemoryGetTests(seed+i*100);
+			populateMemoryRemoveTests(seed+i*100);
+			populateMemoryGetFailTests(seed+i*100);
+		}
 		
 		// Rolling Failure Test End ------------------------------------------------
 
@@ -962,11 +967,11 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-//			populateRollingFailuresTest();
+			populateRollingFailuresTest(1234, 1, 14, 30);
 			
 //			populatePutGetRemoveGet();
 			
-			populateOneTest();
+//			populateOneTest();
 //			populateTests();
 //			populateMemoryTests();
 //			populateRemoveTests();
@@ -975,28 +980,6 @@ public class TestNode implements Runnable, JoinThread {
 //			populateGetTests();	//For a node that did not store the Key-Values 11111
 //			populateRemoveTests();	//For a node that did not store the Key-Valued
 			//populateAnnounceDeathTest();
-
-
-//			int numSets = 1;
-//			int seed = 1234;
-//			for (int i=0; i<numSets; i++) {
-//				populateMemoryPutTests(seed+i*100);
-//			}
-//			
-//			for(int i = 0; i < 14; i++){
-//				populateAnnounceDeathTest();
-//				
-//				for(int j = 0; j < 30; j++){
-//					populateDelayOneSecond();
-//				}
-//			}	
-//			
-//			// 100 * 10 == 1000 keys
-//			for (int i=0; i<numSets; i++) {
-//				populateMemoryGetTests(seed+i*100);
-//				populateMemoryRemoveTests(seed+i*100);
-//				populateMemoryGetFailTests(seed+i*100);
-//			}
 
 
 			

@@ -702,7 +702,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/**
 	 * Helper method used to instantiate adequate Handlers in order to transferKeys.
-	 * Retrieves Keys from {@link tranferSet} populated by {@link transferKeys(fromKey, toKey)}.
+	 * Retrieves Keys from {@link tranferSet} populated by {@link #replicaTransfer(fromKey, toKey)}
+	 * and {@link #predecessorTransfer(fromKey, toKey)}.
 	 * Retrieves values from HashMap circle.
 	 * @param destinationNode 
 	 * @param isSegmentRemove determines whether the key is to be put or removed on the {@code destinationNode}
@@ -1062,33 +1063,42 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	public boolean updatePredecessorRepairData() {
 		
-		//FIXME Correct/improve log levels or Remove logging. Added for initial debugging purposes. Here and predecessorTransfer(ByteArrayWrapper key)
-		boolean hasPredecessorChanged = false;
 		ByteArrayWrapper newPredecessor = getPreviousResponsible(localNode);
 
+		// only consider the case that the old and new predecessors are different
+		if (newPredecessor.compareTo(onlinePredecessor) == 0)
+			return false;
+
 		StringBuilder sb = new StringBuilder();
-		sb.append("ConsistHash. on updatePredecessorRepairData() predecessor old: ").append(getSocketAddress(onlinePredecessor))
-			.append(" new: ").append(getSocketAddress(newPredecessor));
-		
-		// If (new > old) && !(old < me < new)
-		boolean isCloser = (newPredecessor.compareTo(onlinePredecessor) > 0
+		sb.append("ConsistHash. on updatePredecessorRepairData() predecessor changed old: ").append(getSocketAddress(onlinePredecessor))
+		.append(" new: ").append(getSocketAddress(newPredecessor));
+
+		// If (new > old) && !(old < local < new)
+		boolean isCloserWithoutWrap = (newPredecessor.compareTo(onlinePredecessor) > 0
 				&& !(onlinePredecessor.compareTo(localNode) < 0 && localNode.compareTo(newPredecessor) < 0));
-		// If (new < old) && (new < me < old)
-		boolean isWrappedCloser = (newPredecessor.compareTo(onlinePredecessor) < 0
+		// If (new < old) && (new < local < old)
+		boolean isCloserWithWrap = (newPredecessor.compareTo(onlinePredecessor) < 0
 				&& (newPredecessor.compareTo(localNode) < 0 && localNode.compareTo(onlinePredecessor) < 0));
-		
-		if ( isCloser || isWrappedCloser ) {
-			// we only care for the case that the predecessor is now closer, because
-			// we do nothing for the other case that the predecessor is now further.
-			hasPredecessorChanged = true;
+
+		if ( isCloserWithoutWrap || isCloserWithWrap ) {
+			// predecessor is now closer, so we need to surrender primary
+			// for keys that are primary to newPredecessor, that is
+			// ( oldPredecessor, newPredecessor )
+			predecessorTransfer(onlinePredecessor, newPredecessor);
 			onlinePredecessor = newPredecessor;
-			predecessorTransfer(this.onlinePredecessor);
+
+		} else {
+			// predecessor is now further, so we need to become primary
+			// for keys that were primary to oldPredecessor, that is
+			// ( newPredecessor, oldPredecessor )
+			predecessorTransfer(newPredecessor, onlinePredecessor);
+			onlinePredecessor = newPredecessor;
 		}
-		
-		sb.append(". [isCloser=>["+isCloser+","+isWrappedCloser+"]");
-		sb.append(". hasChanged = " + hasPredecessorChanged);
+
+		sb.append(". [isCloser=>["+isCloserWithoutWrap+"||"+isCloserWithWrap+"]");
 		log.info(sb.toString());
-		return hasPredecessorChanged;
+
+		return true;
 	}
 
 	/**
@@ -1096,9 +1106,11 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * RepairData accordingly.  Call this before calling {@link #getAndClearRepairData}. 
 	 */
 	public void updateRepairData() {
-		// we need to know the current predecessor before we can deal with replication
-		updatePredecessorRepairData();
+		// we need to create localReplicaList first before we can deal with a changed
+		// predecessor, because for case that predecessor leaves, the new primary
+		// keys will need to be replicated
 		updateReplicaListRepairData();
+		updatePredecessorRepairData();
 	}
 
 	/**
@@ -1107,10 +1119,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * hasPredecessorChanged() already updated {@code onlinePredecessor}, need non-changed onlinePredecessor. 
 	 * @param firstKey key to begin transfers in range (firstKey, localNode]
 	 */
-	private void predecessorTransfer(ByteArrayWrapper firstKey) {
-		
-		//ByteArrayWrapper firstKey = getPreviousResponsible(onlinePredecessor); // Need non-changed onlinePredecessor.
-		ByteArrayWrapper toKey = localNode;
+	private void predecessorTransfer(ByteArrayWrapper firstKey, ByteArrayWrapper toKey) {
 		
 		StringBuilder sb = new StringBuilder();
 		sb.append("Transfer of keys in the range: (").append(getSocketAddress(firstKey))
@@ -1119,8 +1128,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		
 		log.trace("{}", sb.toString());
 		
-		transferSet  = transferKeys(firstKey, toKey); 
-		createHandlerTransfers(getSocketAddress(onlinePredecessor), false);
+		transferSet = transferKeys(firstKey, toKey); 
+		for (InetSocketAddress replica: localReplicaList) {
+			createHandlerTransfers(replica, false);
+		}
 		transferSet = null; //Clear transferSet after all Handlers have been created.
 	}
 	/**

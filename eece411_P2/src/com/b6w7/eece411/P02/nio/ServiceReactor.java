@@ -38,9 +38,9 @@ import com.b6w7.eece411.P02.multithreaded.JoinThread;
 public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	// Parameters for tuning performance
 	/**	true to periodically gossip with all offline nodes with period {@link #PERIOD_GOSSIP_OFFLINE_MS} */
-	private final boolean ENABLE_GOSSIP_OFFLINE = false; 
+	private final boolean ENABLE_GOSSIP_OFFLINE = true; 
 	/**	true to periodically gossip with one online node with period {@link #PERIOD_GOSSIP_RANDOM_MS}*/
-	private final boolean ENABLE_GOSSIP_RANDOM  = false; 
+	private final boolean ENABLE_GOSSIP_RANDOM  = true; 
 	/**	true to periodically gossip with one replica node with period {@link #PERIOD_GOSSIP_REPLICA_MS}*/
 	private final boolean ENABLE_GOSSIP_REPLICA = true; 
 
