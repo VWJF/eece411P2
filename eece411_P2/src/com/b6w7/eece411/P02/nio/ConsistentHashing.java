@@ -63,6 +63,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/** Used to store all the relevant variables needed for Handler to put/remove one entry from key-value store to other nodes. */	
 	private List<RepairData> repairPutRemoveList = null;
+	private Map<InetSocketAddress, List<RepairData>> repairList = new HashMap<InetSocketAddress, List<RepairData>>(25);
+
 
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
 	private MembershipProtocol membership;
@@ -390,16 +392,15 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * that are to be processed by Handler and then clears the internal list.
 	 * @return
 	 */
-	public List<RepairData> getAndClearRepairData(){
-		if(repairPutRemoveList == null)
-			repairPutRemoveList = new ArrayList<RepairData>();
+	public Map<InetSocketAddress, List<RepairData>> getAndClearRepairData(){
+		if(repairList == null)
+			repairList = new HashMap<InetSocketAddress, List<RepairData>>();
 		
 		// We pass off our list of repair items and then start
 		// back at zero with an empty list
-		List<RepairData> result = repairPutRemoveList;
-		repairPutRemoveList = new ArrayList<RepairData>();
+		Map<InetSocketAddress, List<RepairData>> result = repairList;
+		repairList = new HashMap<InetSocketAddress, List<RepairData>>();
 		
-		assert(result != null);
 		return result;	
 	}
 
@@ -717,8 +718,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			return false;
 		}
 		
-		if(repairPutRemoveList == null)	//transferKeys(Key:lowerLimit, Key:upperLimit) must be used to obtain the keys for transferring.
-			repairPutRemoveList = new ArrayList<RepairData>();
+		if(repairList == null)	//transferKeys(Key:lowerLimit, Key:upperLimit) must be used to obtain the keys for transferring.
+			repairList = new HashMap<InetSocketAddress, List<RepairData>>();
 		
 		Iterator<ByteArrayWrapper> iter = transferSet.iterator(); //To get the set in sorted ascending order
 		
@@ -737,15 +738,22 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			//Use sendKey, sendValue, destinationNode and isSegmentRemove to construct List of ReplicaData, to be used by Handler to complete repairs
 			if(isSegmentRemove){
 				////To be sent to other nodes through TS_REPLICA_REMOVE_PROCESS() to destinationNode;
-				repairPutRemoveList.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_REMOVE));
+				if (!repairList.containsKey(destinationNode))
+					repairList.put(destinationNode, new LinkedList<RepairData>());
+				
+				repairList.get(destinationNode).add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_REMOVE));
+				
 			}
 			else{
 				////To be sent to other nodes through TS_REPLICA_PUT_PROCESS() to destinationNode;
-				repairPutRemoveList.add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_PUT));
+				if (!repairList.containsKey(destinationNode))
+					repairList.put(destinationNode, new LinkedList<RepairData>());
+				
+				repairList.get(destinationNode).add(new RepairData(sendKey, sendValue, destinationNode, NodeCommands.Request.CMD_TS_REPLICA_PUT));
 			}
 		}
 		
-		log.info("Repair(s) to be processed ({}) ", repairPutRemoveList.size() );
+		log.info("Repair(s) to be processed ({}) ", repairList.size() );
 		
 		return true;
 	}

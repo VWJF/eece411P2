@@ -16,6 +16,7 @@ public class NodeCommands {
 	public static final int LEN_VALUE_BYTES = 1024;
 	public static final int LEN_TIMESTAMP_BYTES = ServiceReactor.nodes.length * 4;
 	public static final int REPLICATION_FACTOR = 3;
+	public static final int LEN_BULK_BYTES = 1;
 
 	// Needed to make a check in ClientInterface whether the "received" command/error code 
 	// were among eligible commands.

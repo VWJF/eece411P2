@@ -1003,11 +1003,11 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-			populateRollingFailuresTest(1234, 50, 14, 40);
+//			populateRollingFailuresTest(1234, 50, 14, 40);
 			
 //			populatePutGetRemoveGet();
 			
-//			populateOneTest();
+			populateOneTest();
 //			populateTests();
 //			populateMemoryTests();
 //			populateRemoveTests();
