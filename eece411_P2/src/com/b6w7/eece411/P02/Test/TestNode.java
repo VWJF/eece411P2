@@ -278,8 +278,17 @@ public class TestNode implements Runnable, JoinThread {
 	private void populateRollingFailuresTest(int seed, int numSets, int numAnnounceDeath, int periodAnnounceDeathS) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// Rolling Failure Test Start------------------------------------------------
 		// Put data in
+		
+		int setsPerMinuteDelay = 10;
+		
 		for (int i=0; i<numSets; i++) {
 			populateMemoryPutTests(seed+i*100);
+
+			// Every setsPerMinuteDelay sets, perform 60sec wait
+			if ((i+1) % setsPerMinuteDelay == 0) {
+				for(int j = 0; j < 60; j++)
+					populateDelayOneSecond();
+			}
 		}
 
 		// Roll failures on i nodes at j second intervals
@@ -294,12 +303,31 @@ public class TestNode implements Runnable, JoinThread {
 		// 100 * 10 == 1000 keys
 		for (int i=0; i<numSets; i++) {
 			populateMemoryGetTests(seed+i*100);
+
+			// Every setsPerMinuteDelay sets, perform 60sec wait
+			if ((i+1) % setsPerMinuteDelay == 0) {
+				for(int j = 0; j < 60; j++)
+					populateDelayOneSecond();
+			}
 		}
+		
 		for (int i=0; i<numSets; i++) {
 			populateMemoryRemoveTests(seed+i*100);
+			// Every setsPerMinuteDelay sets, perform 60sec wait
+			if ((i+1) % setsPerMinuteDelay == 0) {
+				for(int j = 0; j < 60; j++)
+					populateDelayOneSecond();
+			}
 		}
+		
 		for (int i=0; i<numSets; i++) {
 			populateMemoryGetFailTests(seed+i*100);
+
+			// Every setsPerMinuteDelay sets, perform 60sec wait
+			if ((i+1) % setsPerMinuteDelay == 0) {
+				for(int j = 0; j < 60; j++)
+					populateDelayOneSecond();
+			}
 		}
 
 		// Rolling Failure Test End ------------------------------------------------
@@ -975,7 +1003,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-			populateRollingFailuresTest(1234, 5, 14, 40);
+			populateRollingFailuresTest(1234, 50, 14, 40);
 			
 //			populatePutGetRemoveGet();
 			
