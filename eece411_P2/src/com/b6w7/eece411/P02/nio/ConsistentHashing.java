@@ -704,7 +704,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	/**
 	 * Helper method used to instantiate adequate Handlers in order to transferKeys.
 	 * Retrieves Keys from {@link tranferSet} populated by {@link #replicaTransfer(fromKey, toKey)}
-	 * and {@link #predecessorTransfer(fromKey, toKey)}.
+	 * and {@link #furtherPredecessorTransfer(fromKey, toKey)}.
 	 * Retrieves values from HashMap circle.
 	 * @param destinationNode 
 	 * @param isSegmentRemove determines whether the key is to be put or removed on the {@code destinationNode}
@@ -1035,8 +1035,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 //		
 //		updateLocalReplicaList();
 //	}
-	
-	
+
 	public void updateReplicaListRepairData() {
 
 		ArrayList<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
@@ -1087,16 +1086,16 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			// predecessor is now closer, so we need to surrender primary
 			// for keys that are primary to newPredecessor, that is
 			// ( oldPredecessor, newPredecessor )
-			predecessorTransfer(onlinePredecessor, newPredecessor);
-			onlinePredecessor = newPredecessor;
+			closerPredecessorTransfer(onlinePredecessor, newPredecessor);
 
 		} else {
 			// predecessor is now further, so we need to become primary
 			// for keys that were primary to oldPredecessor, that is
 			// ( newPredecessor, oldPredecessor )
-			predecessorTransfer(newPredecessor, onlinePredecessor);
-			onlinePredecessor = newPredecessor;
+			furtherPredecessorTransfer(newPredecessor, onlinePredecessor);
 		}
+
+		onlinePredecessor = newPredecessor;
 
 		sb.append(". [isCloser=>["+isCloserWithoutWrap+"||"+isCloserWithWrap+"]");
 		log.info(sb.toString());
@@ -1109,25 +1108,52 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * RepairData accordingly.  Call this before calling {@link #getAndClearRepairData}. 
 	 */
 	public void updateRepairData() {
-		// we need to create localReplicaList first before we can deal with a changed
-		// predecessor, because for case that predecessor leaves, the new primary
-		// keys will need to be replicated
+
+		// we will update localReplicaList first which will create the handlers to
+		// replicate to an updated set of replica nodes
 		updateReplicaListRepairData();
+
+		// now we have a current localReplicaList, so we now check to see
+		// if predecessor has changed.  If so, create the handlers to either
+		// (i) for case that new predecessor is closer in circle, replicate keys stored locally
+		// that belong to the new predecessor, or
+		// (ii) for case that new predecessor is further in circle, replicate keys belonging to
+		// the old predecessor to the replicaList (i.e. become primary of those keys)
 		updatePredecessorRepairData();
 	}
 
+	
+	
 	/**
-	 * TransferKeys in range (firstKey, localNode] (exclusive, inclusive].
-	 * For our purposes of transferring: (onlinePredecesor.onlinePredecessor, onlinePredecesor] 
-	 * hasPredecessorChanged() already updated {@code onlinePredecessor}, need non-changed onlinePredecessor. 
-	 * @param firstKey key to begin transfers in range (firstKey, localNode]
+	 * Transfer keys in response to a closer predecessor coming online.  
+	 * Keys in range of ({@code firstKey}, {@code toKey}) are sent to node {@code toKey}.
+	 * @param firstKey key in range to begin transfers, exclusive
+	 * @param toKey key to range to end transfers, exclusive, and is also the target node.
 	 */
-	private void predecessorTransfer(ByteArrayWrapper firstKey, ByteArrayWrapper toKey) {
+	private void closerPredecessorTransfer(ByteArrayWrapper firstKey, ByteArrayWrapper toKey) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("ConsistHash. closerPredecessorTransfer() Transfer of keys in the range: (").append(getSocketAddress(firstKey))
+		.append(", to ").append(getSocketAddress(toKey))
+		.append("] to dest.node: ").append(getSocketAddress(toKey));
+		
+		log.trace("{}", sb.toString());
+		transferSet = transferKeys(firstKey, toKey); 
+		createHandlerTransfers(getSocketAddress(toKey), false);
+		transferSet = null;
+	}
+	
+	/**
+	 * Transfer keys in response to closest predecessor going offline.  
+	 * Keys in range of ({@code firstKey}, {@code toKey}) are sent to all nodes in {@code replicaList}.
+	 * @param firstKey key in range to begin transfers, exclusive
+	 * @param toKey key to range to end transfers, exclusive
+	 */
+	private void furtherPredecessorTransfer(ByteArrayWrapper firstKey, ByteArrayWrapper toKey) {
 		
 		StringBuilder sb = new StringBuilder();
-		sb.append("Transfer of keys in the range: (").append(getSocketAddress(firstKey))
+		sb.append("ConsistHash. furtherPredecessorTransfer{} Transfer of keys in the range: (").append(getSocketAddress(firstKey))
 		.append(", to ").append(getSocketAddress(toKey))
-		.append("] to dest.node: ").append(getSocketAddress(onlinePredecessor));
+		.append("] to dest.node: ").append(localReplicaList);
 		
 		log.trace("{}", sb.toString());
 		

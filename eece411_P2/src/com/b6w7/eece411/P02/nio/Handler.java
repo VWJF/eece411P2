@@ -31,6 +31,7 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
+import com.b6w7.eece411.P02.nio.CopyOfHandler.TSReplicaPutProcess;
 
 final class Handler extends Command implements Runnable { 
 	private final SocketChannel socketRequester;
@@ -321,7 +322,7 @@ final class Handler extends Command implements Runnable {
 		if(process instanceof TSReplicaPutProcess)
 			this.process = new TSReplicaPutProcess(1);
 		else if(process instanceof TSReplicaRemoveProcess)
-			this.process = new TSReplicaRemoveProcess();
+			this.process = new TSReplicaRemoveProcess(1);
 
 		this.owner = owner;
 		this.key = other.key;
@@ -583,13 +584,47 @@ final class Handler extends Command implements Runnable {
 			}
 			
 			return false;
+			
 		} else if (Request.CMD_TS_REPLICA_REMOVE.getCode() == cmd) {
-			if (position >= CMDSIZE + KEYSIZE + TIMESTAMPSIZE) {
-				process = new TSReplicaRemoveProcess();
-				input.position(CMDSIZE + KEYSIZE + TIMESTAMPSIZE);
-				input.flip();
-				return true;
+			if (position < CMDSIZE + BULKSIZE)
+				return false;
+			
+			int numKVPairs = (int)(input.get(CMDSIZE) & 0xFF);
+			
+			if (numKVPairs == 1) {
+				// If we only have one key-value pair, then this is the simple case
+				// and no need to allocate a larger buffer
+				if (position >= CMDSIZE + BULKSIZE + KEYSIZE + TIMESTAMPSIZE) {
+					process = new TSReplicaPutProcess(1);
+					input.position(CMDSIZE + BULKSIZE + KEYSIZE + TIMESTAMPSIZE);
+					input.flip();
+					return true;
+				}
+
+			} else {
+				// If we have more than one key-value pair, then we need to allocate a 
+				// larger buffer
+				int neededBufferLength = CMDSIZE + numKVPairs*(KEYSIZE) + TIMESTAMPSIZE;
+				
+				// if we need a `larger buffer than 'input', and 'input' has exhausted
+				// its buffer capacity then we can allocate a new buffer.  Otherwise,
+				// we may instantiate a new buffer while the old buffer is being 
+				// written to by nio thread
+				if (input.capacity() != neededBufferLength && !input.hasRemaining()) {
+					ByteBuffer temp = ByteBuffer.allocate(neededBufferLength);
+					System.arraycopy(input.array(), 0, temp.array(), 0, input.position());
+					temp.position(position);
+					input = temp;
+				}
+
+				if (position >= neededBufferLength) {
+					process = new TSReplicaRemoveProcess(numKVPairs);
+					input.position(neededBufferLength);
+					input.flip();
+					return true;
+				}
 			}
+			
 			return false;
 
 		} else if (Request.CMD_TS_PUSH.getCode() == cmd) {
@@ -1345,7 +1380,7 @@ final class Handler extends Command implements Runnable {
 			assert( replica != null);
 
 			log.debug("spawnReplicaRemove() [replica=>{}]", replica);
-			replicaSet.add(new Handler(this, replica, new TSReplicaRemoveProcess()));
+			replicaSet.add(new Handler(this, replica, new TSReplicaRemoveProcess(1)));
 		}
 		replicaHandler.post(replicaSet);
 	}
@@ -1495,7 +1530,7 @@ final class Handler extends Command implements Runnable {
 	
 	class TSRepairProcess implements Process {
 
-		private static final int NUM_REPAIRS_PER_HANDLER = 10;
+		private static final int NUM_REPAIRS_PER_HANDLER = 100;
 		private final Map<InetSocketAddress, List<RepairData>> repairList;
 
 		public TSRepairProcess(Map<InetSocketAddress, List<RepairData>> repairs) {
@@ -1542,19 +1577,6 @@ final class Handler extends Command implements Runnable {
 							break;
 					}
 				}
-				
-				// At this point, we only have one destination left, so process it
-//				while (repairList.size() > NUM_REPAIRS_PER_HANDLER) {
-//					List<RepairData> subList = new LinkedList<RepairData>();
-//					
-//					for (int i = 0; i < NUM_REPAIRS_PER_HANDLER; i++)
-//						subList.add(repairList.remove(0));
-//
-//					log.trace(" *** TSRepairProcess::checkLocal() spawning repair Handler with {}", subList); 
-//					dbHandler.post(new Handler(self, subList));
-//				}
-
-				log.debug("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingList=>{}]", owner, repairList);
 			}
 
 			// OK, we decided that the location of key is at a remote node
@@ -1630,6 +1652,9 @@ final class Handler extends Command implements Runnable {
 
 				// remove this item from the original list
 				iter.remove();
+				
+				if (repairsThisRound.size() == NUM_REPAIRS_PER_HANDLER)
+					break FIND_CONSECUTIVE;
 			}
 			
 			// we now know the number of PUT/REMOVE in one bulk PUT/REMOVE
@@ -2436,11 +2461,16 @@ final class Handler extends Command implements Runnable {
 
 	class TSReplicaRemoveProcess extends RemoveProcess {
 
+		private final int numOfKVPairs;
+		TSReplicaRemoveProcess(int numOfKVPairs) {
+			this.numOfKVPairs = numOfKVPairs;
+		}
+
 		@Override
 		public void checkLocal() {
 			log.debug(" --- TSReplicaRemoveProcess::checkLocal(): {}", self);
 
-			output = ByteBuffer.allocate(2048);
+			output = ByteBuffer.allocate(input.remaining());
 
 			if (retriesLeft < 0) {
 				doNothing();
@@ -2452,7 +2482,7 @@ final class Handler extends Command implements Runnable {
 				return;
 			}
 
-			mergeVector(CMDSIZE+KEYSIZE);
+			mergeVector(CMDSIZE+BULKSIZE+numOfKVPairs*(KEYSIZE));
 			incrLocalTime();
 
 			if (cmd == Request.CMD_TS_REPLICA_REMOVE.getCode()) {
@@ -2460,20 +2490,30 @@ final class Handler extends Command implements Runnable {
 				// we need to read local timestamp and send it back
 
 				key = new byte[KEYSIZE];
-				key = Arrays.copyOfRange(input.array(), CMDSIZE, CMDSIZE+KEYSIZE);
 
-				//hashedKey = new ByteArrayWrapper(key);
-				hashedKey = map.hashKey(key);
+				BULK_REMOVE: for (int index = 0; index < numOfKVPairs; index++) {
+					key = Arrays.copyOfRange(input.array()
+							, CMDSIZE+BULKSIZE+index*(KEYSIZE+VALUESIZE)
+							, CMDSIZE+BULKSIZE+index*(KEYSIZE+VALUESIZE)+KEYSIZE);
 
-				// set replyCode as appropriate and prepare output buffer
-				// set replyCode as appropriate and prepare output buffer
-				replyValue = remove();
-				if( replyValue != null ) 
-					replyCode = Reply.RPY_SUCCESS.getCode(); 
-				else
-					replyCode = Reply.RPY_INEXISTENT.getCode();
+					//hashedKey = new ByteArrayWrapper(key);
+					hashedKey = map.hashKey(key);
 
+					// set replyCode as appropriate and prepare output buffer
+					log.debug("--- TSReplicaPutProcess::checkLocal() ------------ Using Local --------------");
+					
+					replyValue = remove();
+					if( replyValue != null ) { 
+						replyCode = Reply.RPY_SUCCESS.getCode(); 
+						
+					} else {
+						replyCode = Reply.RPY_INEXISTENT.getCode();
+					}
+				}
+			
 				generateRequesterReply();
+
+				////////
 
 				// signal to selector that we are ready to write
 				state = State.SEND_REQUESTER;
@@ -2519,7 +2559,10 @@ final class Handler extends Command implements Runnable {
 			log.debug(" +++ TSReplicaRemoveProcess::generateOwnerQuery() START {}", self);
 			output.position(0);
 			output.put(Request.CMD_TS_REPLICA_REMOVE.getCode());
-			output.put(key);
+			output.put((byte)numOfKVPairs);
+
+			for (int i = 0; i < numOfKVPairs; i++)
+				output.put(key);
 
 			byteBufferTSVector.position(0);
 			output.put(byteBufferTSVector);

@@ -189,19 +189,19 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11114
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11112
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11114
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11114
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11114
-//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 //		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"5Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
@@ -1003,11 +1003,11 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-//			populateRollingFailuresTest(1234, 50, 14, 40);
+			populateRollingFailuresTest(1234, 50, 14, 10);
 			
 //			populatePutGetRemoveGet();
 			
-			populateOneTest();
+//			populateOneTest();
 //			populateTests();
 //			populateMemoryTests();
 //			populateRemoveTests();
