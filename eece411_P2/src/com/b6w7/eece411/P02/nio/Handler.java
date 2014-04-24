@@ -563,13 +563,13 @@ final class Handler extends Command implements Runnable {
 				// larger buffer
 				int neededBufferLength = CMDSIZE + numKVPairs*(KEYSIZE+VALUESIZE) + TIMESTAMPSIZE;
 				
-				// if we need a larger buffer than 'input', and 'input' has exhausted
+				// if we need a `larger buffer than 'input', and 'input' has exhausted
 				// its buffer capacity then we can allocate a new buffer.  Otherwise,
 				// we may instantiate a new buffer while the old buffer is being 
 				// written to by nio thread
 				if (input.capacity() != neededBufferLength && !input.hasRemaining()) {
 					ByteBuffer temp = ByteBuffer.allocate(neededBufferLength);
-					System.arraycopy(input, 0, temp, 0, input.position());
+					System.arraycopy(input.array(), 0, temp.array(), 0, input.position());
 					temp.position(position);
 					input = temp;
 				}
@@ -1701,6 +1701,11 @@ final class Handler extends Command implements Runnable {
 						retriesLeft = MAX_TCP_RETRIES;
 						timeLastCompletion = -1;
 						state = State.CHECKING_LOCAL;
+						
+						// If we have completed all entries for this destination
+						// then remove destination from list
+						if (repairList.get(owner).isEmpty())
+							repairList.remove(owner);
 						
 						dbHandler.post(self);
 					} else {

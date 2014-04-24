@@ -78,13 +78,6 @@ public class RepairData { //  implements Comparable<RepairData> {
 		s.append("] [request=>").append( cmd.toString() );
 		//s.append(Integer.toString((cmd[i] & 0xff) + 0x100, 16).substring(1));
 		s.append("] ");
-		
-		if (null != key) {
-			//Show as Bytes
-			s.append("[key=>");
-			s.append("null");
-		}
-		s.append("]");
 
 		return s.toString();
 	}
