@@ -276,7 +276,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 			}
 		};
 		
-		timer.schedule(taskGossipReplica, delay );
+		if (timer != null && keepRunning)
+			timer.schedule(taskGossipReplica, delay );
 	}
 
 	@Override
@@ -301,7 +302,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 			}
 		};
 		
-		timer.schedule(taskGossipOffline, delay );
+		if (timer != null && keepRunning)
+			timer.schedule(taskGossipOffline, delay );
 	}
 
 	@Override
@@ -325,7 +327,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 			}
 		};
 
-		timer.schedule(taskGossipRandom, delay);
+		if (timer != null && keepRunning)
+			timer.schedule(taskGossipRandom, delay);
 	}
 
 

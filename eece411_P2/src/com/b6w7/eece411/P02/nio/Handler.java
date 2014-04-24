@@ -31,7 +31,6 @@ import com.b6w7.eece411.P02.multithreaded.NodeCommands;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Reply;
 import com.b6w7.eece411.P02.multithreaded.NodeCommands.Request;
 import com.b6w7.eece411.P02.multithreaded.PostCommand;
-import com.b6w7.eece411.P02.nio.CopyOfHandler.TSReplicaPutProcess;
 
 final class Handler extends Command implements Runnable { 
 	private final SocketChannel socketRequester;
@@ -1566,10 +1565,12 @@ final class Handler extends Command implements Runnable {
 				if (repairList.size() > 1) {
 					// iterate over repairList, posting to handler for each destination, and removing each destination
 					// repairList.  Loop will exist when only one destination is left in repairList
-					for (Map.Entry<InetSocketAddress, List<RepairData>> host : repairList.entrySet()) {
+					Iterator<Map.Entry<InetSocketAddress, List<RepairData>>> iter = repairList.entrySet().iterator();
+					while (iter.hasNext()) {
+						Map.Entry<InetSocketAddress, List<RepairData>> host = iter.next();
 						Map<InetSocketAddress, List<RepairData>> repairsForAnotherHandler = new HashMap<InetSocketAddress, List<RepairData>>(1);
 						repairsForAnotherHandler.put(host.getKey(), host.getValue());
-						repairList.remove(host.getKey());
+						iter.remove();
 
 						dbHandler.post(new Handler(self, repairsForAnotherHandler));
 						

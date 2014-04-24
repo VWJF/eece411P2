@@ -275,7 +275,10 @@ public class TestNode implements Runnable, JoinThread {
 	}
 	
 	@SuppressWarnings("unused")
-	private void populateRollingFailuresTest(int seed, int numSets, int numAnnounceDeath, int periodAnnounceDeathS) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+	private void populateRollingFailuresTest(int seed, int numSets
+			, int numSuddenAnnounceDeath
+			, int numRollingAnnounceDeath
+			, int periodAnnounceDeathS) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// Rolling Failure Test Start------------------------------------------------
 		// Put data in
 		
@@ -291,8 +294,18 @@ public class TestNode implements Runnable, JoinThread {
 			}
 		}
 
+		// simulate catastrophic failure
+		for(int i = 0; i < numSuddenAnnounceDeath; i++){
+			populateAnnounceDeathTest();
+		}
+
+		// allow one period of delay
+		for(int j = 0; j < periodAnnounceDeathS; j++) {
+			populateDelayOneSecond();
+		}
+		
 		// Roll failures on i nodes at j second intervals
-		for(int i = 0; i < numAnnounceDeath; i++){
+		for(int i = 0; i < numRollingAnnounceDeath; i++){
 			populateAnnounceDeathTest();
 
 			for(int j = 0; j < periodAnnounceDeathS; j++)
@@ -1003,7 +1016,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-			populateRollingFailuresTest(1234, 50, 14, 10);
+			populateRollingFailuresTest(1234, 4, 6, 6, 10);
 			
 //			populatePutGetRemoveGet();
 			
@@ -1015,8 +1028,7 @@ public class TestNode implements Runnable, JoinThread {
 //			populatePutTests(); //For the node that has stored the Key-Values 11112
 //			populateGetTests();	//For a node that did not store the Key-Values 11111
 //			populateRemoveTests();	//For a node that did not store the Key-Valued
-			//populateAnnounceDeathTest();
-
+			
 
 			
 			// we will use this stream to send data to the server
