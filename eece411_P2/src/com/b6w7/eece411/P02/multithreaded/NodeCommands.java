@@ -163,21 +163,10 @@ public class NodeCommands {
 	}
 
 	public static byte sanitizeCmd(byte cmd) {
-//		if ( cmd <= Request.CMD_TS_REMOVE.getCode() && cmd >= Request.CMD_UNRECOG.getCode() )
-//			// so far so good, make sure not an unknown cmd in the middle
-//			if (cmd <= Request.CMD_ANNOUNCEDEATH.getCode() || cmd >= Request.CMD_NOT_SET.getCode() )
-//				// cmd is valid
-//				return cmd;
-//		
-		boolean isMatch = false;
-		for (Request req: Request.values()) {
-			if (req.getCode() == cmd) {
-				isMatch = true;
-				// System.out.println("+-+-NodeCommands:sanitizeCMD "+cmd);
+		for (Request req: Request.values())
+			if (req.getCode() == cmd)
 				return req.getCode(); 
-				//break MATCH_CMD;
-			}
-		}
+		
 		// command is not valid
 		return Request.CMD_UNRECOG.getCode();
 	}

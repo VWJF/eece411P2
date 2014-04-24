@@ -712,9 +712,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	private boolean createHandlerTransfers(InetSocketAddress destinationNode, boolean isSegmentRemove){
 		
-		boolean isComplete = false;
-		
-
 		if( 0 == Handler.compareSocket(destinationNode, getSocketAddress(localNode))){
 			log.warn("ConsistHash. createHandlerTransfers() attempted to self. destination: {}", destinationNode);
 			return false;
@@ -722,7 +719,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		
 		if(repairPutRemoveList == null)	//transferKeys(Key:lowerLimit, Key:upperLimit) must be used to obtain the keys for transferring.
 			repairPutRemoveList = new ArrayList<RepairData>();
-		
 		
 		Iterator<ByteArrayWrapper> iter = transferSet.iterator(); //To get the set in sorted ascending order
 		
@@ -750,7 +746,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		
 		log.info("Repair(s) to be processed ({}) ", repairPutRemoveList.size() );
-		isComplete = true;
 		
 		return true;
 	}
@@ -1226,7 +1221,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			 
 			 ch.num_replicas = 3;
 			 //membership.addObserver(ch);
-			 membership.setMap(ch);
+//			 membership.setMap(ch);
 			 
 			 if(IS_DEBUG) System.out.println();
 			 if(IS_DEBUG) System.out.println();

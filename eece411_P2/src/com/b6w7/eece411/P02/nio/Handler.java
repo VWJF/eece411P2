@@ -1463,7 +1463,7 @@ final class Handler extends Command implements Runnable {
 			mergeVector(CMDSIZE);
 			incrLocalTime();
 
-			log.error(" *** TSRepairProcess::checkLocal() repairList=={}", repairList); 
+			log.debug(" *** TSRepairProcess::checkLocal() repairList=={}", repairList); 
 
 			if (retriesLeft == MAX_TCP_RETRIES) {
 				if (repairList.size() == 0) {
@@ -1479,7 +1479,7 @@ final class Handler extends Command implements Runnable {
 					for (int i = 0; i < NUM_REPAIRS_PER_HANDLER; i++)
 						subList.add(repairList.remove(0));
 
-					log.error(" *** TSRepairProcess::checkLocal() spawning repair Handler with {}", subList); 
+					log.trace(" *** TSRepairProcess::checkLocal() spawning repair Handler with {}", subList); 
 					dbHandler.post(new Handler(self, subList));
 				}
 
@@ -1489,7 +1489,7 @@ final class Handler extends Command implements Runnable {
 				value = repairItem.value;
 				owner = repairItem.destination;
 
-				log.error("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingItem=>{}]", owner, repairItem);
+				log.debug("     TSRepairProcess::checkLocal() [choosing=>{}] [remainingList=>{}]", owner, repairList);
 			}
 
 			// OK, we decided that the location of key is at a remote node

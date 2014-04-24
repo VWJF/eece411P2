@@ -52,7 +52,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	private final long PERIOD_GOSSIP_RANDOM_MS  = 3500;
 	/**	The time interval after gossiping with one online node before gossiping again.
 	 * A smaller number propagates offline information faster */
-	private final long PERIOD_GOSSIP_REPLICA_MS  = 10000;
+	private final long PERIOD_GOSSIP_REPLICA_MS  = 300;
 
 	/**	The upper bound on TCP timeout with another node.  All TCP connections will timeout at this ceiling. */
 	private final long TIME_MAX_TIMEOUT_MS = 750;
@@ -124,7 +124,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 		dht.setMembership(membership);
 		
 		//membership.addObserver(dht);
-		membership.setMap(dht);
+//		membership.setMap(dht);
 
 		// start the server socket in non-blocking mode and NIO selector and 
 		selector = Selector.open();

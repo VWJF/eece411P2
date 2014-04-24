@@ -38,10 +38,8 @@ public class MembershipProtocol extends Observable{
 	private final long timeMinTimeout;
 
 	/** Reference to the Map that this MembershipProtocol is working with. */
-	private ConsistentHashing<ByteArrayWrapper, byte[]> map;  
+//	private ConsistentHashing<ByteArrayWrapper, byte[]> map;  
 	
-	private static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
-
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 
@@ -63,9 +61,9 @@ public class MembershipProtocol extends Observable{
 	}
 	
 	
-	public void setMap(ConsistentHashing<ByteArrayWrapper, byte[]> ch){
-		this.map = ch;
-	}
+//	public void setMap(ConsistentHashing<ByteArrayWrapper, byte[]> ch){
+//		this.map = ch;
+//	}
 	
 	/**
 	 * Update the local timestamp vector based on the received vector timestamp 
