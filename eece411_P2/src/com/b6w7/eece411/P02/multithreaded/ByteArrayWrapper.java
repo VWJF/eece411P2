@@ -59,6 +59,8 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
 	@Override
 	public int compareTo(ByteArrayWrapper arg0) {
 		// TODO Auto-generated method stub
+		keyBuffer.rewind();
+		arg0.keyBuffer.rewind();
 		return keyBuffer.compareTo(arg0.keyBuffer);
 	}
 	@Override
@@ -69,7 +71,8 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
 		//Show as Bytes
 		s.append("[key=>");
 		if (null != key) {
-			for (int i=0; i<key.length; i++)
+//			for (int i=0; i<key.length; i++)
+			for (int i=0; i<4; i++)
 				s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 		} else {
 			s.append("null");

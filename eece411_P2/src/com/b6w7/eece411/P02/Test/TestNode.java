@@ -184,11 +184,12 @@ public class TestNode implements Runnable, JoinThread {
 	private void populateOneTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		int myCount = 1;
 		
-		// Knock3-Tablet:11114
+		// Knock3-Tablet:11114 in 4
+		// Knock3-Tablet:11114 in 10
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"1Scott", "a63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11114
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"2Scott", "b63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11112
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"3Scott", "c63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -197,10 +198,10 @@ public class TestNode implements Runnable, JoinThread {
 //		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"4Scott", "d63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11114
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"5Scott", "e63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 		// Knock3-Tablet:11114
-		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
+//		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"6Scott", "f63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		
 //		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"5Scott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 
@@ -965,7 +966,7 @@ public class TestNode implements Runnable, JoinThread {
 			
 //			populatePutGetRemoveGet();
 			
-//			populateOneTest();
+			populateOneTest();
 //			populateTests();
 //			populateMemoryTests();
 //			populateRemoveTests();
@@ -976,26 +977,26 @@ public class TestNode implements Runnable, JoinThread {
 			//populateAnnounceDeathTest();
 
 
-			int numSets = 3;
-			int seed = 1234;
-			for (int i=0; i<numSets; i++) {
-				populateMemoryPutTests(seed+i*100);
-			}
-			
-			for(int i = 0; i < 14; i++){
-				populateAnnounceDeathTest();
-				
-				for(int j = 0; j < 30; j++){
-					populateDelayOneSecond();
-				}
-			}	
-			
-			// 100 * 10 == 1000 keys
-			for (int i=0; i<numSets; i++) {
-				populateMemoryGetTests(seed+i*100);
-				populateMemoryRemoveTests(seed+i*100);
-				populateMemoryGetFailTests(seed+i*100);
-			}
+//			int numSets = 1;
+//			int seed = 1234;
+//			for (int i=0; i<numSets; i++) {
+//				populateMemoryPutTests(seed+i*100);
+//			}
+//			
+//			for(int i = 0; i < 14; i++){
+//				populateAnnounceDeathTest();
+//				
+//				for(int j = 0; j < 30; j++){
+//					populateDelayOneSecond();
+//				}
+//			}	
+//			
+//			// 100 * 10 == 1000 keys
+//			for (int i=0; i<numSets; i++) {
+//				populateMemoryGetTests(seed+i*100);
+//				populateMemoryRemoveTests(seed+i*100);
+//				populateMemoryGetFailTests(seed+i*100);
+//			}
 
 
 			

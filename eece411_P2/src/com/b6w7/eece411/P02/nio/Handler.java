@@ -1078,11 +1078,11 @@ final class Handler extends Command implements Runnable {
 			} else {
 				byte[] result = map.put(hashedKey, value);
 
-				log.info(" @@@ PutCommand::put() Key {}", self.toString());
+				log.info(" @@@ PutProcess::put() Key [map.size=>{}] {}", map.size(), self);
 
 				if(result != null) {
 					// Overwriting -- we take note
-					log.debug("     PutCommand::put() Replacing Key {}", this.toString());
+					log.debug(" *** PutProcess::put() Replacing Key [map.size=>{}] {}", map.size(), self);
 				}
 
 				return true;
@@ -1256,11 +1256,11 @@ final class Handler extends Command implements Runnable {
 			} else {
 				byte[] result = map.put(hashedKey, value);
 
-				log.info(" @@@ PutCommand::put() Key {}", self.toString());
+				log.info(" @@@ TSReplicaPutProcess::put() Key [map.size=>{}] {}", map.size(), self);
 
 				if(result != null) {
 					// Overwriting -- we take note
-					log.debug(" *** PutCommand() Replacing Key {}", this.toString());
+					log.debug(" *** TSReplicaPutProcess() Replacing Key [map.size=>{}] {}", map.size(), self);
 				}
 
 				return true;
@@ -2278,7 +2278,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		protected byte[] remove(){
-			log.info(" @@@ RemoveCommand::remove() Key {}", self.toString());
+			log.info(" @@@ RemoveProcess::remove()  [map.size=>{}] {}", map.size()-1, self);
 
 			return map.remove(hashedKey);
 		}

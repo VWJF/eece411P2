@@ -506,7 +506,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		
 		if(removeSelf) replicas.remove(getSocketAddress(localNode));
 				
-		return new ArrayList<InetSocketAddress>(replicas);
+		return replicas;
 	}
 	
 	/**
@@ -735,7 +735,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 				sock.append(sendKey);
 			}
 			String logSendValue = new String(sendValue);
-			log.info("Creating ReplicaData [destination->{}]  {remove->{}] of the [sendkey->{}], [sendValue->{}] ", destinationNode, isSegmentRemove, sock, logSendValue );
+			log.info("ConsistHash. createHandlerTransfers() Creating ReplicaData  [dest->{}]  [remove->{}] of the [sendkey->{}], [sendValue->{}] ", destinationNode, isSegmentRemove, sock, logSendValue );
 
 			//Use sendKey, sendValue, destinationNode and isSegmentRemove to construct List of ReplicaData, to be used by Handler to complete repairs
 			if(isSegmentRemove){
@@ -1036,24 +1036,23 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	public void updateReplicaListRepairData() {
 
 		ArrayList<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
-		ArrayList<InetSocketAddress> temp = newReplicas; // use temp to only call getReplicaList() once
 
 		if(newReplicas.equals(localReplicaList)){
 			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
-			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
+			log.trace("ConsistHash. on updateReplicaListRepairData() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
+			log.trace("ConsistHash. on updateReplicaListRepairData() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
 
 		}
 		else{
 			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.info("ConsistHash. on hasReplicaChanged() replica list old: {} ", localReplicaList);
-			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
+			log.info("ConsistHash. on updateReplicaListRepairData() replica list old: {} ", localReplicaList);
+			log.info("ConsistHash. on updateReplicaListRepairData() replica list new: {} ", newReplicas);
 
 			//Get old replica list and compare.
-			ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
-			replicaTransfer(oldReplicas, newReplicas);
+			replicaTransfer(localReplicaList, newReplicas);
 		}
-		this.localReplicaList = temp;  
+		
+		this.localReplicaList = newReplicas;  
 	}
 	
 	/**
@@ -1068,18 +1067,25 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper newPredecessor = getPreviousResponsible(localNode);
 
 		StringBuilder sb = new StringBuilder();
-		sb.append("ConsistHash. on hasPredecessorChanged() predecessor old: ").append(getSocketAddress(onlinePredecessor))
+		sb.append("ConsistHash. on updatePredecessorRepairData() predecessor old: ").append(getSocketAddress(onlinePredecessor))
 			.append(" new: ").append(getSocketAddress(newPredecessor));
 		
-		if(onlinePredecessor.compareTo(newPredecessor) > 0){
+		// If (new > old) && !(old < me < new)
+		boolean isCloser = (newPredecessor.compareTo(onlinePredecessor) > 0
+				&& !(onlinePredecessor.compareTo(localNode) < 0 && localNode.compareTo(newPredecessor) < 0));
+		// If (new < old) && (new < me < old)
+		boolean isWrappedCloser = (newPredecessor.compareTo(onlinePredecessor) < 0
+				&& (newPredecessor.compareTo(localNode) < 0 && localNode.compareTo(onlinePredecessor) < 0));
+		
+		if ( isCloser || isWrappedCloser ) {
 			// we only care for the case that the predecessor is now closer, because
 			// we do nothing for the other case that the predecessor is now further.
-			// Also, it is sticky-set here.
 			hasPredecessorChanged = true;
 			onlinePredecessor = newPredecessor;
 			predecessorTransfer(this.onlinePredecessor);
 		}
 		
+		sb.append(". [isCloser=>["+isCloser+","+isWrappedCloser+"]");
 		sb.append(". hasChanged = " + hasPredecessorChanged);
 		log.info(sb.toString());
 		return hasPredecessorChanged;
@@ -1127,11 +1133,12 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	private void replicaTransfer(ArrayList<InetSocketAddress> oldReplicas,
 			List<InetSocketAddress> newReplicas) {
 
+		List<InetSocketAddress> tempOldReplicas = new ArrayList<InetSocketAddress>(oldReplicas);
 		List<InetSocketAddress> tempNewReplicas = new ArrayList<InetSocketAddress>(newReplicas);
 
 		// Find nodes that will receive keys, and nodes that will have keys removed.
-		newReplicas.removeAll(oldReplicas); //Replicas that need to receive missing keys from this nodes.
-		oldReplicas.removeAll(tempNewReplicas); //Replicas that need to remove keys of this node.
+		tempNewReplicas.removeAll(oldReplicas); //Replicas that need to receive missing keys from this nodes.
+		tempOldReplicas.removeAll(newReplicas); //Replicas that need to remove keys of this node.
 		
 		log.debug("ConsistHash. on replica TRANSFER to: {} ", newReplicas);
 
@@ -1139,7 +1146,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper firstKey = onlinePredecessor;
 		ByteArrayWrapper toKey = localNode;
 		
-		if(newReplicas.isEmpty() == false){
+		if(tempNewReplicas.isEmpty() == false){
 			//Populate Set for transfers.
 			transferSet = transferKeys(firstKey, toKey);
 			StringBuilder sb = new StringBuilder();
@@ -1147,7 +1154,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			.append(", to ").append(getSocketAddress( toKey )).toString();
 			log.trace("{}", sb.toString());
 			
-			for(InetSocketAddress sendToReplica : newReplicas){
+			for(InetSocketAddress sendToReplica : tempNewReplicas){
 				
 				StringBuilder sb_node = new StringBuilder(message);
 				sb_node.append("] to dest. node: ").append( sendToReplica );
@@ -1164,11 +1171,11 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			log.trace("ConsistHash. No replicas found that need to sends key.");
 		}
 		
-		log.trace("ConsistHash. on replica REMOVE from: {} ", oldReplicas);
-		if(oldReplicas.isEmpty() == false){
+		log.trace("ConsistHash. on replica REMOVE from: {} ", tempOldReplicas);
+		if(tempOldReplicas.isEmpty() == false){
 			//Populate Set for transfers.
 			transferSet = transferKeys(firstKey, toKey);
-			for(InetSocketAddress removeFromReplica : oldReplicas){
+			for(InetSocketAddress removeFromReplica : tempOldReplicas){
 				//Send Handlers to Remove local keys.
 				createHandlerTransfers(removeFromReplica, true);
 			}

@@ -68,8 +68,12 @@ public class RepairData { //  implements Comparable<RepairData> {
 
 		StringBuilder s = new StringBuilder();
 
-		s.append("[key=>").append( key.toString() );
-		s.append("] [value=>").append( new String(value) );
+		s.append( key.toString() );
+		
+		s.append(" [val["+value.length+"]=>");
+		for (int i=0; i<5; i++)
+			s.append(Integer.toString((value[i] & 0xff) + 0x100, 16).substring(1));
+
 		s.append("] [destination=>").append( destination.toString() );
 		s.append("] [request=>").append( cmd.toString() );
 		//s.append(Integer.toString((cmd[i] & 0xff) + 0x100, 16).substring(1));
