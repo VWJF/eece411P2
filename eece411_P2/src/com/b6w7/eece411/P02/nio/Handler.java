@@ -1332,7 +1332,7 @@ final class Handler extends Command implements Runnable {
 					
 					// check if there has been a change in the replica list
 					// if so, repairs are needed.
-					map.updateLocalReplicaList();
+					map.updateRepairData();
 					List<RepairData> repairs = map.getAndClearRepairData();
 					if (!repairs.isEmpty()) {
 						log.info(" @@@ TSPushReplicaProcess::checkLocal() issuing repairList[{}]", repairs.size()); 

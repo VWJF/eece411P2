@@ -67,8 +67,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	/** The membership protocol used by this Consistent Hashing to determine and set nodes online/offline. */
 	private MembershipProtocol membership;
 	private MessageDigest md;
-	private boolean hasReplicaListChanged;
-	private boolean hasPredecessorChanged;
+//	private boolean hasReplicaListChanged;
+//	private boolean hasPredecessorChanged;
 
 	public ConsistentHashing(String[] nodes) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 
@@ -387,7 +387,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	
 	/**
 	 * Obtains the List of RepairData(ByteArrayWrapper key, byte[] data, InetSocketAddress dest, NodeCommands.Request request)
-	 * that are to be processed by Handler.
+	 * that are to be processed by Handler and then clears the internal list.
 	 * @return
 	 */
 	public List<RepairData> getAndClearRepairData(){
@@ -398,11 +398,6 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		// back at zero with an empty list
 		List<RepairData> result = repairPutRemoveList;
 		repairPutRemoveList = new ArrayList<RepairData>();
-		
-		// we want to reset the 'hasChanged...' flags
-		// because we are starting back at zero
-		hasReplicaListChanged = false;
-		hasPredecessorChanged = false;
 		
 		assert(result != null);
 		return result;	
@@ -1037,15 +1032,39 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 //		updateLocalReplicaList();
 //	}
 	
+	
+	public void updateReplicaListRepairData() {
+
+		ArrayList<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
+		ArrayList<InetSocketAddress> temp = newReplicas; // use temp to only call getReplicaList() once
+
+		if(newReplicas.equals(localReplicaList)){
+			//Debugging Sanity check, Logging here can be removed when not needed:
+			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
+			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
+
+		}
+		else{
+			//Debugging Sanity check, Logging here can be removed when not needed:
+			log.info("ConsistHash. on hasReplicaChanged() replica list old: {} ", localReplicaList);
+			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
+
+			//Get old replica list and compare.
+			ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
+			replicaTransfer(oldReplicas, newReplicas);
+		}
+		this.localReplicaList = temp;  
+	}
+	
 	/**
 	 * Detects differences in the currentOnline Predecessor and up-to-date Predecessor
 	 * updates {@code onlinePredecessor} accordingly.
 	 * @return true if differences were found, false if not. 
 	 */
-	public boolean updatePredecessor() {
+	public boolean updatePredecessorRepairData() {
 		
 		//FIXME Correct/improve log levels or Remove logging. Added for initial debugging purposes. Here and predecessorTransfer(ByteArrayWrapper key)
-
+		boolean hasPredecessorChanged = false;
 		ByteArrayWrapper newPredecessor = getPreviousResponsible(localNode);
 
 		StringBuilder sb = new StringBuilder();
@@ -1058,6 +1077,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			// Also, it is sticky-set here.
 			hasPredecessorChanged = true;
 			onlinePredecessor = newPredecessor;
+			predecessorTransfer(this.onlinePredecessor);
 		}
 		
 		sb.append(". hasChanged = " + hasPredecessorChanged);
@@ -1066,41 +1086,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	}
 
 	/**
-	 * Detects differences in the old replica list with up-to-date replica list.
-	 * Detects differences among all entries and starts transfer of keys.
-	 * updates {@code localReplicaList} accordingly.
-	 * @return true if differences were found, false if not. 
+	 * Updates local replicalist and onlinePredecessor, then generates
+	 * RepairData accordingly.  Call this before calling {@link #getAndClearRepairData}. 
 	 */
-	public boolean updateLocalReplicaList() {
-				
-		//FIXME Correct/improve logs, levels or Remove logging. Added for initial debugging purposes. Here and replicaTransfers(oldReplicas, newReplicas).
-	
-		List<InetSocketAddress> newReplicas = getReplicaList(localNode, true);
-		
-		if(newReplicas.equals(localReplicaList)){
-			// we use sticky-set here
-//			hasReplicaChanged = false;
-			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in old replica list of size({}) {} ", localReplicaList.size(), localReplicaList);
-			log.trace("ConsistHash. on hasReplicaChanged() did not detect change in new replica list of size({}) {} ", newReplicas.size(), newReplicas);
-	
-		}
-		else{
-			hasReplicaListChanged = true;
-			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.info("ConsistHash. on hasReplicaChanged() replica list old: {} ", localReplicaList);
-			log.info("ConsistHash. on hasReplicaChanged() replica list new: {} ", newReplicas);
-		}
-		
-		//Get old replica list and compare.
-		if(hasReplicaListChanged == true){
-			ArrayList<InetSocketAddress> oldReplicas = new ArrayList<InetSocketAddress>(localReplicaList);
-			replicaTransfer(oldReplicas, newReplicas);
-		}
-		
-		this.localReplicaList = getReplicaList(localNode, true);
-	
-		return hasReplicaListChanged;
+	public void updateRepairData() {
+		// we need to know the current predecessor before we can deal with replication
+		updatePredecessorRepairData();
+		updateReplicaListRepairData();
 	}
 
 	/**

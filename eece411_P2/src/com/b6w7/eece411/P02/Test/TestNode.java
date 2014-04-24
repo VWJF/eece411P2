@@ -272,6 +272,29 @@ public class TestNode implements Runnable, JoinThread {
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		populateMemoryTests(new Random().nextInt(Integer.MAX_VALUE));
 	}
+	@SuppressWarnings("unused")
+	private void populateRollingFailuresTest() throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		// Rolling Failure Test Start------------------------------------------------
+		// Put data in
+		populateMemoryPutTests(1234);
+		
+		// Roll failures on 18 nodes at 15second intervals
+		for(int i = 0; i < 14; i++){
+			populateAnnounceDeathTest();
+			
+			for(int j = 0; j < 15; j++){
+				populateDelayOneSecond();
+			}
+		}		
+		
+		// Resume the rest of memory tests
+		populateMemoryGetTests(1234);
+		populateMemoryRemoveTests(1234);
+		populateMemoryGetFailTests(1234);
+		
+		// Rolling Failure Test End ------------------------------------------------
+
+	}
 	private void populateMemoryPutTests(Integer seed) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAScott", "63215065", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_PUT.getCode(), myCount+"AAAIshan", "Sahay", NodeCommands.Reply.RPY_SUCCESS.getCode());
@@ -489,7 +512,6 @@ public class TestNode implements Runnable, JoinThread {
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"HHHi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"IIIi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
 		populateOneTest(NodeCommands.Request.CMD_GET.getCode(), myCount+"JJJi can't change", "you can't see", NodeCommands.Reply.RPY_SUCCESS.getCode());
-
 	}
 	private void populateMemoryRemoveTests(Integer seed) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		// put - > get -> REMOVE -> get
@@ -939,25 +961,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-			// Rolling Failure Test Start------------------------------------------------
-			// Put data in
-			populateMemoryPutTests(1234);
-			
-			// Roll failures on 18 nodes at 15second intervals
-			for(int i = 0; i < 14; i++){
-				populateAnnounceDeathTest();
-				
-				for(int j = 0; j < 15; j++){
-					populateDelayOneSecond();
-				}
-			}		
-			
-			// Resume the rest of memory tests
-			populateMemoryGetTests(1234);
-			populateMemoryRemoveTests(1234);
-			populateMemoryGetFailTests(1234);
-			
-			// Rolling Failure Test End ------------------------------------------------
+//			populateRollingFailuresTest();
 			
 //			populatePutGetRemoveGet();
 			
@@ -970,15 +974,31 @@ public class TestNode implements Runnable, JoinThread {
 //			populateGetTests();	//For a node that did not store the Key-Values 11111
 //			populateRemoveTests();	//For a node that did not store the Key-Valued
 			//populateAnnounceDeathTest();
+
+
+			int numSets = 3;
+			int seed = 1234;
+			for (int i=0; i<numSets; i++) {
+				populateMemoryPutTests(seed+i*100);
+			}
 			
-//			for(int i = 0; i< 10; i++){
-//				populateDelayOneSecond();
-//			}
+			for(int i = 0; i < 14; i++){
+				populateAnnounceDeathTest();
+				
+				for(int j = 0; j < 30; j++){
+					populateDelayOneSecond();
+				}
+			}	
+			
+			// 100 * 10 == 1000 keys
+			for (int i=0; i<numSets; i++) {
+				populateMemoryGetTests(seed+i*100);
+				populateMemoryRemoveTests(seed+i*100);
+				populateMemoryGetFailTests(seed+i*100);
+			}
 
-			populateMemoryTests();
 
-//			populateGetTests();
-
+			
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
 			DataOutputStream outToServer = null;
