@@ -446,16 +446,12 @@ final class Handler extends Command implements Runnable {
 		if (timeLastCompletion < 0) {
 			// this node needs to be shutdown
 			log.debug(" *** Handler::updateTimeout() shutdown unresponsive {}", owner);
-			if (map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()))) {
-//				dbHandler.post(new Handler(self, map.getAndClearRepairData()));
-			}
+			map.shutdown(map.hashKey(owner.getHostName() + ":" + owner.getPort()));
 
 		} else {
 			// we need to record that this node is now online
 			log.debug(" *** Handler::updateTimeout() record responsive {}", owner);
-			if (map.enable(map.hashKey(owner.getHostName()+":"+owner.getPort()))) {
-//				dbHandler.post(new Handler(self, map.getAndClearRepairData()));
-			}
+			map.enable(map.hashKey(owner.getHostName()+":"+owner.getPort()));
 		}
 
 		state = State.DO_NOTHING;
@@ -1149,7 +1145,7 @@ final class Handler extends Command implements Runnable {
 			} else {
 				byte[] result = map.put(hashedKey, value);
 
-				log.info(" @@@ PutProcess::put() Key [map.size=>{}] {}", map.size(), self);
+				log.debug(" @@@ PutProcess::put() Key [map.size=>{}] {}", map.size(), self);
 
 				if(result != null) {
 					// Overwriting -- we take note
@@ -1344,7 +1340,7 @@ final class Handler extends Command implements Runnable {
 			} else {
 				byte[] result = map.put(hashedKey, value);
 
-				log.info(" @@@ TSReplicaPutProcess::put() Key [map.size=>{}] {}", map.size(), self);
+				log.debug(" @@@ TSReplicaPutProcess::put() Key [map.size=>{}] {}", map.size(), self);
 
 				if(result != null) {
 					// Overwriting -- we take note
@@ -1422,8 +1418,8 @@ final class Handler extends Command implements Runnable {
 					// if so, repairs are needed.
 					map.updateRepairData();
 					Map<InetSocketAddress, List<RepairData>> repairs = map.getAndClearRepairData();
+					
 					if (!repairs.isEmpty()) {
-						log.info(" @@@ TSPushReplicaProcess::checkLocal() issuing repairList[{}]", repairs.size()); 
 						dbHandler.post(new Handler(self, repairs));
 					}
 					
@@ -1529,7 +1525,7 @@ final class Handler extends Command implements Runnable {
 	
 	class TSRepairProcess implements Process {
 
-		private static final int NUM_REPAIRS_PER_HANDLER = 100;
+		private static final int NUM_REPAIRS_PER_HANDLER = 0xFF;   // only have one byte of space for this param
 		private final Map<InetSocketAddress, List<RepairData>> repairList;
 
 		public TSRepairProcess(Map<InetSocketAddress, List<RepairData>> repairs) {
@@ -1572,6 +1568,7 @@ final class Handler extends Command implements Runnable {
 						repairsForAnotherHandler.put(host.getKey(), host.getValue());
 						iter.remove();
 
+						log.info("Issuing repairs to host \'{}\' with {} keys.", host.getKey(), host.getValue().size()); 
 						dbHandler.post(new Handler(self, repairsForAnotherHandler));
 						
 						if (repairList.size() == 1)
@@ -2449,7 +2446,7 @@ final class Handler extends Command implements Runnable {
 		}
 
 		protected byte[] remove(){
-			log.info(" @@@ RemoveProcess::remove()  [map.size=>{}] {}", map.size()-1, self);
+			log.debug(" @@@ RemoveProcess::remove()  [map.size=>{}] {}", map.size()-1, self);
 
 			return map.remove(hashedKey);
 		}
@@ -2494,8 +2491,8 @@ final class Handler extends Command implements Runnable {
 
 				BULK_REMOVE: for (int index = 0; index < numOfKVPairs; index++) {
 					key = Arrays.copyOfRange(input.array()
-							, CMDSIZE+BULKSIZE+index*(KEYSIZE+VALUESIZE)
-							, CMDSIZE+BULKSIZE+index*(KEYSIZE+VALUESIZE)+KEYSIZE);
+							, CMDSIZE+BULKSIZE+index*(KEYSIZE)
+							, CMDSIZE+BULKSIZE+index*(KEYSIZE)+KEYSIZE);
 
 					//hashedKey = new ByteArrayWrapper(key);
 					hashedKey = map.hashKey(key);
@@ -2513,8 +2510,6 @@ final class Handler extends Command implements Runnable {
 				}
 			
 				generateRequesterReply();
-
-				////////
 
 				// signal to selector that we are ready to write
 				state = State.SEND_REQUESTER;

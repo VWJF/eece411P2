@@ -520,7 +520,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		try{
 			addr = (new String(mapOfNodes.get(node))).split(":");
 		}catch(NullPointerException e){
-			log.warn("Searching for inexistent node in node map: "+node);
+			log.trace("Searching for inexistent node in node map: "+node);
 			throw new NoSuchElementException("Searching for inexistent node in node map: "+node);
 		}
 		
@@ -650,23 +650,37 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 
 		//InetSocketAddress destinationSocket = getSocketAddress(destinationNode);
 		
-		StringBuilder sb_extras = new StringBuilder();
-		StringBuilder sb = new StringBuilder();
+		
+		StringBuilder sb_extras = null;
+		StringBuilder sb = null;
+		
+		if (log.isTraceEnabled()) {
+			sb_extras = new StringBuilder();
+		}
+		
+		if (log.isDebugEnabled()) {
+		sb = new StringBuilder();
 		sb.append("ConsistHash. transferKeys. ")
 		.append("lowerKey: ").append(getSocketAddress(fromKey))
 		.append(" upperKey: ").append(getSocketAddress(toKey));
-		
+		}
 		Set<ByteArrayWrapper> subSet = null, headSet = null;
 		if( (fromKey.compareTo(toKey)) < 0	){
 			subSet = orderedKeys.subMap(fromKey, false, toKey, false).keySet();
-			sb.append(". lowerKey < upperKey.");
+			
+			if (log.isDebugEnabled())
+				sb.append(". lowerKey < upperKey.");
 		}
 		else{
 			subSet = (orderedKeys.tailMap(fromKey, false).keySet());
 			headSet = orderedKeys.headMap(toKey, true).keySet();
-			sb.append(". upperKey < lowerKey : flip direction. ");
+
+			if (log.isDebugEnabled())
+				sb.append(". upperKey < lowerKey : flip direction. ");
 		}
-		sb_extras.append("subSet.size: "+ subSet.size()+". ");
+		
+		if (log.isTraceEnabled())
+			sb_extras.append("subSet.size: "+ subSet.size()+". ");
 
 		Set<ByteArrayWrapper> fullSet = subSet;
 		
@@ -674,7 +688,9 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		try{
 						
 			if(headSet != null && headSet.isEmpty() == false){
-				sb_extras.append("headSet.size: "+ headSet.size()+". ");
+				if (log.isTraceEnabled())
+					sb_extras.append("headSet.size: "+ headSet.size()+". ");
+				
 				// A new HashSet is needed because the NavigableSet returned 
 				// by ordered key is backed by orderedKeys keySet.
 				// The orderedKeys keySet does not support .allAll(Collection....) operation.
@@ -687,16 +703,17 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			log.warn("{}",e.getLocalizedMessage());
 		}
 
-		sb.append("Total Keys found: ").append(totalKeysFound);
-
-		sb.trimToSize();
-		log.debug(sb.toString());
+		if (log.isDebugEnabled()) {
+			sb.append("Total Keys found: ").append(totalKeysFound);
+			log.debug(sb.toString());
+		}
 		
-		sb_extras.append("Total HashMap keyspace size: " + circle.size()+". ");
-		sb_extras.append("Total TreeMap keyspace size: " + orderedKeys.size()+". ");
-		sb_extras.append("fullSet.size: "+fullSet.size());	
-		
-		log.trace(sb_extras.toString());
+		if (log.isTraceEnabled()) {
+			sb_extras.append("Total HashMap keyspace size: " + circle.size()+". ");
+			sb_extras.append("Total TreeMap keyspace size: " + orderedKeys.size()+". ");
+			sb_extras.append("fullSet.size: "+fullSet.size());	
+			log.trace(sb_extras.toString());
+		}
 		
 		return fullSet;
 	}
@@ -714,7 +731,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	private boolean createHandlerTransfers(InetSocketAddress destinationNode, boolean isSegmentRemove){
 		
 		if( 0 == Handler.compareSocket(destinationNode, getSocketAddress(localNode))){
-			log.warn("ConsistHash. createHandlerTransfers() attempted to self. destination: {}", destinationNode);
+			log.debug("ConsistHash. createHandlerTransfers() attempted to self. destination: {}", destinationNode);
 			return false;
 		}
 		
@@ -733,7 +750,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 				sock.append(sendKey);
 			}
 			String logSendValue = new String(sendValue);
-			log.info("ConsistHash. createHandlerTransfers() Creating ReplicaData  [dest->{}]  [remove->{}] of the [sendkey->{}], [sendValue->{}] ", destinationNode, isSegmentRemove, sock, logSendValue );
+			log.debug("ConsistHash. createHandlerTransfers() Creating ReplicaData  [dest->{}]  [remove->{}] of the [sendkey->{}], [sendValue->{}] ", destinationNode, isSegmentRemove, sock, logSendValue );
 
 			//Use sendKey, sendValue, destinationNode and isSegmentRemove to construct List of ReplicaData, to be used by Handler to complete repairs
 			if(isSegmentRemove){
@@ -753,7 +770,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			}
 		}
 		
-		log.info("Repair(s) to be processed ({}) ", repairList.size() );
+		if (!repairList.isEmpty())
+			log.debug("Repair(s) to be processed ({})", repairList.size());
 		
 		return true;
 	}
@@ -807,13 +825,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			log.debug("Map Of Nodes Empty.");
 			return null;
 		}
-		
-			ByteArrayWrapper previousKey = key;
-			SortedMap<ByteArrayWrapper, byte[]> headMap = mapOfNodes.headMap(key, false); //exclusive of {@code key}
 
-			previousKey = headMap.isEmpty() ? mapOfNodes.tailMap(key, false).lastKey() : headMap.lastKey();
-			
-			return previousKey;
+		ByteArrayWrapper previousKey = key;
+		SortedMap<ByteArrayWrapper, byte[]> headMap = mapOfNodes.headMap(key, false); //exclusive of {@code key}
+
+		previousKey = headMap.isEmpty() ? mapOfNodes.tailMap(key, false).lastKey() : headMap.lastKey();
+
+		return previousKey;
 	}
 	
 	/** Helper method that obtains the predecessor node responsible/owner of a requested key with a valid timestamp
@@ -1048,8 +1066,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		}
 		else{
 			//Debugging Sanity check, Logging here can be removed when not needed:
-			log.info("ConsistHash. on updateReplicaListRepairData() replica list old: {} ", localReplicaList);
-			log.info("ConsistHash. on updateReplicaListRepairData() replica list new: {} ", newReplicas);
+			log.trace("ConsistHash. on updateReplicaListRepairData() replica list old: {} ", localReplicaList);
+			log.trace("ConsistHash. on updateReplicaListRepairData() replica list new: {} ", newReplicas);
 
 			//Get old replica list and compare.
 			replicaTransfer(localReplicaList, newReplicas);
@@ -1071,10 +1089,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		if (newPredecessor.compareTo(onlinePredecessor) == 0)
 			return false;
 
-		StringBuilder sb = new StringBuilder();
-		sb.append("ConsistHash. on updatePredecessorRepairData() predecessor changed old: ").append(getSocketAddress(onlinePredecessor))
-		.append(" new: ").append(getSocketAddress(newPredecessor));
-
+		StringBuilder sb = null;
+		
+		if (log.isDebugEnabled()) {
+			sb = new StringBuilder();
+			sb.append("ConsistHash. on updatePredecessorRepairData() predecessor changed old: ").append(getSocketAddress(onlinePredecessor))
+			.append(" new: ").append(getSocketAddress(newPredecessor));
+		}
+		
 		// If (new > old) && !(old < local < new)
 		boolean isCloserWithoutWrap = (newPredecessor.compareTo(onlinePredecessor) > 0
 				&& !(onlinePredecessor.compareTo(localNode) < 0 && localNode.compareTo(newPredecessor) < 0));
@@ -1097,8 +1119,10 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 
 		onlinePredecessor = newPredecessor;
 
-		sb.append(". [isCloser=>["+isCloserWithoutWrap+"||"+isCloserWithWrap+"]");
-		log.info(sb.toString());
+		if (log.isDebugEnabled()) {
+			sb.append(". [isCloser=>["+isCloserWithoutWrap+"||"+isCloserWithWrap+"]");
+			log.debug(sb.toString());
+		}
 
 		return true;
 	}
@@ -1131,12 +1155,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 * @param toKey key to range to end transfers, exclusive, and is also the target node.
 	 */
 	private void closerPredecessorTransfer(ByteArrayWrapper firstKey, ByteArrayWrapper toKey) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("ConsistHash. closerPredecessorTransfer() Transfer of keys in the range: (").append(getSocketAddress(firstKey))
-		.append(", to ").append(getSocketAddress(toKey))
-		.append("] to dest.node: ").append(getSocketAddress(toKey));
-		
-		log.trace("{}", sb.toString());
+		if (log.isTraceEnabled()) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("ConsistHash. closerPredecessorTransfer() Transfer of keys in the range: (").append(getSocketAddress(firstKey))
+			.append(", to ").append(getSocketAddress(toKey))
+			.append("] to dest.node: ").append(getSocketAddress(toKey));
+
+			log.trace("{}", sb.toString());
+		}
 		transferSet = transferKeys(firstKey, toKey); 
 		createHandlerTransfers(getSocketAddress(toKey), false);
 		transferSet = null;
@@ -1150,12 +1176,14 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 	 */
 	private void furtherPredecessorTransfer(ByteArrayWrapper firstKey, ByteArrayWrapper toKey) {
 		
-		StringBuilder sb = new StringBuilder();
-		sb.append("ConsistHash. furtherPredecessorTransfer{} Transfer of keys in the range: (").append(getSocketAddress(firstKey))
-		.append(", to ").append(getSocketAddress(toKey))
-		.append("] to dest.node: ").append(localReplicaList);
-		
-		log.trace("{}", sb.toString());
+		if (log.isTraceEnabled()) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("ConsistHash. furtherPredecessorTransfer{} Transfer of keys in the range: (").append(getSocketAddress(firstKey))
+			.append(", to ").append(getSocketAddress(toKey))
+			.append("] to dest.node: ").append(localReplicaList);
+
+			log.trace("{}", sb.toString());
+		}
 		
 		transferSet = transferKeys(firstKey, toKey); 
 		for (InetSocketAddress replica: localReplicaList) {
@@ -1186,20 +1214,26 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		ByteArrayWrapper firstKey = onlinePredecessor;
 		ByteArrayWrapper toKey = localNode;
 		
+		String message = null;
+		
 		if(tempNewReplicas.isEmpty() == false){
 			//Populate Set for transfers.
 			transferSet = transferKeys(firstKey, toKey);
-			StringBuilder sb = new StringBuilder();
-			String message = sb.append("Transfer of keys in (my) range: (").append(getSocketAddress( firstKey ))
-			.append(", to ").append(getSocketAddress( toKey )).toString();
-			log.trace("{}", sb.toString());
+			if (log.isTraceEnabled()) {
+				StringBuilder sb = new StringBuilder();
+				message = sb.append("Transfer of keys in (my) range: (").append(getSocketAddress( firstKey ))
+						.append(", to ").append(getSocketAddress( toKey )).toString();
+				log.trace("{}", sb.toString());
+			}
 			
 			for(InetSocketAddress sendToReplica : tempNewReplicas){
 				
-				StringBuilder sb_node = new StringBuilder(message);
-				sb_node.append("] to dest. node: ").append( sendToReplica );
-		
-				log.debug("{}", sb_node.toString());
+				if (log.isDebugEnabled()) {
+					StringBuilder sb_node = new StringBuilder(message);
+					sb_node.append("] to dest. node: ").append( sendToReplica );
+
+					log.debug("{}", sb_node.toString());
+				}
 				
 				//Send Handlers to Transfer(send) local keys.
 				createHandlerTransfers(sendToReplica, false); 

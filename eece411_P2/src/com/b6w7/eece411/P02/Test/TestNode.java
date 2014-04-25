@@ -51,7 +51,7 @@ public class TestNode implements Runnable, JoinThread {
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 8500;
 	// extra debug output from normal
-	private static boolean IS_VERBOSE = true;
+	private static boolean IS_VERBOSE = false;
 	// reduced debug outut from normal
 	private static boolean IS_BREVITY = false;
 
@@ -1016,7 +1016,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-			populateRollingFailuresTest(1234, 4, 6, 6, 10);
+			populateRollingFailuresTest(1234, 10, 6, 6, 10);
 			
 //			populatePutGetRemoveGet();
 			
