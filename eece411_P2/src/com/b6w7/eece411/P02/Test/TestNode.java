@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -284,7 +285,7 @@ public class TestNode implements Runnable, JoinThread {
 		// Rolling Failure Test Start------------------------------------------------
 		// Put data in
 		
-		int setsPerMinuteDelay = 10;
+		int setsPerMinuteDelay = 11;
 		
 		for (int i=0; i<numSets; i++) {
 			populateMemoryPutTests(seed+i*100);
@@ -1018,9 +1019,9 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-//			populateRollingFailuresTest(1234, 10, 6, 6, 10);
+			populateRollingFailuresTest(1234, 100, 10, 20, 10);
 			
-			populateMemoryTests(1234);
+//			populateMemoryTests(1234);
 			
 //			populatePutGetRemoveGet();
 			
@@ -1053,8 +1054,11 @@ public class TestNode implements Runnable, JoinThread {
 			int thisTestPassed = 0;
 			int thisTestFailed = 0;
 
+			long timeStart = new Date().getTime();
 			if (!IS_BREVITY) System.out.println("-------------- Start Running Test --------------");
+			if (!IS_BREVITY) System.out.println("-------------- starting at time "+timeStart+"--------------");
 
+			
 			for (TestData test : tests) {
 				isPass = true;
 
@@ -1217,6 +1221,9 @@ public class TestNode implements Runnable, JoinThread {
 				}
 			}
 
+			long timeFinish = new Date().getTime();
+
+			System.out.println("-------------- time elapsed " + (timeFinish - timeStart)/100 + " seconds ------------------");
 			System.out.println("-------------- Passed/Fail = "+ testPassed.addAndGet(thisTestPassed)+"/"+testFailed.addAndGet(thisTestFailed) +" ------------------");
 			if (IS_VERBOSE) System.out.println("-------------- Finished Running Tests --------------");
 
