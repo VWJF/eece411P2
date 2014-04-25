@@ -1030,7 +1030,9 @@ public class TestNode implements Runnable, JoinThread {
 //			populateRemoveTests();
 			//Test for routing.
 //			populatePutTests(); //For the node that has stored the Key-Values 11112
+//			populateDelayOneSecond();
 //			populateGetTests();	//For a node that did not store the Key-Values 11111
+//			populateDelayOneSecond();
 //			populateRemoveTests();	//For a node that did not store the Key-Valued
 
 			// we will use this stream to send data to the server
@@ -1265,7 +1267,7 @@ public class TestNode implements Runnable, JoinThread {
 
 		List<TestData> pareTests = new LinkedList<TestData>();
 		// from front of list, tests are PUT followed by REMOVE
-		pareTests.add(new TestData(NodeCommands.Request.CMD_PUT.getCode(), hashedKey, value, NodeCommands.Reply.RPY_SUCCESS.getCode(), null));
+		pareTests.add(new TestData(NodeCommands.Request.CMD_UNRECOG.getCode(), hashedKey, value, NodeCommands.Reply.RPY_UNRECOGNIZED.getCode(), null));
 //		pareTests.add(new TestData(NodeCommands.Request.CMD_REMOVE.getCode(), hashedKey, null, NodeCommands.Reply.RPY_SUCCESS.getCode(), null));
 
 		ConcurrentLinkedQueue<String> pareList = new ConcurrentLinkedQueue<String>();

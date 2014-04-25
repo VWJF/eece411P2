@@ -56,9 +56,9 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 	private final long PERIOD_GOSSIP_REPLICA_MS  = 300;
 
 	/**	The upper bound on TCP timeout with another node.  All TCP connections will timeout at this ceiling. */
-	private final long TIME_MAX_TIMEOUT_MS = 750;
+	private final long TIME_MAX_TIMEOUT_MS = 2000;
 	/**	The lower bound on TCP timeout with another node.  All TCP connections will not timeout sooner than this floor. */
-	private final long TIME_MIN_TIMEOUT_MS = 350;
+	private final long TIME_MIN_TIMEOUT_MS = 500;
 
 	/** Logging interface. */
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
