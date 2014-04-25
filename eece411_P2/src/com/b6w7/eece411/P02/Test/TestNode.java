@@ -270,6 +270,7 @@ public class TestNode implements Runnable, JoinThread {
 	 * @throws NoSuchAlgorithmException
 	 * @throws UnsupportedEncodingException
 	 */
+	@SuppressWarnings("unused")
 	private void populateMemoryTests() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		populateMemoryTests(new Random().nextInt(Integer.MAX_VALUE));
 	}

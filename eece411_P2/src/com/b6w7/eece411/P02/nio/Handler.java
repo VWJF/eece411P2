@@ -541,7 +541,6 @@ final class Handler extends Command implements Runnable {
 			if (position < CMDSIZE + BULKSIZE)
 				return false;
 			
-			int numBytesRead = 0;
 			int numKVPairs = (int)(input.get(CMDSIZE) & 0xFF);
 			
 			if (numKVPairs == 1) {
@@ -2489,7 +2488,8 @@ final class Handler extends Command implements Runnable {
 
 				key = new byte[KEYSIZE];
 
-				BULK_REMOVE: for (int index = 0; index < numOfKVPairs; index++) {
+				// bulk remove
+				for (int index = 0; index < numOfKVPairs; index++) {
 					key = Arrays.copyOfRange(input.array()
 							, CMDSIZE+BULKSIZE+index*(KEYSIZE)
 							, CMDSIZE+BULKSIZE+index*(KEYSIZE)+KEYSIZE);
