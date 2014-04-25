@@ -20,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -51,7 +52,7 @@ public class TestNode implements Runnable, JoinThread {
 	// set to 0 to disable timeout
 	private final int TCP_READ_TIMEOUT_MS = 8500;
 	// extra debug output from normal
-	private static boolean IS_VERBOSE = false;
+	private static boolean IS_VERBOSE = true;
 	// reduced debug outut from normal
 	private static boolean IS_BREVITY = false;
 
@@ -98,7 +99,7 @@ public class TestNode implements Runnable, JoinThread {
 		// so no need two arguments
 
 		// If we want to repeated append to hash before digesting, call update() 
-		//			md.update("Scott".getBytes(StandardCharsets.UTF_8.displayName()));
+		//			md.uopapdate("Scott".getBytes(StandardCharsets.UTF_8.displayName()));
 		//			key.put(md.digest()); 
 
 		if (null == md) 
@@ -1008,7 +1009,7 @@ public class TestNode implements Runnable, JoinThread {
 	public void run() {
 		Socket clientSocket = null;
 
-		//pareUnresponsiveNodes();
+		pareUnresponsiveNodes();
 		
 		if (hosts.size() == 0) {
 			System.out.println("Nothing to do: host list empty.");
@@ -1017,7 +1018,9 @@ public class TestNode implements Runnable, JoinThread {
 
 		try {
 
-			populateRollingFailuresTest(1234, 10, 6, 6, 10);
+//			populateRollingFailuresTest(1234, 10, 6, 6, 10);
+			
+			populateMemoryTests(1234);
 			
 //			populatePutGetRemoveGet();
 			
@@ -1029,9 +1032,7 @@ public class TestNode implements Runnable, JoinThread {
 //			populatePutTests(); //For the node that has stored the Key-Values 11112
 //			populateGetTests();	//For a node that did not store the Key-Values 11111
 //			populateRemoveTests();	//For a node that did not store the Key-Valued
-			
 
-			
 			// we will use this stream to send data to the server
 			// we will use this stream to receive data from the server
 			DataOutputStream outToServer = null;
@@ -1219,11 +1220,8 @@ public class TestNode implements Runnable, JoinThread {
 			System.out.println("-------------- Passed/Fail = "+ testPassed.addAndGet(thisTestPassed)+"/"+testFailed.addAndGet(thisTestFailed) +" ------------------");
 			if (IS_VERBOSE) System.out.println("-------------- Finished Running Tests --------------");
 
-		} catch (IOException e) {
-			System.out.println("Unknown IO Exception.");
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
-			System.out.println("Hashing algorithm not supported on this platform.");
+		} catch (Exception e) {
+			System.out.println("Unknown Exception.");
 			e.printStackTrace();
 		} finally {
 			announceDeath();
@@ -1268,27 +1266,77 @@ public class TestNode implements Runnable, JoinThread {
 		List<TestData> pareTests = new LinkedList<TestData>();
 		// from front of list, tests are PUT followed by REMOVE
 		pareTests.add(new TestData(NodeCommands.Request.CMD_PUT.getCode(), hashedKey, value, NodeCommands.Reply.RPY_SUCCESS.getCode(), null));
-		pareTests.add(new TestData(NodeCommands.Request.CMD_REMOVE.getCode(), hashedKey, null, NodeCommands.Reply.RPY_SUCCESS.getCode(), null));
+//		pareTests.add(new TestData(NodeCommands.Request.CMD_REMOVE.getCode(), hashedKey, null, NodeCommands.Reply.RPY_SUCCESS.getCode(), null));
 
-		Socket clientSocket = null;
+		ConcurrentLinkedQueue<String> pareList = new ConcurrentLinkedQueue<String>();
 
-		DataOutputStream outToServer = null;
-		BufferedInputStream inFromServer = null;
-
-		// Loop through all tests
-		byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
-		boolean isPass = true;
-		String failMessage = null;
-		String replyString = null;
-
-		// variables used for parsing the host from hosts
-		String[] hostSplit;
-		int port;
-		InetAddress address;
-		
-		List<String> pareList = new LinkedList<String>();
-
+		List<Thread> threadList = new LinkedList<Thread>();
 		EACH_HOST: for (String host : hosts) {
+			
+			Thread t = new Thread(new PareItem(pareTests, host, pareList));
+			threadList.add(t);
+			t.start();
+		}
+
+		// collect all the threads
+		EACH_HOST: for (Thread t : threadList) {
+			ONE_THREAD: while (true) {
+				try {
+					t.join();
+					break ONE_THREAD;
+				} catch (InterruptedException e) {}
+			}
+		}
+		
+		// ok all threads have completed, so we have our result
+		// in pareList
+		for (String host : hosts) {
+			if (pareList.contains(host)) {
+				System.out.println("Removing unresponsive host " + host);
+			} else {
+				System.out.println("Retaining responsive host " + host);
+			}
+		}
+
+		System.out.println("All Hosts: (size: "+hosts.size()+"): " + hosts);
+		System.out.println("Removed Hosts (size: "+pareList.size()+"): " + pareList);
+		
+		// Now we remove pared hosts from our test consideration
+		for (String paredHost : pareList) {
+			hosts.remove(paredHost);
+		}
+	}
+	
+	class PareItem implements Runnable {
+
+		private final List<TestData> pareTests;
+		private final String host;
+		private final ConcurrentLinkedQueue<String> pareList;
+		
+		PareItem(List<TestData> tests, String host, ConcurrentLinkedQueue<String> pareList) {
+			this.pareTests = tests;
+			this.host = host;
+			this.pareList = pareList;
+		}
+		
+		@Override
+		public void run() {
+			Socket clientSocket = null;
+
+			DataOutputStream outToServer = null;
+			BufferedInputStream inFromServer = null;
+
+			// Loop through all tests
+			byte[] recvBuffer = new byte[NodeCommands.LEN_VALUE_BYTES];
+			boolean isPass = true;
+			String failMessage = null;
+			String replyString = null;
+
+			// variables used for parsing the host from hosts
+			String[] hostSplit;
+			int port;
+			InetAddress address;
+			
 			if (IS_VERBOSE) System.out.println("Connecting to " + host);
 
 			EACH_TEST: for (TestData test : pareTests) {
@@ -1347,19 +1395,7 @@ public class TestNode implements Runnable, JoinThread {
 					break EACH_TEST;
 				}
 			}  // EACH_TEST:
-		
-			if (pareList.contains(host)) {
-				System.out.println("Removing unresponsive host " + host);
-			} else {
-				System.out.println("Retaining responsive host " + host);
-			}
 		}
-		System.out.println("All Hosts: (size: "+hosts.size()+"): " + hosts);
-		System.out.println("Removed Hosts (size: "+pareList.size()+"): " + pareList);
-		for (String paredHost : pareList) {
-			hosts.remove(paredHost);
-		}
-		
 	}
 
 

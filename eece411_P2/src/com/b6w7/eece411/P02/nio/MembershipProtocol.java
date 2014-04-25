@@ -52,8 +52,8 @@ public class MembershipProtocol extends Observable{
 		this.timeMinTimeout = timeMinTimeout;
 		
 		for (int i=0; i<this.total_nodes; i++) {
-			localTimestampVector.add(1);
-			oldTimestampVector.add(1);
+			localTimestampVector.add(-1);
+			oldTimestampVector.add(-1);
 		}
 		
 		localTimestampVector.set(current_node, 2);
@@ -379,7 +379,7 @@ public class MembershipProtocol extends Observable{
 
 		timeTCPTimeout.put(owner, Long.valueOf(timeNewTimeout));
 
-		log.trace("     Membership::updateTimeout() AFTER [{}] [timeout=>{}]", owner, timeNewTimeout);
+		log.warn("     Membership::updateTimeout() AFTER [{}] [timeout=>{}]", owner, timeNewTimeout);
 
 		// This is here to see the timeouts for all the other nodes
 		if (log.isTraceEnabled()) {
