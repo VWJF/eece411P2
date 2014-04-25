@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -166,6 +167,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 					dispatch(key);
 
 				for (SelectionKey key: selector.keys()) {
+					try {
 					if (key.isValid() && key.interestOps() == SelectionKey.OP_READ) {
 						Handler handler = ((Handler)key.attachment());
 						long now = new Date().getTime(); 
@@ -177,6 +179,7 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 							}
 						}
 					}
+					} catch (CancelledKeyException e) { /* do nothing */ }
 				}
 
 				// clear the key set in preparation for next invocation of .select()
