@@ -4,18 +4,15 @@ planetlab2.ionio.gr:43211
 ple01.fc.univie.ac.at:43211
 planetlab2.cs.stevens-tech.edu:43211
 onelab3.info.ucl.ac.be:43211
-planetlab1.xeno.cl.cam.ac.uk:43211
 planetlab-4.eecs.cwru.edu:43211
 peeramide.irisa.fr:43211
 planetlab01.tkn.tu-berlin.de:43211
 planetlab-2.cs.auckland.ac.nz:43211
 planetlab3.postel.org:43211
-planetlab-2.sysu.edu.cn:43211
 planetlab1.acis.ufl.edu:43211
 planetlab4.wail.wisc.edu:43211
 planetlab4.ie.cuhk.edu.hk:43211
 planetlab-coffee.ait.ie:43211
-ple2.tu.koszalin.pl:43211
 pl2.eecs.utk.edu:43211
 planetlab5.csail.mit.edu:43211
 planetlab1.eecs.umich.edu:43211
@@ -28,7 +25,6 @@ pl1.rcc.uottawa.ca:43211
 planetlab1.virtues.fi:43211
 planetlab2.virtues.fi:43211
 inriarennes1.irisa.fr:43211
-planetlab1.ie.cuhk.edu.hk:43211
 pl1.eng.monash.edu.au:43211
 pl1.cis.uab.edu:43211
 pl2.ucs.indiana.edu:43211
