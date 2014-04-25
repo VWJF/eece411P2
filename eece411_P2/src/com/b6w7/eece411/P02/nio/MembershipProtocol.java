@@ -379,7 +379,7 @@ public class MembershipProtocol extends Observable{
 
 		timeTCPTimeout.put(owner, Long.valueOf(timeNewTimeout));
 
-		log.trace("     Membership::updateTimeout() AFTER [{}] [timeout=>{}]", owner, timeNewTimeout);
+		log.warn("     Membership::updateTimeout() AFTER [{}] [timeout=>{}]", owner, timeNewTimeout);
 
 		// This is here to see the timeouts for all the other nodes
 		if (log.isTraceEnabled()) {
