@@ -39,9 +39,9 @@ planetlab2.poly.edu:11111
 planetlab2.cs.stevens-tech.edu:11111
 planetlab1.uta.edu:11111
 planetlab1.acis.ufl.edu:11111
-planetlab-2.sjtu.edu.cn:11111
+planetlab-2.sjtu.edu.cn:10101
 plab1.engr.sjsu.edu:11111
-pli1-pa-6.hpl.hp.com:11111
+pli1-pa-6.hpl.hp.com:10101
 pl1.eng.monash.edu.au:11111
 pl2.eng.monash.edu.au:11111
 pl2.ccsrfi.net:11111
