@@ -285,7 +285,8 @@ public class ServiceReactor implements Runnable, JoinThread, Gossip {
 
 	@Override
 	public void armGossipOffline() {
-		armGossipOffline(PERIOD_GOSSIP_OFFLINE_MS);
+		// HACK so that offline is performed only once at startup
+//		armGossipOffline(PERIOD_GOSSIP_OFFLINE_MS);
 	}
 	
 	private void armGossipOffline(long delay) {
