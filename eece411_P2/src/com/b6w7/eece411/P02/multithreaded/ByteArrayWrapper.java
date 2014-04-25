@@ -9,16 +9,28 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
 {
     public final byte[] key;
     public final ByteBuffer keyBuffer;
+    public final byte[] rawKey;
 
 
-	public ByteArrayWrapper(byte[] data)
+    public ByteArrayWrapper( byte[] raw_key){
+    	if (raw_key == null)
+    	{
+    		throw new NullPointerException();
+    	}
+    	this.key = raw_key;
+    	this.keyBuffer = ByteBuffer.wrap(raw_key);
+    	this.rawKey = raw_key;
+    }
+	
+	public ByteArrayWrapper(byte[] hash_of_key, byte[] raw_key)
     {
-        if (data == null)
+        if (hash_of_key == null)
         {
             throw new NullPointerException();
         }
-        this.key = data;
-        this.keyBuffer = ByteBuffer.wrap(data);
+        this.key = hash_of_key;
+        this.keyBuffer = ByteBuffer.wrap(hash_of_key);
+        this.rawKey = raw_key;
     }
 
     @Override
@@ -47,6 +59,8 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
 	@Override
 	public int compareTo(ByteArrayWrapper arg0) {
 		// TODO Auto-generated method stub
+		keyBuffer.rewind();
+		arg0.keyBuffer.rewind();
 		return keyBuffer.compareTo(arg0.keyBuffer);
 	}
 	@Override
@@ -57,7 +71,8 @@ public final class ByteArrayWrapper implements Comparable<ByteArrayWrapper>
 		//Show as Bytes
 		s.append("[key=>");
 		if (null != key) {
-			for (int i=0; i<key.length; i++)
+//			for (int i=0; i<key.length; i++)
+			for (int i=0; i<4; i++)
 				s.append(Integer.toString((key[i] & 0xff) + 0x100, 16).substring(1));
 		} else {
 			s.append("null");

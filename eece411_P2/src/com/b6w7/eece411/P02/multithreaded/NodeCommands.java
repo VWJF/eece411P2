@@ -15,7 +15,8 @@ public class NodeCommands {
 	public static final int LEN_KEY_BYTES = 32;
 	public static final int LEN_VALUE_BYTES = 1024;
 	public static final int LEN_TIMESTAMP_BYTES = ServiceReactor.nodes.length * 4;
-	public static final int REPLICATION_FACTOR = 2;
+	public static final int REPLICATION_FACTOR = 8;
+	public static final int LEN_BULK_BYTES = 1;
 
 	// Needed to make a check in ClientInterface whether the "received" command/error code 
 	// were among eligible commands.
@@ -163,21 +164,10 @@ public class NodeCommands {
 	}
 
 	public static byte sanitizeCmd(byte cmd) {
-//		if ( cmd <= Request.CMD_TS_REMOVE.getCode() && cmd >= Request.CMD_UNRECOG.getCode() )
-//			// so far so good, make sure not an unknown cmd in the middle
-//			if (cmd <= Request.CMD_ANNOUNCEDEATH.getCode() || cmd >= Request.CMD_NOT_SET.getCode() )
-//				// cmd is valid
-//				return cmd;
-//		
-		boolean isMatch = false;
-		for (Request req: Request.values()) {
-			if (req.getCode() == cmd) {
-				isMatch = true;
-				// System.out.println("+-+-NodeCommands:sanitizeCMD "+cmd);
+		for (Request req: Request.values())
+			if (req.getCode() == cmd)
 				return req.getCode(); 
-				//break MATCH_CMD;
-			}
-		}
+		
 		// command is not valid
 		return Request.CMD_UNRECOG.getCode();
 	}

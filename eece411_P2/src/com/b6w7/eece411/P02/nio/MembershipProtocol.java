@@ -6,35 +6,40 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b6w7.eece411.P02.multithreaded.ByteArrayWrapper;
 
-public class MembershipProtocol {
-	/**
-	 * The MembershipProtocol class can have a run() & execute().
-	 * run() would be used to send the local vectortimestamp to a remote node [currently method sendVector()]
-	 * execute() would be used to update the local vectortimestamp with 
-	 * 		the vector received from a remote node [currently method receiveVector()]
-	 */
-	private final int total_nodes;
+public class MembershipProtocol extends Observable{
+
+	/** index of local node(service) participating in the MemebershipProtocol. */
 	public final int current_node;
-	private ArrayList<Integer> localTimestampVector; //TODO: changed from int[] to Integer[]
+	
+	/** number of total nodes participating in the MemebershipProtocol. */
+	private final int total_nodes;
+	/** Internal representation of timestamp vector. */
+	private ArrayList<Integer> localTimestampVector;
+
+	/** Internal representation of {@code localTimestampVector} to be used to detect changes to the membership protocol. */
+	private ArrayList<Integer> oldTimestampVector;
+
+	/** TODO: Write description of data structure purpose. */
 	private Map<InetSocketAddress, Long> timeTCPTimeout = new HashMap<InetSocketAddress, Long>((int)(this.total_nodes / 0.7));
 	/** Fraction in the range of (0, 1) used in multiplication with the current running average */
 	public static double TIME_ALPHA = 0.9;
 	/** The maximum timeout on a read operation used as default value and when a node becomes unresponsive */
 	private final long timeMaxTimeout;  
 	/** The minimum timeout on a read operation to prevent timeout from becoming too small */
-	private final long timeMinTimeout;  
-	
-	private static boolean IS_DEBUG = true; //true: System.out enabled, false: disabled
+	private final long timeMinTimeout;
 
+	/** Reference to the Map that this MembershipProtocol is working with. */
+//	private ConsistentHashing<ByteArrayWrapper, byte[]> map;  
+	
 	private static final Logger log = LoggerFactory.getLogger(ServiceReactor.class);
 
 
@@ -42,19 +47,27 @@ public class MembershipProtocol {
 		this.current_node = current_node;
 		this.total_nodes = total_nodes;
 		this.localTimestampVector = new ArrayList<Integer>(this.total_nodes);
+		this.oldTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		this.timeMaxTimeout = timeMaxTimeout;
 		this.timeMinTimeout = timeMinTimeout;
 		
 		for (int i=0; i<this.total_nodes; i++) {
-			localTimestampVector.add(-1);
+			localTimestampVector.add(1);
+			oldTimestampVector.add(1);
 		}
 		
 		localTimestampVector.set(current_node, 2);
+		oldTimestampVector.set(current_node, 2);
 	}
+	
+	
+//	public void setMap(ConsistentHashing<ByteArrayWrapper, byte[]> ch){
+//		this.map = ch;
+//	}
 	
 	/**
 	 * Update the local timestamp vector based on the received vector timestamp 
-	 * @param receivedVector
+	 * @param int[] receivedVector
 	 */
 	public void mergeVector(int[] receivedVector){
 		//behavior on receiving a vectorTimestamp at each node 
@@ -64,13 +77,11 @@ public class MembershipProtocol {
 		
 		ArrayList<Integer> updateTimestampVector = new ArrayList<Integer>(this.total_nodes);
 		
-		// TODO : We are accessing localTimestampVector from both threads, so synchronize
-//		synchronized (localTimestampVector) {
 			log.debug(" === mergeVector() (localTimestampVector.length=={}) (current_node=={})", localTimestampVector.size(), current_node);
 			
 			int local = localTimestampVector.get(current_node);
 			log.debug(" === mergeVector() (localIndex={}) received vect: {}", local, Arrays.toString(receivedVector));
-			log.debug(" === mergeVector() (localIndex={}) local vect   : {}", local, Arrays.toString(convertListToArray(localTimestampVector)));
+			log.debug(" === mergeVector() (localIndex={}) local vect   : {}", local, localTimestampVector );
 
 			
 			int i, localView, remoteView;
@@ -102,11 +113,13 @@ public class MembershipProtocol {
 			localTimestampVector = updateTimestampVector;
 
 			log.debug(" === mergeVector() (localIndex={}) after merging: {}", local, localTimestampVector);
+			
+			//notifyViewers("gossip");
 	}
 
 	/**
 	 * Preparing the Vector Timestamp to be sent to a remote node.
-	 * @return
+	 * @return int[] of the node timestamps after incrementing the local node's timestamp
 	 */
 	public int[] incrementAndGetVector(){
 		ArrayList<Integer> retInteger;
@@ -117,22 +130,24 @@ public class MembershipProtocol {
 			update++;
 		
 		localTimestampVector.set(current_node, update);
+		//FIXME: Potentially retInteger not needed.
 		retInteger = new ArrayList<Integer>(localTimestampVector);
 		
 		log.debug(" === incrementAndGetVector() {}", retInteger);
 
 		int[] backingArray = convertListToArray(retInteger);
-		log.trace(" === incrementAndGetVector() backingArray: {}", Arrays.toString(backingArray));
+		log.trace(" === incrementAndGetVector() backingArray: {}", retInteger);
 
-		if(localTimestampVector.size() != backingArray.length)
-			log.warn(" ### MembershipProtocol::incrementAndGetVector() (localTimestampVector.size(), retrunedVector.length) = ({},{})", localTimestampVector.size(), backingArray.length);
+		if(localTimestampVector.size() != retInteger.size())
+			log.warn(" ### MembershipProtocol::incrementAndGetVector() (localTimestampVector.size(), retrunedVector.length) = ({},{})", localTimestampVector.size(), retInteger.size());
 		
 		return backingArray;
 	}
 
 	/**
-	 * Return a random index in the range of localtimestampVector that does not match the current_node
-	 * @return
+	 * Return a random index in the range of localtimestampVector that does not match 
+	 * the current_node and is online (localtimestampVector[return_index] > 0)
+	 * @return Integer index of a random online node.
 	 */
 	public Integer getRandomIndex(){
 		//To obtain a unique random number to use as indices for localtimestampvector.
@@ -192,8 +207,8 @@ public class MembershipProtocol {
 	}
 	/**
 	 * Helper method to obtain a int[] from an ArrayList<Integer>.
-	 * @param retInteger
-	 * @return
+	 * @param retInteger: ArrayList<Integer>
+	 * @return int[] of size total_nodes such that int[x] = ArrayList<Integer>.get(x)
 	 */
 	private int[] convertListToArray(ArrayList<Integer> retInteger) {
 		int update;
@@ -214,7 +229,8 @@ public class MembershipProtocol {
 	
 	/**
 	 * Accessor for an index(node) the local Timestamp Vector.
-	 * @return
+	 * @params nodeIndex: Index of timestamp entry to return. {@link #total_nodes} 0 > nodeIndex >= 0 
+	 * @return int timestamp entry of nodeIndex
 	 */
 	public int getTimestamp(int nodeIndex){
 		return localTimestampVector.get(nodeIndex).intValue();
@@ -224,13 +240,21 @@ public class MembershipProtocol {
 	 * Disable this node's timestamp.  If the timestamp is negative then nothing changes. 
 	 * If the timestamp is positive, then it is negated.
 	 * @param updateIndex of the node
+	 * @return {@code true} if an online node has been set offline, {@code false} otherwise  
 	 */
-	public void shutdown(Integer updateIndex){
+	public boolean shutdown(Integer updateIndex){
+		boolean isShutdown = false;
+		
 		if (localTimestampVector == null) 
 			log.error(" ### localTimestampVector is null");
 
 		if(updateIndex == null){
-			localTimestampVector.set(current_node, -Math.abs(localTimestampVector.get(current_node)));
+			int oldTime = localTimestampVector.get(current_node);
+			if( oldTime > 0){
+				int newTime = -1 * oldTime;
+				localTimestampVector.set(current_node, newTime);
+				isShutdown = true;	
+			}
 		}
 		else{
 			if (updateIndex.intValue() != current_node) {
@@ -239,12 +263,16 @@ public class MembershipProtocol {
 					// we only have work if this node is online
 					int newTime = -1 * time;
 					localTimestampVector.set(updateIndex.intValue(), newTime);
+					isShutdown = true;
 					log.info("     Shutting down an unresponsive node [time=>[{}]->[{}]] [index=>{}] [vect:->{}]", time, newTime, updateIndex, localTimestampVector);
+					
+//					notifyViewers("shutdown");
 				}
 			}
 			else {
+				isShutdown = false;
 				log.trace(" *** MembershipProtocol::shutdown() shutdown self attempted with index {} instead of null", updateIndex.intValue());
-				return;
+				return isShutdown;
 			}
 		}
 		int shutdownIndex;
@@ -252,7 +280,9 @@ public class MembershipProtocol {
 			shutdownIndex = -1;
 		else
 			shutdownIndex = updateIndex.intValue();
-		log.debug(" === shutdownindex {} {}", shutdownIndex, Arrays.toString(convertListToArray(localTimestampVector)));
+		log.debug(" === shutdownindex {}, {} {}", shutdownIndex, isShutdown, localTimestampVector );
+		
+		return isShutdown;
 	}
 	
 	/**
@@ -367,8 +397,11 @@ public class MembershipProtocol {
 	/**
 	 * Enable the index of this node.  An online node is unaffected.  An offline node is set to positive of itself.
 	 * @param index of node
+	 * @return {@code true} if an offline node has been brought online, {@code false} otherwise  
 	 */
-	public void enable(int index) {
+	public boolean enable(int index) {
+		boolean isEnabled = false;
+		
 		if (localTimestampVector == null) 
 			log.error(" ### MembershipProtocol::enable() localTimestampVector is null");
 
@@ -378,12 +411,134 @@ public class MembershipProtocol {
 				// only have work to do if the timestamp is negative
 				int newTime = Math.abs(time);
 				localTimestampVector.set(index, newTime);
+				isEnabled = true;
+
 				log.info("     Enabling a responsive node [time=>[{}]->[{}]] [index=>{}] [vect->{}]", time, newTime, index, localTimestampVector);
+				
+//				notifyViewers("enable");			
 			}
 		} else { 
+			isEnabled = false;
 			log.warn(" *** MembershipProtocol::enable() enable self attempted with index {}", index);
 		}
 		
-		return;
+		return isEnabled;
+	}
+	
+	/**
+	 * Detects differences in the {@code oldTimestampVector} with up-to-date {@code localTimestampVector}.
+	 * Detects differences among all entries except the one representing current_node.
+	 * @return true if differences were found, false if not.
+	 */
+	private boolean hasTimestampChanged(){
+		ArrayList<Integer> oldVector = new ArrayList<Integer>(oldTimestampVector);
+		ArrayList<Integer> newLocal = new ArrayList<Integer>(localTimestampVector);
+
+		log.debug("Membership Detecting changes: oldtimestamp: {} ", oldTimestampVector);
+		log.debug("Membership Detecting changes: localtimestamp: {} ", localTimestampVector);
+
+
+		boolean differencesFound = false;
+
+		//Detect all changes except those to the current_node;
+		int oldVal = oldVector.remove(current_node);
+		int current_val = newLocal.remove(current_node);
+
+		//boolean differencesFound = oldVector.removeAll(newLocal);
+				
+		int i = 0;
+		while( i < oldVector.size() ){
+			if( oldVector.get(i) != newLocal.get(i))
+				differencesFound = true;
+			i++;
+		}
+		
+		oldVector.add(current_node, current_val);
+		newLocal.add(current_node, current_val);
+		
+		if(differencesFound){
+			oldTimestampVector = newLocal;
+		}
+		
+		log.debug("MemebershipProtocol Determined changes to report to Observers. {} ", differencesFound);
+		
+		return differencesFound;
+	}
+	
+//	/**
+//	 * Method to notify Observers of this class of changes.
+//	 * @param sourcestate a reply string for the Observer to interpret.
+//	 */
+//	public void notifyViewers(String sourcestate){
+//		if( hasTimestampChanged() ){
+//			log.trace("MemebershipProtocol is notifying viewers.");
+//			// We can choose to notify observers with other args if we chose to.
+//			// e.g. notifyViewers() from enable can respond with args="enable", or args=localTimestamp.
+//			//setChanged();			
+//			//notifyObservers(localTimestampVector);
+//			//notifyObservers(sourcestate);
+//			map.update(sourcestate);
+//		}
+//	}
+	
+	/**
+	 * Helper Methods that Simulates increasing timestamps, shutdown.
+	 * Used to test MemebershipProtocol & ConsistentHashing.
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 */
+	
+	/**
+	 * Simulated increasing timestamp entries. 
+	 * Does not differentiate between positive/negative entry.
+	 * 
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 */
+	public ArrayList<Integer> incrementAnEntry(){
+		Random rand = new Random();
+		int index = rand.nextInt(total_nodes);
+		Integer oldTime = localTimestampVector.get(index);
+		oldTime++;
+		localTimestampVector.set(index, oldTime);
+		
+		//notifyViewers("gossip");
+		
+		return localTimestampVector;
+	}
+	/**
+	 * Simulates receiving shutdown command of any random node.
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
+	 */
+	public Integer shutdownAnyEntry(){
+		Random rand = new Random();
+		Integer index = rand.nextInt(total_nodes);
+		if(index == current_node){
+			index = null;
+		}
+		
+		boolean success = shutdown(index);
+		//System.out.println("Message from Memebership.shutdown(Integer): "+success);
+		return index;
+	}
+	
+	/**
+	 * Simulates receiving enable command for any random.
+	 * Change scope to private when deploying
+	 * Change scope to public when testing.
+	 * @return index of the node shutdown, null if the node shutdown is {@link current_node}
+	 */
+	public Integer enableAnyEntry(){
+		Random rand = new Random();
+		Integer index = rand.nextInt(total_nodes);
+		if(index == current_node){
+			index = null;
+		}
+		
+		boolean success = enable(index);
+		//System.out.println("Message from Memebership.enable(int): "+success);
+		return index;
 	}
 }
