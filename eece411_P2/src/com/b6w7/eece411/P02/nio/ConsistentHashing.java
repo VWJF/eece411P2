@@ -1,4 +1,6 @@
 package com.b6w7.eece411.P02.nio;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.security.MessageDigest;
@@ -1264,7 +1266,8 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 		
 		System.out.println("Testing ConsistentHashing.\nStarting...");
 
-		String localnode = "Furry.local:11111";
+		String localnode = "planetlab2.cs.ubc.ca:43211";
+							//"Furry.local:11111";
 		String[] nodes = {"planetlab2.cs.ubc.ca:11111",
 				"cs-planetlab4.cs.surrey.sfu.ca:11111",
 				"planetlab03.cs.washington.edu:11111",
@@ -1272,7 +1275,15 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 				localnode,
 				"Knock3-Tablet:11111",
 				"pl2.rcc.uottawa.ca:11111"};
-				
+		try {
+			nodes = ServiceReactor.populateNodeList("/Users/digi/Documents/git/eece411P2/eece411_P2/service/list128.txt");
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}		
 		System.out.println();
 		
 		ConsistentHashing<ByteArrayWrapper, byte[]> ch = null;
@@ -1308,12 +1319,13 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			
 			SortedMap<ByteArrayWrapper, byte[]> map = ch.getMapOfNodes();
 			Iterator<Entry<ByteArrayWrapper, byte[]>> iterator = map.entrySet().iterator();
-			
+			int i = 0;
 			//Testing: Retrieval of nodes in the map.
 			System.out.println("Contains "+map.size()+" nodes... ");
 				while(iterator.hasNext()){
 					Entry<ByteArrayWrapper, byte[]> e = iterator.next();
-					System.out.println("(Key,Value): "+e.getKey() +" "+ new String(e.getValue()) );
+					System.out.println("index["+i+"]: (Key,Value): "+e.getKey() +" "+ new String(e.getValue()) );
+					i++;
 				}
 				
 				System.out.println();
@@ -1382,7 +1394,7 @@ public class ConsistentHashing<K, V> implements Map<ByteArrayWrapper, byte[]>{
 			System.out.println("=========================");
 
 						
-			showAllNodes(ch, map);
+//			showAllNodes(ch, map);
 				
 
 				//Enable node online
